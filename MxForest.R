@@ -234,15 +234,50 @@ Arb.14 <- Raw.14 %>%
 View(Arb.04)
 
 # CHANGELOG - Arb.04 ----------------------------------------------------------------------
-### Arb.04 - Estado - initially 33
-### Arb.04 - Registro -  all values "NULL" - pulling data from string cgl_sit_reg
+### Arb.04 - Estado - initially 33 -> changed to 32
+### Arb.04 - Registro -  all values "NULL" -> pulling data from string cgl_sit_reg
+### Arb.04 - AlturaFusteLimpio - "NULL" + "character" -> "NA" + "numeric"
+### Arb.04 - AlturaComercial - "NULL" + "character" -> "NA" + "numeric"
+### Arb.04 - DiametroBasal - "NULL" + "character" -> "NA" + "numeric"
+### Arb.04 - DiametroCopa - "NULL" + "character" -> "NA" + "numeric"
+### Arb.04 - AreaBasal - "NULL" + "character" -> "NA" + "numeric"
+### Arb.04 - AreaCopa - "NULL" + "character" -> "NA" + "numeric"
+
+
+# replacing NULL with NA whilst changing other values from class "character" to class "numeric"
+T.04 <- Arb.04 %>% 
+  mutate(
+    # "AlturaFusteLimpio" Correction - NULL + value "character" ->  NA + value class numeric
+    AlturaFusteLimpio = ifelse(AlturaFusteLimpio != "NULL", as.numeric(AlturaFusteLimpio), NA),
+    # "AlturaComercial" Correction - NULL + value "character" ->  NA + value class numeric
+    AlturaComercial = ifelse(AlturaComercial != "NULL", as.numeric(AlturaComercial), NA),
+    # "DiametroBasal" Correction - NULL + value "character" ->  NA + value class numeric
+    DiametroBasal = ifelse(DiametroBasal != "NULL", as.numeric(DiametroBasal), NA),
+    # "DiametroCopa" Correction - NULL + value "character" ->  NA + value class numeric
+    DiametroCopa = ifelse(DiametroCopa != "NULL", as.numeric(DiametroCopa), NA),
+    # "AreaBasal" Correction - NULL + value "character" ->  NA + value class numeric
+    AreaBasal = ifelse(AreaBasal != "NULL", as.numeric(AreaBasal), NA),
+    # "AreaCopa" Correction - NULL + value "character" ->  NA + value class numeric
+    AreaCopa = ifelse(AreaCopa != "NULL", as.numeric(AreaCopa), NA))
+
+View(T.04)
+
+
+T.04 <- Arb.04 %>%
+  distinct(AreaBasal) %>% 
+  arrange(AreaBasal)
+
+T.04 %>%
+  filter(is.na(AreaCopa)) %>% 
+  count()
+
+Arb.04 %>%
+  filter(AreaCopa == "NULL") %>% 
+  count()
 
 
 
-
-
-
-
+class(T.04$AreaCopa)
 
 
 
@@ -291,6 +326,77 @@ View(Arb.09)
 
 
 
+#---------------------------------------------------------------------------------
+# VALUE CHECKING -----------------------------------------------------------------
+
+# CveVeg_S5 and CveVeg_S7 -----------------
+
+# Arb.04 --------------------
+
+T.04 <- Arb.04 %>%
+  distinct(DiametroBasal) %>% 
+  arrange(DiametroBasal)
+
+
+View(T.04)
+class(Arb.04$X)
+
+
+Arb.04 %>% 
+  distinct(AreaBasal) %>% 
+  count()
+
+T.04 <- Arb.04 %>% 
+  #select(AlturaTotal) %>%
+  filter(AlturaTotal < AlturaFusteLimpio) # %>% 
+  count()
+
+
+# Arb.09 --------------------
+
+T.09 <- Arb.09 %>%
+  distinct(MuerteRegresiva) %>%
+  arrange(MuerteRegresiva)
+
+View(T.09)
+class(Arb.09$DiametroCopa)
+
+Arb.09 %>% 
+  distinct(Y) %>% 
+  count()
+
+Arb.09 %>% 
+  select(AlturaTotal) %>%
+  filter(AlturaTotal == "") %>% 
+  count()
+
+
+
+
+
+# Arb.14 --------------------
+
+T.14 <- Arb.14 %>%
+  distinct(MuerteRegresiva) %>% 
+  arrange(MuerteRegresiva)
+
+View(T.14)
+
+Arb.14 %>% 
+  distinct(Y) %>% 
+  count()
+
+
+Arb.14 %>% 
+  select(AlturaTotal) %>%
+  filter(AlturaTotal == 999993.00) %>% 
+  count()
+
+
+T.14 <-   Arb.14 %>% 
+  #select(AlturaTotal) %>%
+  filter(AlturaTotal < AlturaFusteLimpio & AlturaFusteLimpio < 99999.00) # %>% 
+count()
 
 
 
@@ -301,8 +407,7 @@ View(Arb.09)
 
 
 
-
-#-----------------------------------------------------------------------------
+#---------------------------------------------------------------------------------
 # ABSOLUTE TESTING BOOTH ---------------------------------------------------------
 
 # testing and screening of ds
@@ -326,6 +431,32 @@ Arb.14 %>%
   select(Estado_C3, IdConglomerado, Sitio_C3, NoIndividuo_C3, Consecutivo_C3, ArboladoID_C3) %>% 
   arrange(ArboladoID_C3) %>% 
   count(ArboladoID_C3)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
