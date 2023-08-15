@@ -93,14 +93,14 @@ Arb.04 <- Raw.04 %>%
             str_detect(CveVeg_S5, "RAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
             str_detect(CveVeg_S5, "RAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
             str_detect(CveVeg_S5, "RA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
-            str_detect(CveVeg_S5, "RP") ~ paste(TipoVeg_S5, "  PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "RS") ~ paste(TipoVeg_S5, "  SEMIPERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "RP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "RS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
             str_detect(CveVeg_S5, "TAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
             str_detect(CveVeg_S5, "TAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TSP") ~ paste(TipoVeg_S5, "  SEMIPERMANENTE Y PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "TSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
             str_detect(CveVeg_S5, "TA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
-            str_detect(CveVeg_S5, "TP") ~ paste(TipoVeg_S5, "  PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, "  SEMIPERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "TP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
             str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
             TRUE ~ TipoVeg_S5),
         # "AlturaFusteLimpio" Correction - class "character" -> class "numeric"
@@ -115,42 +115,40 @@ Arb.04 <- Raw.04 %>%
           AreaBasal = as.numeric(AreaBasal),
         # "AreaCopa" Correction - class "character" ->  class "numeric"
           AreaCopa = as.numeric(AreaCopa),
-        # "VigorEtapa" Correction - class names -> "no capturado" + new names (in line with Arb.14)
+        # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
           VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
                                  VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
                                  VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
                                  VigorEtapa == "Arbol viejo o supermaduro" ~ "Arbol viejo o super-maduro",
                                  is.na(VigorEtapa) ~ "No capturado",
                                  TRUE ~ VigorEtapa),
-        # "Condicion" Correction - values names -> new value names
-          Condicion = case_when(Condicion == "Muerto en pie" ~ "Árbol muerto en pie",
-                                Condicion == "Vivo" ~ "Árbol vivo",
-                                TRUE ~ Condicion),
         # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
           Edad = ifelse(!is.na(Edad),
                         ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
                                ceiling(as.numeric(Edad)),
                                floor(as.numeric(Edad))),
                         NA),
-        # "NumeroTallos" Correction - "NULL" + class "character" -> NA + class "numeric"
+        # "Condicion" Correction - values names -> new value names
+          Condicion = case_when(Condicion == "Muerto en pie" ~ "Árbol muerto en pie",
+                                Condicion == "Vivo" ~ "Árbol vivo",
+                                TRUE ~ Condicion),
+        # "NumeroTallos" Correction - class "character" -> class "numeric"
           NumeroTallos = as.numeric(NumeroTallos),
-        # "LongitudAnillos10" Correction - "NULL" + class "character" -> NA + class "numeric"
+        # "LongitudAnillos10" Correction - class "character" -> class "numeric"
           LongitudAnillos10 = as.numeric(LongitudAnillos10),
-        # "NumeroAnillos25" Correction - "NULL" + class "character" -> NA + class "numeric"
+        # "NumeroAnillos25" Correction - class "character" -> class "numeric"
           NumeroAnillos25 = as.numeric(NumeroAnillos25),
-        # "GrosorCorteza" Correction - "NULL" + class "character" -> NA + class "numeric"
+        # "GrosorCorteza" Correction - class "character" -> class "numeric"
           GrosorCorteza = as.numeric(GrosorCorteza)) %>% 
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
 
-T.04 <- Arb.04 %>% 
-  select(TipoVeg_S5) %>% 
-  distinct() 
-
-View(T.04)
-
-
+Test.04 <- Arb.04 %>% 
+  select(Edad) %>% 
+  distinct() %>%
+  arrange(Edad)
+View(Test.04)
 
 
 ##----------------------------------------------------------------------------------------------------------------
@@ -173,22 +171,73 @@ Arb.09 <- Raw.09 %>%
          LongitudAnillos10 = Long10Anillos,
          NumeroAnillos25 = NumAnillos25
          ) %>% 
-# "Estado" Correction - initially 38 -> 32  
-  mutate(Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
+# Correction of categoric and specific entry mistakes 
+  mutate(
+        # "Estado" Correction - initially 38 -> 32 
+          Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
                             Estado == "Michoacan de Ocampo" ~ "Michoacán de Ocampo",
                             Estado == "Nuevo Leon" ~ "Nuevo León",
                             Estado == "Queretaro de Arteaga" ~ "Querétaro",
                             Estado == "San Luis Potosi" ~ "San Luis Potosí",
                             Estado == "Yucatan" ~ "Yucatán",
-                            TRUE ~ Estado)
-         ) %>% 
-# "Registro" Correction + "cgl_sit_arb" Correction - obviously wrong entries -> corrected to expected entry   
-  mutate(Registro = case_when(Registro == 316 ~ 16,
+                            TRUE ~ Estado),
+        # "Registro" Correction + "cgl_sit_arb" Correction - obviously wrong entries -> corrected to expected entry 
+          Registro = case_when(Registro == 316 ~ 16,
                               TRUE ~ Registro),
-         cgl_sit_reg = str_replace(string = cgl_sit_reg, "316$", "16"),
-         cgl_sit_reg = str_replace(string = cgl_sit_reg, "4_147$", "4_28"),
-         Registro = ifelse(cgl_sit_reg == "21314_4_28", as.integer(str_extract(cgl_sit_reg, "\\d+$")), Registro)
+          cgl_sit_reg = str_replace(string = cgl_sit_reg, "316$", "16"),
+          cgl_sit_reg = str_replace(string = cgl_sit_reg, "4_147$", "4_28"),
+          Registro = ifelse(cgl_sit_reg == "21314_4_28", as.integer(str_extract(cgl_sit_reg, "\\d+$")), Registro),
+        # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
+          CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
+        # "TipoVeg_S5" Correction - changing names based on CveVeg_S5 data to fit Arb.14
+          TipoVeg_S5 = case_when(
+            str_detect(CveVeg_S5, "VSA") ~ paste("VEGETACION SECUNDARIA ARBOREA DE ", TipoVeg_S5, sep = ""),
+            str_detect(CveVeg_S5, "VSa") ~ paste("VEGETACION SECUNDARIA ARBUSTIVA DE ", TipoVeg_S5, sep = ""),
+            str_detect(CveVeg_S5, "VSh") ~ paste("VEGETACION SECUNDARIA HERBACEA DE ", TipoVeg_S5, sep = ""),
+            str_detect(CveVeg_S5, "RAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "RAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "RSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "RA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+            str_detect(CveVeg_S5, "RP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "RS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "TAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "TAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "TSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "TA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+            str_detect(CveVeg_S5, "TP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "HAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
+            str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+            TRUE ~ TipoVeg_S5), 
+        # "FormaFuste" Correction - 
+        # "TipoTocon" Correction - 
+        # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
+          VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
+                                 VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
+                                 VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
+                                 VigorEtapa == "Arbol viejo o supermaduro" ~ "Arbol viejo o super-maduro",
+                                 is.na(VigorEtapa) ~ "No capturado",
+                                 TRUE ~ VigorEtapa),
+        # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
+          Edad = ifelse(!is.na(Edad),
+                        ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
+                               ceiling(as.numeric(Edad)),
+                               floor(as.numeric(Edad))),
+                        NA),
+        # "Condicion" Correction - values names -> new value names
+        Condicion = case_when(Condicion == "Muerto en pie" ~ "Árbol muerto en pie",
+                              Condicion == "Vivo" ~ "Árbol vivo",
+                              TRUE ~ Condicion),
+        # "Danio1" Correction - 
+        # "Severidad1" Correction -
+        # "Danio2" Correction -
+        # "Severidad2" Correction - 
+        # "NumeroTallos" Correction - 
+        # "LongitudAnillos10" - 
+        # "NumeroAnillos25" -
+        
          ) %>% 
+  
 # setting initial column order + attaching everything so far not considered to the end
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, Arbol, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
@@ -201,16 +250,18 @@ Arb.09 <- Raw.09 %>%
 
 
 
-## Check-up Arb.09
-Arb.09 %>% 
-  distinct(Estado) %>% 
+
+
+class(Arb.09$LongitudAnillos10)
+
+Test.09 <- 
+  Arb.09 %>% 
+  select(GrosorCorteza) %>% 
+ # filter(LongitudAnillos10 == 999 ) %>% 
+  distinct() %>% 
+  arrange(GrosorCorteza) #%>% 
   count()
-
-max(Arb.09$Registro)
-
-
-
-
+View(Test.09)
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.14 Data cleaning ------------------------------------------------------------------------------------------
@@ -317,20 +368,69 @@ View(Arb.04)
 # Testing ------------------------------------
 # CURRENT: Cve_veg_S5 & TipoVeg_S5 Corrections
 
-T.04 <- Arb.04 %>% 
-  select(CveVeg_S5, TipoVeg_S5) %>% 
-  arrange(CveVeg_S5)  %>% 
-  distinct()
 
 
-View(T.04)
+#-----------------------------------------------------------------------------
+# Arb.09 (TEMPORARY) ---------------------------------------------------------
+View(Arb.09)
 
-Arb.04 %>% 
-  select(CveVeg_S5, TipoVeg_S5) %>% 
-  arrange(CveVeg_S5)  %>% 
+# CHANGELOG - Arb.09 ----------------------------------------------------------------------
+### Arb.09 - Estado - initially 38
+### Arb.09 - Registro -  Mistake in Guerrero 69336 2: 316 - supposedly just 16
+### Arb.09 - Registro - Mistake in Chihuahua 21314 4: 147 - supposedly just 28
+### Arb.09 - cgl_sit_arb - same issue in string of Conglomerado, Sitio and Registro
+
+T.09 <- Arb.09 %>%
+  distinct(Edad) %>% 
+  arrange(Edad)
+
+View(T.09)
+
+Age.09 <- Arb.09 %>% 
+  mutate(Int = ifelse(Edad != "NULL", as.integer(Edad), NA),
+         Num = ifelse(Edad != "NULL", as.numeric(Edad), NA)) %>% 
+  select(Edad, Int, Num) %>% 
+  filter(!is.na(Int)) %>% 
+  arrange(Int)
+
+# -0.098 neben orginal wert
+mean(Age.09$Int) #-
+mean(Age.09$Num)
+# +0.008 neben orginal wert
+
+Age.09 <- Arb.09 %>%
+  mutate(Int = ifelse(Edad != "NULL", 
+                      ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
+                             ceiling(as.numeric(Edad)),
+                             floor(as.numeric(Edad))),
+                      NA),
+         Num = ifelse(Edad != "NULL", as.numeric(Edad), NA)) %>% 
+  select(Edad, Int, Num) %>% 
+  filter(!is.na(Int)) %>% 
   distinct() %>% 
-  count()
+  arrange(Int)
 
+View(Age.09)
+
+mean(Age.09$Int) - mean(Age.09$Num)
+
+
+
+#-----------------------------------------------------------------------------
+# Arb.14 (TEMPORARY) ---------------------------------------------------------
+View(Arb.14)
+
+# CHANGELOG - Arb.09 ----------------------------------------------------------------------
+
+
+
+
+
+
+
+
+###---------------------------------------------------------------------------------------------------------------
+# FURHTER ANALYSIS AND COMPARISON --------------------------------------------------------------------------------
 
 
 ### Comparing CveVeg  and TipoVeg across ds --------------------------------------------------------
@@ -419,136 +519,6 @@ T.merged <- T.merged %>%
   arrange(CveVeg)
 
 View(T.merged)
-
-# Step 5 - Test
-
-
-
-
-
-#-----------------------------------------------------------------------------
-# Arb.09 (TEMPORARY) ---------------------------------------------------------
-View(Arb.09)
-
-# CHANGELOG - Arb.09 ----------------------------------------------------------------------
-### Arb.09 - Estado - initially 38
-### Arb.09 - Registro -  Mistake in Guerrero 69336 2: 316 - supposedly just 16
-### Arb.09 - Registro - Mistake in Chihuahua 21314 4: 147 - supposedly just 28
-### Arb.09 - cgl_sit_arb - same issue in string of Conglomerado, Sitio and Registro
-
-T.09 <- Arb.09 %>%
-  distinct(Edad) %>% 
-  arrange(Edad)
-
-View(T.09)
-
-Age.09 <- Arb.09 %>% 
-  mutate(Int = ifelse(Edad != "NULL", as.integer(Edad), NA),
-         Num = ifelse(Edad != "NULL", as.numeric(Edad), NA)) %>% 
-  select(Edad, Int, Num) %>% 
-  filter(!is.na(Int)) %>% 
-  arrange(Int)
-
-# -0.098 neben orginal wert
-mean(Age.09$Int) #-
-mean(Age.09$Num)
-# +0.008 neben orginal wert
-
-Age.09 <- Arb.09 %>%
-  mutate(Int = ifelse(Edad != "NULL", 
-                      ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
-                             ceiling(as.numeric(Edad)),
-                             floor(as.numeric(Edad))),
-                      NA),
-         Num = ifelse(Edad != "NULL", as.numeric(Edad), NA)) %>% 
-  select(Edad, Int, Num) %>% 
-  filter(!is.na(Int)) %>% 
-  distinct() %>% 
-  arrange(Int)
-
-View(Age.09)
-
-mean(Age.09$Int) - mean(Age.09$Num)
-
-
-
-#-----------------------------------------------------------------------------
-# Arb.14 (TEMPORARY) ---------------------------------------------------------
-View(Arb.14)
-
-# CHANGELOG - Arb.09 ----------------------------------------------------------------------
-
-
-
-
-
-
-
-
-###---------------------------------------------------------------------------------------------------------------
-# FURHTER ANALYSIS AND COMPARISON --------------------------------------------------------------------------------
-
-
-### Comparing CveVeg  and TipoVeg across ds --------------------------------------------------------
-
-# Step 0 - Preperations -> mutate important to adapt values of CveVeg of Arb.04 and Arb.09 to Arb.14 standards
-T.04 <- Arb.04 %>% 
-  mutate(CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa")) %>% 
-  select(CveVeg_S5, TipoVeg_S5) %>% 
-  arrange(CveVeg_S5)  %>% 
-  distinct()
-
-
-T.09 <- Arb.09 %>% 
-  mutate(CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa")) %>% 
-  select(CveVeg_S5, TipoVeg_S5) %>% 
-  rename(CveVeg_S5_09 = CveVeg_S5,
-         TipoVeg_S5_09 = TipoVeg_S5) %>% 
-  arrange(CveVeg_S5_09) %>% 
-  distinct()
-
-T.14 <- Arb.14 %>% 
-  select(CveVeg_S7, TipoVeg_S7) %>% 
-  arrange(CveVeg_S7)  %>% 
-  distinct()
-
-# Step 1
-distinct_values <- unique(c(T.04$CveVeg_S5, T.09$CveVeg_S5_09, T.14$CveVeg_S7))
-
-T.merged <- data.frame(CveVeg = distinct_values)
-
-View(T.merged)
-
-# Step 2
-distinct_combinations <- T.04 %>% 
-  select(CveVeg_S5, TipoVeg_S5) %>% 
-  distinct()
-
-T.merged <- T.merged %>%
-  left_join(distinct_combinations, by = c("CveVeg" = "CveVeg_S5"))
-
-View(T.merged)
-
-# Step 3
-distinct_combinations_tipo <- T.09 %>%
-  select(CveVeg_S5_09, TipoVeg_S5_09) %>%
-  distinct()
-
-T.merged <- T.merged %>%
-  left_join(distinct_combinations_tipo, by = c("CveVeg" = "CveVeg_S5_09"))
-
-View(T.merged)
-
-# Step 4
-distinct_combinations_tipo <- T.14 %>%
-  select(CveVeg_S7, TipoVeg_S7) %>%
-  distinct()
-
-T.merged <- T.merged %>%
-  left_join(distinct_combinations_tipo, by = c("CveVeg" = "CveVeg_S7"))
-
-View(T.merged)
-
 
 
 
