@@ -144,12 +144,6 @@ Arb.04 <- Raw.04 %>%
   arrange(Estado, Conglomerado, Sitio, Registro)
 
 
-Test.04 <- Arb.04 %>% 
-  select(Edad) %>% 
-  distinct() %>%
-  arrange(Edad)
-View(Test.04)
-
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.09 Data cleaning ------------------------------------------------------------------------------------------
@@ -209,8 +203,29 @@ Arb.09 <- Raw.09 %>%
             str_detect(CveVeg_S5, "HAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
             str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
             TRUE ~ TipoVeg_S5), 
-        # "FormaFuste" Correction - 
-        # "TipoTocon" Correction - 
+        # "FormaFuste" Correction - "NA" + class names -> NA + new names (differ from Arb.14)
+          FormaFuste = str_replace(FormaFuste, "mas", "más"),
+          FormaFuste = case_when(FormaFuste == "Arbol cruvo con dos o más fustes" ~ "Arbol curvo con dos o más fustes",
+                                 FormaFuste == "NA" ~ NA,
+                                 TRUE ~ FormaFuste),
+        # "TipoTocon" Correction - class names -> new names (in line with Arb.14)
+          TipoTocon = case_when(TipoTocon == "Tocon descompuesto (evidencia de tocon)" ~ "Tocón descompuesto (evidencia de tocón)",
+                                TipoTocon == "Tocon madera seca (madera dura sin evidencias de descomposicion)" ~ "Tocón madera seca (madera dura sin evidencias de descomposición)",
+                                TipoTocon == "Tocon madera seca (madera en proceso de descomposicion pero aun dificil de desprenderse del suelo)" ~ "Tocón madera seca (madera en proceso de descomposición pero aún difícil de desprenderse del suelo)",
+                                TipoTocon == "Tocon madera verde (arbol recien cortado)" ~ "Tocón madera verde (árbol recién cortado)",
+                                TipoTocon == "Tocon seco (madera muy descompuesta y de facil extraccion del sustrato)" ~ "Tocón seco (madera muy descompuesta y de fácil extracción del sustrato)",
+                                TRUE ~ TipoTocon),
+        # "ExposicionCopa" Correction - class names -> new names (in line with Arb.14)
+          ExposicionCopa = str_replace(ExposicionCopa, "arbol", "árbol"),
+          ExposicionCopa = str_replace(ExposicionCopa, "la luz", "luz"),
+          ExposicionCopa = str_replace(ExposicionCopa, " solo en un cuarto", " en un solo cuarto"),
+          ExposicionCopa = str_replace(ExposicionCopa, " y en un cuarto ", " y un cuarto "),
+          ExposicionCopa = case_when(ExposicionCopa == "Arboles que no reciben luz porque se encuentran sombreados por otros árboles  parras  trepadoras u otra vegetacion  arboles que no tienen copa por definicion " ~ 
+                                       "Árboles que no reciben luz porque están a la sombra de otra vegetación",
+                                     TRUE ~ ExposicionCopa),
+        # "DensidadCopa" Correction - 
+        # "TransparenciaCopa" Correction - 
+        # "MuerteRegressiva" Correction - 
         # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
           VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
                                  VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
@@ -224,18 +239,24 @@ Arb.09 <- Raw.09 %>%
                                ceiling(as.numeric(Edad)),
                                floor(as.numeric(Edad))),
                         NA),
-        # "Condicion" Correction - values names -> new value names
-        Condicion = case_when(Condicion == "Muerto en pie" ~ "Árbol muerto en pie",
-                              Condicion == "Vivo" ~ "Árbol vivo",
-                              TRUE ~ Condicion),
+        # "Condicion" Correction - values names -> new value names (in line with Arb.14)
+          Condicion = case_when(Condicion == "Muerto en pie" ~ "Árbol muerto en pie",
+                                Condicion == "Vivo" ~ "Árbol vivo",
+                                TRUE ~ Condicion),
         # "Danio1" Correction - 
         # "Severidad1" Correction -
         # "Danio2" Correction -
         # "Severidad2" Correction - 
-        # "NumeroTallos" Correction - 
-        # "LongitudAnillos10" - 
-        # "NumeroAnillos25" -
-        
+        # "NumeroTallos" Correction - 999 & 9999 -> NA
+          NumeroTallos = case_when(NumeroTallos == 999 ~ NA,
+                                   NumeroTallos == 9999 ~ NA,
+                                   TRUE ~ NumeroTallos),
+        # "LongitudAnillos10" Correction - 999 -> NA
+          LongitudAnillos10 = case_when(LongitudAnillos10 == 999 ~ NA,
+                                        TRUE ~ LongitudAnillos10),
+        # "NumeroAnillos25" Correction - 
+          NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
+                                      TRUE ~ NumeroAnillos25),
          ) %>% 
   
 # setting initial column order + attaching everything so far not considered to the end
@@ -249,19 +270,6 @@ Arb.09 <- Raw.09 %>%
   arrange(Estado, Conglomerado, Sitio, Registro) 
 
 
-
-
-
-class(Arb.09$LongitudAnillos10)
-
-Test.09 <- 
-  Arb.09 %>% 
-  select(GrosorCorteza) %>% 
- # filter(LongitudAnillos10 == 999 ) %>% 
-  distinct() %>% 
-  arrange(GrosorCorteza) #%>% 
-  count()
-View(Test.09)
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.14 Data cleaning ------------------------------------------------------------------------------------------
@@ -331,7 +339,7 @@ Arb.14 <- Raw.14 %>%
 
 
 
-
+#---------------------------------------------------------------------------------------------------------------
 
 
 
@@ -366,8 +374,18 @@ View(Arb.04)
 ### Arb.04 - CveVeg_S5 - "VSaa" -> "VSa" 
 
 # Testing ------------------------------------
-# CURRENT: Cve_veg_S5 & TipoVeg_S5 Corrections
+# CURRENT: Edad 999
 
+T.04 <- Arb.04 %>%
+  select(LongitudAnillos10) %>% 
+  #filter(LongitudAnillos10 == 999) %>% 
+  distinct(LongitudAnillos10) %>% 
+  arrange(LongitudAnillos10) #%>% count()
+
+View(T.04)
+
+
+#-----------------------------------------------------------------------------
 
 
 #-----------------------------------------------------------------------------
@@ -376,44 +394,48 @@ View(Arb.09)
 
 # CHANGELOG - Arb.09 ----------------------------------------------------------------------
 ### Arb.09 - Estado - initially 38
-### Arb.09 - Registro -  Mistake in Guerrero 69336 2: 316 - supposedly just 16
-### Arb.09 - Registro - Mistake in Chihuahua 21314 4: 147 - supposedly just 28
-### Arb.09 - cgl_sit_arb - same issue in string of Conglomerado, Sitio and Registro
+### Arb.09 - Registro - obviously wrong entries -> corrected to expected entry 
+### Arb.09 - cgl_sit_arb - obviously wrong entries -> corrected to expected entry 
+### Arb.09 - CveVeg_S5 - "VSaa" -> "VSa" to fit Arb.14
+### Arb.09 - TipoVeg_S5 - changing names based on CveVeg_S5 data to fit Arb.14
+### Arb.09 - VigorEtapa - NA + class names -> "no capturado" + new names (in line with Arb.14)  ----- might change NA again
+### Arb.09 - Edad - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
+### Arb.09 - Condicion - values names -> new value names (in line with Arb.14)
+### Arb.09 - FormaFuste - "NA" + class names -> NA + new names (differ from Arb.14)
+### Arb.09 - TipoTocon - class names -> new names (in line with Arb.14)
+### Arb.09 - ExposicionCopa - class names -> new names (in line with Arb.14)
+### Arb.09 - NumeroTallos - 999 & 9999 -> NA
+### Arb.09 - LongitudAnillos10 - 999 -> NA
+### Arb.09 - NumeroAnillos25 - 999 -> NA
+### Arb.09 - Danio1 -
+### Arb.09 - Danio2 -
+### Arb.09 - Severidad1 - 
+### Arb.09 - Severidad2 -
+
+
+
+# Testing ------------------------------------
+# CURRENT: Danio1
 
 T.09 <- Arb.09 %>%
-  distinct(Edad) %>% 
-  arrange(Edad)
+  mutate(NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
+                                  TRUE ~ NumeroAnillos25)) %>% 
+  select(NumeroAnillos25) %>% 
+  #filter(!is.na(ExposicionCopa)) %>% 
+  distinct(NumeroAnillos25) %>% 
+  arrange(NumeroAnillos25) #%>% count()
+
+T.09 <- Arb.09 %>%
+  select(NumeroAnillos25) %>% 
+  #filter(LongitudAnillos10 == 999) %>% 
+  distinct(NumeroAnillos25) %>% 
+  arrange(NumeroAnillos25) #%>% count()
 
 View(T.09)
 
-Age.09 <- Arb.09 %>% 
-  mutate(Int = ifelse(Edad != "NULL", as.integer(Edad), NA),
-         Num = ifelse(Edad != "NULL", as.numeric(Edad), NA)) %>% 
-  select(Edad, Int, Num) %>% 
-  filter(!is.na(Int)) %>% 
-  arrange(Int)
 
-# -0.098 neben orginal wert
-mean(Age.09$Int) #-
-mean(Age.09$Num)
-# +0.008 neben orginal wert
 
-Age.09 <- Arb.09 %>%
-  mutate(Int = ifelse(Edad != "NULL", 
-                      ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
-                             ceiling(as.numeric(Edad)),
-                             floor(as.numeric(Edad))),
-                      NA),
-         Num = ifelse(Edad != "NULL", as.numeric(Edad), NA)) %>% 
-  select(Edad, Int, Num) %>% 
-  filter(!is.na(Int)) %>% 
-  distinct() %>% 
-  arrange(Int)
-
-View(Age.09)
-
-mean(Age.09$Int) - mean(Age.09$Num)
-
+#-----------------------------------------------------------------------------
 
 
 #-----------------------------------------------------------------------------
@@ -421,10 +443,45 @@ mean(Age.09$Int) - mean(Age.09$Num)
 View(Arb.14)
 
 # CHANGELOG - Arb.09 ----------------------------------------------------------------------
+### Arb.14 - PosicionCopa - "no capturado" + doubles + "Posicion recta" -> NA + "Posicion recta"
+### Arb.14 - ExposicionCopa - "no capturado" + class names + "SI" -> NA + new names (in line with Arb.09) + "Sí"
+
+
+# Testing ------------------------------------
+# CURRENT: ExposicionCopa
+
+
+T.14 <- Arb.14 %>%
+  mutate(ExposicionCopa = str_replace(ExposicionCopa, "SI", "Sí"),
+         ExposicionCopa = case_when(ExposicionCopa == "No capturado" ~ NA,
+                                    ExposicionCopa == "Árboles que no reciben luz porque se encuentran sombreados por otros árboles" ~ 
+                                      "Árboles que no reciben luz porque están a la sombra de otra vegetación",
+                                    TRUE ~ ExposicionCopa)) %>% 
+  select(ExposicionCopa) %>% 
+  #filter(!is.na(ExposicionCopa)) %>% 
+  distinct(ExposicionCopa) %>% 
+  arrange(ExposicionCopa) #%>% count()
+
+View(T.14)
+
+
+
+# "ExposicionCopa" Correction - "no capturado" + class names + "SI" -> NA + new names + 
 
 
 
 
+
+# "PosicionCopa" Correction - "no capturado" + doubles + "Posicion recta" -> NA + "Posicion recta"
+T.14 <- Arb.14 %>%
+  mutate(PosicionCopa = case_when(PosicionCopa == "No aplicacion" ~ "No aplica", 
+                                  PosicionCopa == "No capturado" ~ NA,
+                                  TRUE ~ PosicionCopa)) %>% 
+  select(PosicionCopa) %>% 
+  distinct(PosicionCopa) %>% 
+  arrange(PosicionCopa)
+
+View(T.14)
 
 
 
