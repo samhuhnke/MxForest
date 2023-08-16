@@ -243,9 +243,27 @@ Arb.09 <- Raw.09 %>%
           Condicion = case_when(Condicion == "Muerto en pie" ~ "Árbol muerto en pie",
                                 Condicion == "Vivo" ~ "Árbol vivo",
                                 TRUE ~ Condicion),
-        # "Danio1" Correction - 
+        # "Danio1" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
+          Danio1 = str_replace(Danio1, "abioticos", "abióticos"),
+          Danio1 = str_replace(Danio1, "raiz/tocon", "raíz/tocón"),
+          Danio1 = str_replace(Danio1, "pifitas", "pífitas"), 
+          Danio1 = str_replace(Danio1, "parasitas", "parásitas"),
+          Danio1 = str_replace(Danio1, "Sequia", "Sequía"),
+          Danio1 = case_when(Danio1 == "Otros" ~ "No definido",
+                             Danio1 == "Insectos" ~ "Insectos en general",
+                             Danio1 == "No aplica" ~ NA,
+                             TRUE ~ Danio1),
         # "Severidad1" Correction -
-        # "Danio2" Correction -
+        # "Danio2" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
+          Danio2 = str_replace(Danio2, "abioticos", "abióticos"),
+          Danio2 = str_replace(Danio2, "raiz/tocon", "raíz/tocón"),
+          Danio2 = str_replace(Danio2, "pifitas", "pífitas"), 
+          Danio2 = str_replace(Danio2, "parasitas", "parásitas"),
+          Danio2 = str_replace(Danio2, "Sequia", "Sequía"),
+          Danio2 = case_when(Danio2 == "Otros" ~ "No definido",
+                             Danio2 == "Insectos" ~ "Insectos en general",
+                             Danio2 == "No aplica" ~ NA,
+                             TRUE ~ Danio2),
         # "Severidad2" Correction - 
         # "NumeroTallos" Correction - 999 & 9999 -> NA
           NumeroTallos = case_when(NumeroTallos == 999 ~ NA,
@@ -407,8 +425,8 @@ View(Arb.09)
 ### Arb.09 - NumeroTallos - 999 & 9999 -> NA
 ### Arb.09 - LongitudAnillos10 - 999 -> NA
 ### Arb.09 - NumeroAnillos25 - 999 -> NA
-### Arb.09 - Danio1 -
-### Arb.09 - Danio2 -
+### Arb.09 - Danio1 - "No aplica" + class names -> NA + new names (in line with Arb.14)
+### Arb.09 - Danio2 - "No aplica" + class names -> NA + new names (in line with Arb.14)
 ### Arb.09 - Severidad1 - 
 ### Arb.09 - Severidad2 -
 
@@ -417,19 +435,29 @@ View(Arb.09)
 # Testing ------------------------------------
 # CURRENT: Danio1
 
-T.09 <- Arb.09 %>%
-  mutate(NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
-                                  TRUE ~ NumeroAnillos25)) %>% 
-  select(NumeroAnillos25) %>% 
-  #filter(!is.na(ExposicionCopa)) %>% 
-  distinct(NumeroAnillos25) %>% 
-  arrange(NumeroAnillos25) #%>% count()
+
+T.09 <- Arb.09 %>% 
+  mutate(Danio2 = str_replace(Danio2, "abioticos", "abióticos"),
+         Danio2 = str_replace(Danio2, "raiz/tocon", "raíz/tocón"),
+         Danio2 = str_replace(Danio2, "pifitas", "pífitas"), 
+         Danio2 = str_replace(Danio2, "parasitas", "parásitas"),
+         Danio2 = str_replace(Danio2, "Sequia", "Sequía"),
+         Danio2 = case_when(Danio2 == "Otros" ~ "No definido",
+                            Danio2 == "Insectos" ~ "Insectos en general",
+                            Danio2 == "No aplica" ~ NA,
+                            TRUE ~ Danio2)) %>% 
+  select(Danio2) %>% 
+  #filter()
+  distinct(Danio2) %>% 
+  arrange(Danio2) # %>% count()
+
+View(T.09)
 
 T.09 <- Arb.09 %>%
-  select(NumeroAnillos25) %>% 
-  #filter(LongitudAnillos10 == 999) %>% 
-  distinct(NumeroAnillos25) %>% 
-  arrange(NumeroAnillos25) #%>% count()
+  select(Danio2) %>% 
+  #filter(Danio2 == "No aplica") %>% 
+  distinct(Danio2) %>% 
+  arrange(Danio2) #%>% count()
 
 View(T.09)
 
@@ -450,6 +478,22 @@ View(Arb.14)
 # Testing ------------------------------------
 # CURRENT: ExposicionCopa
 
+T.09 <- Arb.09 %>% 
+  mutate(Danio1 = str_replace(Danio1, "abioticos", "abióticos"),
+         Danio1 = str_replace(Danio1, "raiz/tocon", "raíz/tocón",
+                              Danio1, "pifitas", "pífitas",
+                              Danio1, "parasitas", "parásitas",
+                              Danio1, "Sequia", "Sequía"))
+  select(Danio1) %>% 
+  distinct(Danio1) %>% 
+  arrange(Danio1)
+
+
+View(T.14)
+
+
+
+# "ExposicionCopa" Correction - "no capturado" + class names + "SI" -> NA + new names + 
 
 T.14 <- Arb.14 %>%
   mutate(ExposicionCopa = str_replace(ExposicionCopa, "SI", "Sí"),
@@ -461,14 +505,6 @@ T.14 <- Arb.14 %>%
   #filter(!is.na(ExposicionCopa)) %>% 
   distinct(ExposicionCopa) %>% 
   arrange(ExposicionCopa) #%>% count()
-
-View(T.14)
-
-
-
-# "ExposicionCopa" Correction - "no capturado" + class names + "SI" -> NA + new names + 
-
-
 
 
 
