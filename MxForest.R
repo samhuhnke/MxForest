@@ -143,7 +143,7 @@ Arb.04 <- Raw.04 %>%
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
-
+View(Arb.04)
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.09 Data cleaning ------------------------------------------------------------------------------------------
@@ -215,6 +215,9 @@ Arb.09 <- Raw.09 %>%
                                 TipoTocon == "Tocon madera verde (arbol recien cortado)" ~ "Tocón madera verde (árbol recién cortado)",
                                 TipoTocon == "Tocon seco (madera muy descompuesta y de facil extraccion del sustrato)" ~ "Tocón seco (madera muy descompuesta y de fácil extracción del sustrato)",
                                 TRUE ~ TipoTocon),
+        # "PosicionCopa" Correction - "no aplica" -> NA
+          PosicionCopa = case_when(PosicionCopa == "No aplica" ~ NA,
+                                   TRUE ~ PosicionCopa),
         # "ExposicionCopa" Correction - class names -> new names (in line with Arb.14)
           ExposicionCopa = str_replace(ExposicionCopa, "arbol", "árbol"),
           ExposicionCopa = str_replace(ExposicionCopa, "la luz", "luz"),
@@ -222,10 +225,56 @@ Arb.09 <- Raw.09 %>%
           ExposicionCopa = str_replace(ExposicionCopa, " y en un cuarto ", " y un cuarto "),
           ExposicionCopa = case_when(ExposicionCopa == "Arboles que no reciben luz porque se encuentran sombreados por otros árboles  parras  trepadoras u otra vegetacion  arboles que no tienen copa por definicion " ~ 
                                        "Árboles que no reciben luz porque están a la sombra de otra vegetación",
+                                     ExposicionCopa == "No aplica" ~ NA,
                                      TRUE ~ ExposicionCopa),
-        # "DensidadCopa" Correction - 
-        # "TransparenciaCopa" Correction - 
+        # "DensidadCopa" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+          DensidadCopa = case_when(DensidadCopa == "" ~ NA,
+                                   DensidadCopa == -9999 ~ NA,
+                                   DensidadCopa == "n/a" ~ NA,
+                                   DensidadCopa == "00" ~ "0",
+                                   DensidadCopa == "05" ~ "1 - 5", DensidadCopa == "10" ~ "6 - 10",
+                                   DensidadCopa == "15" ~ "11 - 15", DensidadCopa == "20" ~ "16 - 20",
+                                   DensidadCopa == "25" ~ "21 - 25", DensidadCopa == "30" ~ "26 - 30",
+                                   DensidadCopa == "35" ~ "31 - 35", DensidadCopa == "40" ~ "36 - 40",
+                                   DensidadCopa == "45" ~ "41 - 45", DensidadCopa == "50" ~ "46 - 50",
+                                   DensidadCopa == "55" ~ "51 - 55", DensidadCopa == "60" ~ "56 - 60",
+                                   DensidadCopa == "65" ~ "61 - 65", DensidadCopa == "70" ~ "66 - 70",
+                                   DensidadCopa == "75" ~ "71 - 75", DensidadCopa == "80" ~ "76 - 80",
+                                   DensidadCopa == "85" ~ "81 - 85", DensidadCopa == "90" ~ "86 - 90",
+                                   DensidadCopa == "95" ~ "91 - 95", DensidadCopa == "100" ~ "96 - 100",
+                                   TRUE ~ DensidadCopa),
+        # "TransparenciaCopa" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+          TransparenciaCopa = case_when(TransparenciaCopa == "" ~ NA,
+                                        TransparenciaCopa == -9999 ~ NA,
+                                        TransparenciaCopa == "n/a" ~ NA,
+                                        TransparenciaCopa == "00" ~ "0",
+                                        TransparenciaCopa == "05" ~ "1 - 5", TransparenciaCopa == "10" ~ "6 - 10",
+                                        TransparenciaCopa == "15" ~ "11 - 15", TransparenciaCopa == "20" ~ "16 - 20",
+                                        TransparenciaCopa == "25" ~ "21 - 25", TransparenciaCopa == "30" ~ "26 - 30",
+                                        TransparenciaCopa == "35" ~ "31 - 35", TransparenciaCopa == "40" ~ "36 - 40",
+                                        TransparenciaCopa == "45" ~ "41 - 45", TransparenciaCopa == "50" ~ "46 - 50",
+                                        TransparenciaCopa == "55" ~ "51 - 55", TransparenciaCopa == "60" ~ "56 - 60",
+                                        TransparenciaCopa == "65" ~ "61 - 65", TransparenciaCopa == "70" ~ "66 - 70",
+                                        TransparenciaCopa == "75" ~ "71 - 75", TransparenciaCopa == "80" ~ "76 - 80",
+                                        TransparenciaCopa == "85" ~ "81 - 85", TransparenciaCopa == "90" ~ "86 - 90",
+                                        TransparenciaCopa == "95" ~ "91 - 95", TransparenciaCopa == "100" ~ "96 - 100",
+                                        TRUE ~ TransparenciaCopa),
         # "MuerteRegressiva" Correction - 
+          MuerteRegresiva = case_when(MuerteRegresiva == "" ~ NA,
+                                      MuerteRegresiva == -9999 ~ NA,
+                                      MuerteRegresiva == "n/a" ~ NA,
+                                      MuerteRegresiva == "00" ~ "0",
+                                      MuerteRegresiva == "05" ~ "1 - 5", MuerteRegresiva == "10" ~ "6 - 10",
+                                      MuerteRegresiva == "15" ~ "11 - 15", MuerteRegresiva == "20" ~ "16 - 20",
+                                      MuerteRegresiva == "25" ~ "21 - 25", MuerteRegresiva == "30" ~ "26 - 30",
+                                      MuerteRegresiva == "35" ~ "31 - 35", MuerteRegresiva == "40" ~ "36 - 40",
+                                      MuerteRegresiva == "45" ~ "41 - 45", MuerteRegresiva == "50" ~ "46 - 50",
+                                      MuerteRegresiva == "55" ~ "51 - 55", MuerteRegresiva == "60" ~ "56 - 60",
+                                      MuerteRegresiva == "65" ~ "61 - 65", MuerteRegresiva == "70" ~ "66 - 70",
+                                      MuerteRegresiva == "75" ~ "71 - 75", MuerteRegresiva == "80" ~ "76 - 80",
+                                      MuerteRegresiva == "85" ~ "81 - 85", MuerteRegresiva == "90" ~ "86 - 90",
+                                      MuerteRegresiva == "95" ~ "91 - 95", MuerteRegresiva == "100" ~ "96 - 100",
+                                      TRUE ~ MuerteRegresiva),
         # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
           VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
                                  VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
@@ -253,7 +302,12 @@ Arb.09 <- Raw.09 %>%
                              Danio1 == "Insectos" ~ "Insectos en general",
                              Danio1 == "No aplica" ~ NA,
                              TRUE ~ Danio1),
-        # "Severidad1" Correction -
+        # "Severidad1" Correction - "" + -9999 + "n/a" + "05" + character -> NA + numeric
+          Severidad1 = case_when(Severidad1 == "" ~ NA,
+                                 Severidad1 == -9999 ~ NA,
+                                 Severidad1 == "n/a" ~ NA,
+                                 Severidad1 == "05" ~ 5,
+                                 TRUE ~ as.numeric(Severidad1)),
         # "Danio2" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
           Danio2 = str_replace(Danio2, "abioticos", "abióticos"),
           Danio2 = str_replace(Danio2, "raiz/tocon", "raíz/tocón"),
@@ -264,7 +318,12 @@ Arb.09 <- Raw.09 %>%
                              Danio2 == "Insectos" ~ "Insectos en general",
                              Danio2 == "No aplica" ~ NA,
                              TRUE ~ Danio2),
-        # "Severidad2" Correction - 
+        # "Severidad2" Correction - "" + -9999 + "n/a" + "05" + character -> NA + numeric
+          Severidad2 = case_when(Severidad2 == "" ~ NA,
+                                 Severidad2 == -9999 ~ NA,
+                                 Severidad2 == "n/a" ~ NA,
+                                 Severidad2 == "05" ~ 5,
+                                 TRUE ~ as.numeric(Severidad2)),
         # "NumeroTallos" Correction - 999 & 9999 -> NA
           NumeroTallos = case_when(NumeroTallos == 999 ~ NA,
                                    NumeroTallos == 9999 ~ NA,
@@ -276,7 +335,6 @@ Arb.09 <- Raw.09 %>%
           NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
                                       TRUE ~ NumeroAnillos25),
          ) %>% 
-  
 # setting initial column order + attaching everything so far not considered to the end
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, Arbol, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
@@ -287,7 +345,7 @@ Arb.09 <- Raw.09 %>%
          ) %>% 
   arrange(Estado, Conglomerado, Sitio, Registro) 
 
-
+View(Arb.09)
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.14 Data cleaning ------------------------------------------------------------------------------------------
@@ -390,15 +448,18 @@ View(Arb.04)
 ### Arb.04 - "NULL" character values -> changed them from the start by defining "NULL" as NA-values in fread()
 
 ### Arb.04 - CveVeg_S5 - "VSaa" -> "VSa" 
+### Arb.04 - TipoVeg_S5 - changing names based on CveVeg_S5 data to fit Arb.14
+
+### TOTAL: 18
 
 # Testing ------------------------------------
 # CURRENT: Edad 999
 
 T.04 <- Arb.04 %>%
-  select(LongitudAnillos10) %>% 
+  select(GrosorCorteza) %>% 
   #filter(LongitudAnillos10 == 999) %>% 
-  distinct(LongitudAnillos10) %>% 
-  arrange(LongitudAnillos10) #%>% count()
+  distinct() %>% 
+  arrange(GrosorCorteza) #%>% count()
 
 View(T.04)
 
@@ -427,37 +488,48 @@ View(Arb.09)
 ### Arb.09 - NumeroAnillos25 - 999 -> NA
 ### Arb.09 - Danio1 - "No aplica" + class names -> NA + new names (in line with Arb.14)
 ### Arb.09 - Danio2 - "No aplica" + class names -> NA + new names (in line with Arb.14)
-### Arb.09 - Severidad1 - 
-### Arb.09 - Severidad2 -
+### Arb.09 - Severidad1 - "" + -9999 + "n/a" + "05" + character -> NA + numeric
+### Arb.09 - Severidad2 - "" + -9999 + "n/a" + "05" + character -> NA + numeric
+### Arb.09 - DensidadCopa - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+### Arb.09 - TransparenciaCopa - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+### Arb.09 - MuerteRegresiva - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
 
-
+### TOTAL: 21
 
 # Testing ------------------------------------
-# CURRENT: Danio1
+# CURRENT: MuerteRegresiva
 
 
 T.09 <- Arb.09 %>% 
-  mutate(Danio2 = str_replace(Danio2, "abioticos", "abióticos"),
-         Danio2 = str_replace(Danio2, "raiz/tocon", "raíz/tocón"),
-         Danio2 = str_replace(Danio2, "pifitas", "pífitas"), 
-         Danio2 = str_replace(Danio2, "parasitas", "parásitas"),
-         Danio2 = str_replace(Danio2, "Sequia", "Sequía"),
-         Danio2 = case_when(Danio2 == "Otros" ~ "No definido",
-                            Danio2 == "Insectos" ~ "Insectos en general",
-                            Danio2 == "No aplica" ~ NA,
-                            TRUE ~ Danio2)) %>% 
-  select(Danio2) %>% 
+  mutate(MuerteRegresiva = case_when(MuerteRegresiva == "" ~ NA,
+                                     MuerteRegresiva == -9999 ~ NA,
+                                     MuerteRegresiva == "n/a" ~ NA,
+                                     MuerteRegresiva == "00" ~ "0",
+                                     MuerteRegresiva == "05" ~ "1 - 5", MuerteRegresiva == "10" ~ "6 - 10",
+                                     MuerteRegresiva == "15" ~ "11 - 15", MuerteRegresiva == "20" ~ "16 - 20",
+                                     MuerteRegresiva == "25" ~ "21 - 25", MuerteRegresiva == "30" ~ "26 - 30",
+                                     MuerteRegresiva == "35" ~ "31 - 35", MuerteRegresiva == "40" ~ "36 - 40",
+                                     MuerteRegresiva == "45" ~ "41 - 45", MuerteRegresiva == "50" ~ "46 - 50",
+                                     MuerteRegresiva == "55" ~ "51 - 55", MuerteRegresiva == "60" ~ "56 - 60",
+                                     MuerteRegresiva == "65" ~ "61 - 65", MuerteRegresiva == "70" ~ "66 - 70",
+                                     MuerteRegresiva == "75" ~ "71 - 75", MuerteRegresiva == "80" ~ "76 - 80",
+                                     MuerteRegresiva == "85" ~ "81 - 85", MuerteRegresiva == "90" ~ "86 - 90",
+                                     MuerteRegresiva == "95" ~ "91 - 95", MuerteRegresiva == "100" ~ "96 - 100",
+                                     TRUE ~ MuerteRegresiva)) %>% 
+  select(MuerteRegresiva) %>% 
   #filter()
-  distinct(Danio2) %>% 
-  arrange(Danio2) # %>% count()
+  distinct(MuerteRegresiva) %>% 
+  arrange(MuerteRegresiva) # %>% count()
 
 View(T.09)
 
+class(Arb.09$MuerteRegresiva)
+
 T.09 <- Arb.09 %>%
-  select(Danio2) %>% 
-  #filter(Danio2 == "No aplica") %>% 
-  distinct(Danio2) %>% 
-  arrange(Danio2) #%>% count()
+  select(MuerteRegresiva) %>% 
+  #filter(DensidadCopa == "00") %>% 
+  distinct() %>% 
+  arrange(MuerteRegresiva) #%>% count()
 
 View(T.09)
 
@@ -478,18 +550,23 @@ View(Arb.14)
 # Testing ------------------------------------
 # CURRENT: ExposicionCopa
 
-T.09 <- Arb.09 %>% 
-  mutate(Danio1 = str_replace(Danio1, "abioticos", "abióticos"),
-         Danio1 = str_replace(Danio1, "raiz/tocon", "raíz/tocón",
-                              Danio1, "pifitas", "pífitas",
-                              Danio1, "parasitas", "parásitas",
-                              Danio1, "Sequia", "Sequía"))
-  select(Danio1) %>% 
-  distinct(Danio1) %>% 
-  arrange(Danio1)
-
+T.14 <- Arb.14 %>% 
+  mutate(DensidadCopa = case_when(DensidadCopa == "No capturado" ~ NA,
+                                  TRUE ~ DensidadCopa)) %>% 
+  select(DensidadCopa) %>% 
+  distinct(DensidadCopa) %>% 
+  arrange(DensidadCopa)
 
 View(T.14)
+
+T.14 <- Arb.14 %>% 
+  select(DensidadCopa) %>% 
+  #filter(DensidadCopa == "Sin parámetro") %>% 
+  distinct(DensidadCopa) %>% 
+  arrange(DensidadCopa) #%>% count()
+
+View(T.14)
+
 
 
 
