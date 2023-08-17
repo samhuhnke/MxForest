@@ -15,18 +15,12 @@ library(stringr)    #data cleaning
 
 ## 2004 - 2007 -> changing "NULL" character values to NA
 Raw.04 <- fread(here("data", "arbolado", "INFyS_Arbolado_2004_2007.csv"), na.strings = "NULL")
-ncol(Raw.04); nrow(Raw.04)
-str(Raw.04)
 
-## 2009 - 2014
+## 2009 - 2014 -> changing "NULL" character values to NA
 Raw.09 <- fread(here("data", "arbolado", "INFyS_Arbolado_2009_2014.csv"), na.strings = "NULL")
-ncol(Raw.09); nrow(Raw.09)
-str(Raw.09)
 
 ## 2015 - 2020
-Raw.14 <- readxl::read_xlsx(here("data", "arbolado", "INFYS_Arbolado_2015_2020.xlsx"), sheet= 1)
-ncol(Raw.14); nrow(Raw.14)
-str(Raw.14)
+Raw.14 <- readxl::read_xlsx(here("data", "arbolado", "INFYS_Arbolado_2015_2020.xlsx"), sheet= 1, na = c("999991", "999993"))
 
 
 
@@ -67,14 +61,6 @@ Arb.04 <- Raw.04 %>%
          LongitudAnillos10 = Long10Anillos,
          NumeroAnillos25 = NumAnillos25
          ) %>% 
-# setting initial column order + attaching everything so far not considered to the end
-  select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, Arbol, CveVeg_S5, TipoVeg_S5, FormaFuste, 
-         TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
-         AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
-         PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
-         Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
-         everything()
-         ) %>%
 # Correction of categoric and specific entry mistakes
   mutate(
         # "Estado" Correction - initially 33 -> 32
@@ -129,8 +115,8 @@ Arb.04 <- Raw.04 %>%
                                floor(as.numeric(Edad))),
                         NA),
         # "Condicion" Correction - values names -> new value names
-          Condicion = case_when(Condicion == "Muerto en pie" ~ "Árbol muerto en pie",
-                                Condicion == "Vivo" ~ "Árbol vivo",
+          Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
+                                Condicion == "Vivo" ~ "Arbol vivo",
                                 TRUE ~ Condicion),
         # "NumeroTallos" Correction - class "character" -> class "numeric"
           NumeroTallos = as.numeric(NumeroTallos),
@@ -139,11 +125,22 @@ Arb.04 <- Raw.04 %>%
         # "NumeroAnillos25" Correction - class "character" -> class "numeric"
           NumeroAnillos25 = as.numeric(NumeroAnillos25),
         # "GrosorCorteza" Correction - class "character" -> class "numeric"
-          GrosorCorteza = as.numeric(GrosorCorteza)) %>% 
+          GrosorCorteza = as.numeric(GrosorCorteza)
+        ) %>%
+# setting initial column order + attaching everything so far not considered to the end
+  select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
+         TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
+         AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
+         PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
+         Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
+         everything()
+         ) %>%
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
 View(Arb.04)
+
+##----------------------------------------------------------------------------------------------------------------
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.09 Data cleaning ------------------------------------------------------------------------------------------
@@ -231,7 +228,7 @@ Arb.09 <- Raw.09 %>%
           DensidadCopa = case_when(DensidadCopa == "" ~ NA,
                                    DensidadCopa == -9999 ~ NA,
                                    DensidadCopa == "n/a" ~ NA,
-                                   DensidadCopa == "00" ~ "0",
+                                   DensidadCopa == "00" ~ "Sin parámetro",
                                    DensidadCopa == "05" ~ "1 - 5", DensidadCopa == "10" ~ "6 - 10",
                                    DensidadCopa == "15" ~ "11 - 15", DensidadCopa == "20" ~ "16 - 20",
                                    DensidadCopa == "25" ~ "21 - 25", DensidadCopa == "30" ~ "26 - 30",
@@ -247,7 +244,7 @@ Arb.09 <- Raw.09 %>%
           TransparenciaCopa = case_when(TransparenciaCopa == "" ~ NA,
                                         TransparenciaCopa == -9999 ~ NA,
                                         TransparenciaCopa == "n/a" ~ NA,
-                                        TransparenciaCopa == "00" ~ "0",
+                                        TransparenciaCopa == "00" ~ "Sin parámetro",
                                         TransparenciaCopa == "05" ~ "1 - 5", TransparenciaCopa == "10" ~ "6 - 10",
                                         TransparenciaCopa == "15" ~ "11 - 15", TransparenciaCopa == "20" ~ "16 - 20",
                                         TransparenciaCopa == "25" ~ "21 - 25", TransparenciaCopa == "30" ~ "26 - 30",
@@ -259,11 +256,11 @@ Arb.09 <- Raw.09 %>%
                                         TransparenciaCopa == "85" ~ "81 - 85", TransparenciaCopa == "90" ~ "86 - 90",
                                         TransparenciaCopa == "95" ~ "91 - 95", TransparenciaCopa == "100" ~ "96 - 100",
                                         TRUE ~ TransparenciaCopa),
-        # "MuerteRegressiva" Correction - 
+        # "MuerteRegressiva" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
           MuerteRegresiva = case_when(MuerteRegresiva == "" ~ NA,
                                       MuerteRegresiva == -9999 ~ NA,
                                       MuerteRegresiva == "n/a" ~ NA,
-                                      MuerteRegresiva == "00" ~ "0",
+                                      MuerteRegresiva == "00" ~ "Sin parámetro",
                                       MuerteRegresiva == "05" ~ "1 - 5", MuerteRegresiva == "10" ~ "6 - 10",
                                       MuerteRegresiva == "15" ~ "11 - 15", MuerteRegresiva == "20" ~ "16 - 20",
                                       MuerteRegresiva == "25" ~ "21 - 25", MuerteRegresiva == "30" ~ "26 - 30",
@@ -289,8 +286,8 @@ Arb.09 <- Raw.09 %>%
                                floor(as.numeric(Edad))),
                         NA),
         # "Condicion" Correction - values names -> new value names (in line with Arb.14)
-          Condicion = case_when(Condicion == "Muerto en pie" ~ "Árbol muerto en pie",
-                                Condicion == "Vivo" ~ "Árbol vivo",
+          Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
+                                Condicion == "Vivo" ~ "Arbol vivo",
                                 TRUE ~ Condicion),
         # "Danio1" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
           Danio1 = str_replace(Danio1, "abioticos", "abióticos"),
@@ -336,16 +333,19 @@ Arb.09 <- Raw.09 %>%
                                       TRUE ~ NumeroAnillos25),
          ) %>% 
 # setting initial column order + attaching everything so far not considered to the end
-  select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, Arbol, CveVeg_S5, TipoVeg_S5, FormaFuste, 
+  select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything() 
          ) %>% 
+# sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro) 
 
 View(Arb.09)
+
+##----------------------------------------------------------------------------------------------------------------
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.14 Data cleaning ------------------------------------------------------------------------------------------
@@ -397,14 +397,53 @@ Arb.14 <- Raw.14 %>%
          Y = Y_C3
          ) %>% 
 # mutate() %>% ### einfügen von cgl_sit_reg   <----- HIER MUSS NOCH WAS REIN
+# Correction of categoric and specific entry mistakes 
+  mutate(
+        # "FormaBiologica" Correction - "NULL" -> NA 
+          FormaBiologica = case_when(FormaBiologica == "NULL" ~ NA,
+                                     TRUE ~ FormaBiologica),
+        # "PosicionCopa" Correction - "No aplicacion" + "No aplica" + "No capturado" -> NA
+          PosicionCopa = case_when(PosicionCopa == "No aplicacion" ~ NA, 
+                                   PosicionCopa == "No aplica" ~ NA,
+                                   PosicionCopa == "No capturado" ~ NA,
+                                   TRUE ~ PosicionCopa),
+        # "ExposicionCopa" Correction - "No capturado" + "No aplica" + class names -> NA + new names
+          ExposicionCopa = str_replace(ExposicionCopa, "SI", "Sí"),
+          ExposicionCopa = case_when(ExposicionCopa == "No capturado" ~ NA,
+                                     ExposicionCopa == "No aplica" ~ NA,
+                                     ExposicionCopa == "Árboles que no reciben luz porque se encuentran sombreados por otros árboles" ~ 
+                                       "Árboles que no reciben luz porque están a la sombra de otra vegetación",
+                                     TRUE ~ ExposicionCopa),
+        # "DensidadCopa" Correction - "No capturado" -> NA
+          DensidadCopa = case_when(DensidadCopa == "No capturado" ~ NA,
+                                   TRUE ~ DensidadCopa),
+        # "TransparenciaCopa" Correction - "No capturado" -> NA
+          TransparenciaCopa = case_when(TransparenciaCopa == "No capturado" ~ NA,
+                                        TRUE ~ TransparenciaCopa),
+        # "MuerteRegresiva" Correction - "No capturado" -> NA -> still 3 entry mistakes with 42309, 44682, 44840
+          MuerteRegresiva = case_when(MuerteRegresiva == "No capturado" ~ NA,
+                                      TRUE ~ MuerteRegresiva),
+        # "Severidad1" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
+          Severidad1 = case_when(Severidad1 == "No capturado" ~ NA,
+                                 Severidad1 == "No aplica" ~ NA,
+                                 TRUE ~ as.numeric(Severidad1)),
+        # "Danio2" Correction - "No capturado" -> NA
+          Danio2 = case_when(Danio2 == "No capturado" ~ NA,
+                             TRUE ~ Danio2),
+        # "Severidad2" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
+          Severidad2 = case_when(Severidad2 == "No capturado" ~ NA,
+                                 Severidad2 == "No aplica" ~ NA,
+                                 TRUE ~ as.numeric(Severidad2))
+         ) %>% 
 # setting initial column order + attaching everything so far not considered to the end
-  select(Anio, Estado, Conglomerado, Sitio, Registro, NoIndividuo_C3, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
+  select(Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
          NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal, AlturaFusteLimpio, AlturaComercial,
          DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa, PosicionCopa, ExposicionCopa, DensidadCopa,
          TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion, Danio1, Severidad1, Danio2, Severidad2, NumeroTallos,
          LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything()
          ) %>% 
+# sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
 
@@ -415,7 +454,7 @@ Arb.14 <- Raw.14 %>%
 
 
 
-#---------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------
 
 
 
@@ -499,37 +538,11 @@ View(Arb.09)
 # Testing ------------------------------------
 # CURRENT: MuerteRegresiva
 
-
-T.09 <- Arb.09 %>% 
-  mutate(MuerteRegresiva = case_when(MuerteRegresiva == "" ~ NA,
-                                     MuerteRegresiva == -9999 ~ NA,
-                                     MuerteRegresiva == "n/a" ~ NA,
-                                     MuerteRegresiva == "00" ~ "0",
-                                     MuerteRegresiva == "05" ~ "1 - 5", MuerteRegresiva == "10" ~ "6 - 10",
-                                     MuerteRegresiva == "15" ~ "11 - 15", MuerteRegresiva == "20" ~ "16 - 20",
-                                     MuerteRegresiva == "25" ~ "21 - 25", MuerteRegresiva == "30" ~ "26 - 30",
-                                     MuerteRegresiva == "35" ~ "31 - 35", MuerteRegresiva == "40" ~ "36 - 40",
-                                     MuerteRegresiva == "45" ~ "41 - 45", MuerteRegresiva == "50" ~ "46 - 50",
-                                     MuerteRegresiva == "55" ~ "51 - 55", MuerteRegresiva == "60" ~ "56 - 60",
-                                     MuerteRegresiva == "65" ~ "61 - 65", MuerteRegresiva == "70" ~ "66 - 70",
-                                     MuerteRegresiva == "75" ~ "71 - 75", MuerteRegresiva == "80" ~ "76 - 80",
-                                     MuerteRegresiva == "85" ~ "81 - 85", MuerteRegresiva == "90" ~ "86 - 90",
-                                     MuerteRegresiva == "95" ~ "91 - 95", MuerteRegresiva == "100" ~ "96 - 100",
-                                     TRUE ~ MuerteRegresiva)) %>% 
-  select(MuerteRegresiva) %>% 
-  #filter()
-  distinct(MuerteRegresiva) %>% 
-  arrange(MuerteRegresiva) # %>% count()
-
-View(T.09)
-
-class(Arb.09$MuerteRegresiva)
-
 T.09 <- Arb.09 %>%
-  select(MuerteRegresiva) %>% 
-  #filter(DensidadCopa == "00") %>% 
+  select(Severidad1) %>% 
+  #filter(MuerteRegresiva == 0) %>% 
   distinct() %>% 
-  arrange(MuerteRegresiva) #%>% count()
+  arrange(Severidad1) #%>% count()
 
 View(T.09)
 
@@ -546,55 +559,47 @@ View(Arb.14)
 ### Arb.14 - PosicionCopa - "no capturado" + doubles + "Posicion recta" -> NA + "Posicion recta"
 ### Arb.14 - ExposicionCopa - "no capturado" + class names + "SI" -> NA + new names (in line with Arb.09) + "Sí"
 
+### Arb.14 - read_xlsx - added default NA value as 999991 -> corrects "Distancia", Azimut", "AlturaTotal", "AlturaFusteLimpio", "AlturaComercial", "DiametroNormal",
+###                                                          "DiametroBasal", "DiametroCopa", "AreaBasal", "AreaCopa", "Edad", "NumeroTallos", "LongitudAnillos10",
+###                                                          "NumeroAnillos25", "GrosorCorteza"
+
+### Arb.14 - Distancia - 999991 -> NA
+### Arb.14 - PosicionCopa - "No aplicacion" + "No aplica" + "No capturado" -> NA
+### Arb.14 - ExposicionCopa - "No capturado" + "No aplica" + class names -> NA + new names 
+### Arb.14 - DensidadCopa - "No capturado" -> NA 
+### Arb.14 - TransparenciaCopa - "No capturado" -> NA 
+### Arb.14 - MuerteRegressiva - "No capturado" -> NA -> still some entry mistakes but not really changeable
+### Arb.14 - Danio2 - "No capturado" -> NA 
+### Arb.14 - Severidad1 - "No capturado" + class "character" -> NA + class "numeric"
+### Arb.14 - Severidad2 - "No capturado" + class "character" -> NA + class "numeric"
+
+
+
 
 # Testing ------------------------------------
-# CURRENT: ExposicionCopa
+# CURRENT: 
 
 T.14 <- Arb.14 %>% 
-  mutate(DensidadCopa = case_when(DensidadCopa == "No capturado" ~ NA,
-                                  TRUE ~ DensidadCopa)) %>% 
-  select(DensidadCopa) %>% 
-  distinct(DensidadCopa) %>% 
-  arrange(DensidadCopa)
+  mutate(Severidad1 = case_when(Severidad1 == "No capturado" ~ NA,
+                                Severidad1 == "No aplica" ~ NA,
+                                TRUE ~ as.numeric(Severidad1))) %>% 
+  ##filter(MuerteRegresiva == 44840) %>% 
+  select(Severidad1) %>% 
+  distinct() %>% 
+  arrange(Severidad1) #%>% count
 
 View(T.14)
 
 T.14 <- Arb.14 %>% 
-  select(DensidadCopa) %>% 
+  select(TipoVeg_S7) %>% 
   #filter(DensidadCopa == "Sin parámetro") %>% 
-  distinct(DensidadCopa) %>% 
-  arrange(DensidadCopa) #%>% count()
+  distinct() %>% 
+  arrange(TipoVeg_S7) #%>% count()
 
 View(T.14)
 
 
 
-
-# "ExposicionCopa" Correction - "no capturado" + class names + "SI" -> NA + new names + 
-
-T.14 <- Arb.14 %>%
-  mutate(ExposicionCopa = str_replace(ExposicionCopa, "SI", "Sí"),
-         ExposicionCopa = case_when(ExposicionCopa == "No capturado" ~ NA,
-                                    ExposicionCopa == "Árboles que no reciben luz porque se encuentran sombreados por otros árboles" ~ 
-                                      "Árboles que no reciben luz porque están a la sombra de otra vegetación",
-                                    TRUE ~ ExposicionCopa)) %>% 
-  select(ExposicionCopa) %>% 
-  #filter(!is.na(ExposicionCopa)) %>% 
-  distinct(ExposicionCopa) %>% 
-  arrange(ExposicionCopa) #%>% count()
-
-
-
-# "PosicionCopa" Correction - "no capturado" + doubles + "Posicion recta" -> NA + "Posicion recta"
-T.14 <- Arb.14 %>%
-  mutate(PosicionCopa = case_when(PosicionCopa == "No aplicacion" ~ "No aplica", 
-                                  PosicionCopa == "No capturado" ~ NA,
-                                  TRUE ~ PosicionCopa)) %>% 
-  select(PosicionCopa) %>% 
-  distinct(PosicionCopa) %>% 
-  arrange(PosicionCopa)
-
-View(T.14)
 
 
 
