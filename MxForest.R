@@ -6,9 +6,22 @@
 library(data.table) #fread()
 library(readxl)     #read_xlsx()
 library(here)       #here()
-library(dplyr)      #data cleaning
-library(tidyr)      #data cleaning
-library(stringr)    #data cleaning
+#library(dplyr)      #data cleaning
+#library(tidyr)      #data cleaning
+#library(stringr)    #data cleaning
+#library(ggplot2)
+library(tidyverse)
+
+
+# categorical values should pot. be represented as factors in R (like VigorEtapa)
+
+
+# Analysis: TotalDiameter of ds, mean(diameter) of ds, -> sampled by randomly selected rows -< equual data amount of each ds
+# -> mutate(Mean_XY = mean(xy, na.rm = T)
+# Analysis: heat map of coordniates and tree count (x=x, y=y and color/size of dot = tree count), for example
+# Analysis: amount of disturbances by type and severity
+# Analysis: Scatterplot by numeric values -> color: VigorEtapa, Family (or sorting by family and color by species?), Estado (categorical values)
+
 
 
 # tree inventory data from 2004 - 2020 --------------------------------------------
@@ -105,7 +118,7 @@ Arb.04 <- Raw.04 %>%
           VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
                                  VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
                                  VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
-                                 VigorEtapa == "Arbol viejo o supermaduro" ~ "Arbol viejo o super-maduro",
+                                 VigorEtapa == "Arbol viejo o supermaduro" ~ "Árbol viejo o súper-maduro",
                                  is.na(VigorEtapa) ~ "No capturado",
                                  TRUE ~ VigorEtapa),
         # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
@@ -127,7 +140,7 @@ Arb.04 <- Raw.04 %>%
         # "GrosorCorteza" Correction - class "character" -> class "numeric"
           GrosorCorteza = as.numeric(GrosorCorteza)
         ) %>%
-# setting initial column order + attaching everything so far not considered to the end
+# setting initial column order +
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
@@ -166,15 +179,15 @@ Arb.09 <- Raw.09 %>%
   mutate(
         # "Estado" Correction - initially 38 -> 32 
           Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
-                            Estado == "Michoacan de Ocampo" ~ "Michoacán de Ocampo",
-                            Estado == "Nuevo Leon" ~ "Nuevo León",
-                            Estado == "Queretaro de Arteaga" ~ "Querétaro",
-                            Estado == "San Luis Potosi" ~ "San Luis Potosí",
-                            Estado == "Yucatan" ~ "Yucatán",
-                            TRUE ~ Estado),
+                             Estado == "Michoacan de Ocampo" ~ "Michoacán de Ocampo",
+                             Estado == "Nuevo Leon" ~ "Nuevo León",
+                             Estado == "Queretaro de Arteaga" ~ "Querétaro",
+                             Estado == "San Luis Potosi" ~ "San Luis Potosí",
+                             Estado == "Yucatan" ~ "Yucatán",
+                             TRUE ~ Estado),
         # "Registro" Correction + "cgl_sit_arb" Correction - obviously wrong entries -> corrected to expected entry 
           Registro = case_when(Registro == 316 ~ 16,
-                              TRUE ~ Registro),
+                               TRUE ~ Registro),
           cgl_sit_reg = str_replace(string = cgl_sit_reg, "316$", "16"),
           cgl_sit_reg = str_replace(string = cgl_sit_reg, "4_147$", "4_28"),
           Registro = ifelse(cgl_sit_reg == "21314_4_28", as.integer(str_extract(cgl_sit_reg, "\\d+$")), Registro),
@@ -276,14 +289,15 @@ Arb.09 <- Raw.09 %>%
           VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
                                  VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
                                  VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
-                                 VigorEtapa == "Arbol viejo o supermaduro" ~ "Arbol viejo o super-maduro",
+                                 VigorEtapa == "Arbol viejo o supermaduro" ~ "Árbol viejo o súper-maduro",
                                  is.na(VigorEtapa) ~ "No capturado",
                                  TRUE ~ VigorEtapa),
         # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
           Edad = ifelse(!is.na(Edad),
                         ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
                                ceiling(as.numeric(Edad)),
-                               floor(as.numeric(Edad))),
+                               floor(as.numeric(Edad))
+                              ),
                         NA),
         # "Condicion" Correction - values names -> new value names (in line with Arb.14)
           Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
@@ -458,10 +472,48 @@ Arb.14 <- Raw.14 %>%
 
 
 
+#-----------------------------------------------------------------------------------------------------------------
+## Merging files together for selected variables -----------------------------------------------------------------
+
+M.04 <- Arb.04 %>%
+  mutate(File = as.factor(1),
+         CveVeg = CveVeg_S5,
+         TipoVeg = TipoVeg_S5) %>% 
+  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
+         TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
+         AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
+         PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
+         Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
+
+M.09 <- Arb.09 %>%
+  mutate(File = as.factor(2),
+         CveVeg = CveVeg_S5,
+         TipoVeg = TipoVeg_S5) %>% 
+  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
+         TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
+         AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
+         PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
+         Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
+
+M.14 <- Arb.14 %>%
+  mutate(File = as.factor(3),
+         cgl_sit_reg = NA,
+         CveVeg = CveVeg_S7,
+         TipoVeg = TipoVeg_S7) %>% 
+  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
+         TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
+         AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
+         PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
+         Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
+
+merged <- rbind(M.04, M.09, M.14)
+
+View(merged)
+
+##----------------------------------------------------------------------------------------------------------------
+
 #---------------------------------------------------------------------------------------------------------------
 # PROTOTYPING: REMOVING DATA MISTAKES/INCONSISTENCIES ----------------------------------------------------------
-
-
 
 #-----------------------------------------------------------------------------
 # Arb.04 (TEMPORARY) ---------------------------------------------------------
@@ -504,7 +556,6 @@ View(T.04)
 
 
 #-----------------------------------------------------------------------------
-
 
 #-----------------------------------------------------------------------------
 # Arb.09 (TEMPORARY) ---------------------------------------------------------
@@ -549,7 +600,6 @@ View(T.09)
 
 
 #-----------------------------------------------------------------------------
-
 
 #-----------------------------------------------------------------------------
 # Arb.14 (TEMPORARY) ---------------------------------------------------------
@@ -605,6 +655,9 @@ View(T.14)
 
 
 ###---------------------------------------------------------------------------------------------------------------
+
+
+##-----------------------------------------------------------------------------------------------------------
 # FURHTER ANALYSIS AND COMPARISON --------------------------------------------------------------------------------
 
 
@@ -698,35 +751,116 @@ View(T.merged)
 
 
 
-#---------------------------------------------------------------------------------
-# VALUE CHECKING -----------------------------------------------------------------
-
-# CveVeg_S5 and CveVeg_S7 -----------------
-
-# Arb.04 --------------------
+##---------------------------------------------------------------------------------
 
 
-# Arb.09 --------------------
 
-
-# Arb.14 --------------------
-
-
-#---------------------------------------------------------------------------------
-# ABSOLUTE TESTING BOOTH ---------------------------------------------------------
+##----------------------------------------------------------------------------------------
+# Testing and Plotting  ------------------------------------------------------------------
 
 # testing and screening of ds
-Test.04 <- Arb.04
-Test.09 <- Arb.09
-Test.14 <- Arb.14
+
+View(T.09)
+
+# Arb.09 PLOTTING ---------------------------------------------------------------------
+
+# Adding a "Rank" for Family Abundance in order to filter easily if needed
+T.09 <- Arb.09 %>% 
+  count(Familia_APG, Estado, sort = TRUE) %>% 
+  group_by(Familia_APG) %>% 
+  mutate(Fam_Total = sum(n)) %>% 
+  ungroup() %>%
+  select(Fam_Total, Familia_APG) %>% 
+  distinct() %>%
+  arrange(desc(Fam_Total), Familia_APG) %>% 
+  mutate(Familia_APG_Rank = row_number()) %>% 
+  left_join(Arb.09, by = "Familia_APG") 
+
+View(T.09)
+
+# V1 - Distribution of most common families (using rank size distribution) by state 
+T.09 %>%  
+  ggplot(aes(x = fct_infreq(Familia_APG), fill = Estado)) +
+  geom_bar(data = T.09 %>% filter(Familia_APG_Rank <= 5))
+           
+# V2 - Distribution of most common families and "Others" (using rank size distribution) by state - works but not ordered
+T.09 %>%  
+  ggplot(aes(x = fct_infreq(Familia_APG), fill = Estado)) +
+  geom_bar(data = T.09 %>% filter(Familia_APG_Rank <= 5)) +
+  geom_bar(data = T.09 %>% filter(Familia_APG_Rank > 5), aes(x = "Others", fill = Estado), position = "stack", na.rm = T)
+
+# V2 - Distribution of most common families and "Others" (using rank size distribution) by state - Filter by fct_lump_n(), no Rank needed
+T.09 %>% 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) %>% # Only keep the 5 most frequent categories and lump the rest into "Other"
+        # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) %>%  # making it two tone
+  ggplot(aes(x = Familia, fill = Estado)) +
+  geom_bar()
+
+# V3 - Distribution of most common families (defined by their rank) by state (relative frequency plot)
+T.09 %>% 
+  group_by(Familia_APG_Rank) %>% 
+  filter(Familia_APG_Rank <= 5) %>% 
+  ggplot(aes(x = Familia_APG, fill = Estado)) +
+  geom_bar(position = "fill")
+
+# V4 - Distribution of most common families (using rank size distribution) by VigorEtapa 
+T.09 %>% 
+  group_by(Familia_APG_Rank) %>% 
+  filter(Familia_APG_Rank <= 5) %>% 
+  ggplot(aes(x = Familia_APG, fill = VigorEtapa)) +
+  geom_bar(position = "fill")
+
+# V5 -Distribution of most common families (using rank size distribution) by VigorEtapa (relative frequency plot)
+T.09 %>% 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) %>% # Only keep the 5 most frequent categories and lump the rest into "Other"
+  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) %>%  # making it two tone
+  ggplot(aes(x = Familia, fill = VigorEtapa)) +
+  geom_bar(position = "fill")
+
+# V6 - Messing around
+T.09 %>% 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) %>% # Only keep the 5 most frequent categories and lump the rest into "Other"
+  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) %>%  # making it two tone
+  ggplot(aes(x = Familia, fill = VigorEtapa)) +
+  geom_bar(position = "dodge")
 
 
 
 
 
+# EDA_v1 --------------------------------------------------------------------------------------------------------
+
+# freqplot
+T.09 %>% 
+  ggplot(aes(x = AlturaTotal, y = after_stat(density))) +
+  geom_freqpoly(aes(color = VigorEtapa), binwidth = 1)
+
+
+# boxplot
+T.09 %>% 
+  ggplot(aes(x = fct_reorder(VigorEtapa, AreaCopa, median), y = AreaCopa)) +
+  geom_boxplot() 
 
 
 
+
+# comparison Arb.04 - Arb.09
+merged %>% 
+  ggplot(aes(x = VigorEtapa, fill = File)) +
+  geom_bar(position = "dodge")
+
+merged %>% 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) %>% # Only keep the 5 most frequent categories and lump the rest into "Other"
+  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) %>%  # making it two tone
+  ggplot(aes(x = Familia, fill = File)) +
+  geom_bar()
+
+
+
+
+# Outliers --------------------------
+
+## Arb.09 - DiametroCopa - 280
 
 
 
