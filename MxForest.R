@@ -6,11 +6,8 @@
 library(data.table) #fread()
 library(readxl)     #read_xlsx()
 library(here)       #here()
-#library(dplyr)      #data cleaning
-#library(tidyr)      #data cleaning
-#library(stringr)    #data cleaning
-#library(ggplot2)
-library(tidyverse)
+library(tidyverse)  #data tidying
+library(ggridges)   #geom_density_ridges()
 
 
 # categorical values should pot. be represented as factors in R (like VigorEtapa)
@@ -36,28 +33,10 @@ Raw.09 <- fread(here("data", "arbolado", "INFyS_Arbolado_2009_2014.csv"), na.str
 Raw.14 <- readxl::read_xlsx(here("data", "arbolado", "INFYS_Arbolado_2015_2020.xlsx"), sheet= 1, na = c("999991", "999993"))
 
 
-
-# assinging new ds for warngling --------------------------------------------------
-
-Arb.04 <- Raw.04
-
-View(Arb.04)
-
-
-Arb.09 <- Raw.09
-
-View(Arb.09)
-
-
-Arb.14 <- Raw.14
-
-View(Arb.14)
-
-
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.04 Data cleaning ------------------------------------------------------------------------------------------
 
-Arb.04 <- Raw.04 %>%  
+Arb.04 <- Raw.04 |>  
 # normalizing names
   rename(cgl_sit_reg = cgl_sit_arb,
          CveVeg_S5 = Cve_veg_SV,
@@ -73,14 +52,14 @@ Arb.04 <- Raw.04 %>%
          VigorEtapa = VigEtapa,
          LongitudAnillos10 = Long10Anillos,
          NumeroAnillos25 = NumAnillos25
-         ) %>% 
+         ) |> 
 # Correction of categoric and specific entry mistakes
   mutate(
         # "Estado" Correction - initially 33 -> 32
           Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
                             TRUE ~ Estado),
         # "Registro" Correction - initially all values NA -> pull data from string cgl_sit_reg
-          Registro = str_extract(cgl_sit_reg, "(?<=_)[^_]+$") %>%
+          Registro = str_extract(cgl_sit_reg, "(?<=_)[^_]+$") |>
            as.integer(),
         # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
           CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
@@ -139,7 +118,7 @@ Arb.04 <- Raw.04 %>%
           NumeroAnillos25 = as.numeric(NumeroAnillos25),
         # "GrosorCorteza" Correction - class "character" -> class "numeric"
           GrosorCorteza = as.numeric(GrosorCorteza)
-        ) %>%
+        ) |>
 # setting initial column order +
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
@@ -147,18 +126,17 @@ Arb.04 <- Raw.04 %>%
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything()
-         ) %>%
+         ) |>
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
-View(Arb.04)
 
 ##----------------------------------------------------------------------------------------------------------------
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.09 Data cleaning ------------------------------------------------------------------------------------------
 
-Arb.09 <- Raw.09 %>% 
+Arb.09 <- Raw.09 |> 
 # nomralizing names
   rename(cgl_sit_reg = cgl_sit_arb,
          CveVeg_S5 = Cve_veg_SV,
@@ -174,11 +152,12 @@ Arb.09 <- Raw.09 %>%
          VigorEtapa = VigEtapa,
          LongitudAnillos10 = Long10Anillos,
          NumeroAnillos25 = NumAnillos25
-         ) %>% 
+         ) |> 
 # Correction of categoric and specific entry mistakes 
   mutate(
         # "Estado" Correction - initially 38 -> 32 
           Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
+                             Estado == "Mexico" ~ "México",
                              Estado == "Michoacan de Ocampo" ~ "Michoacán de Ocampo",
                              Estado == "Nuevo Leon" ~ "Nuevo León",
                              Estado == "Queretaro de Arteaga" ~ "Querétaro",
@@ -299,6 +278,8 @@ Arb.09 <- Raw.09 %>%
                                floor(as.numeric(Edad))
                               ),
                         NA),
+          Edad = case_when(Edad == 999 ~ NA,
+                           TRUE ~ Edad),
         # "Condicion" Correction - values names -> new value names (in line with Arb.14)
           Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
                                 Condicion == "Vivo" ~ "Arbol vivo",
@@ -345,7 +326,7 @@ Arb.09 <- Raw.09 %>%
         # "NumeroAnillos25" Correction - 
           NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
                                       TRUE ~ NumeroAnillos25),
-         ) %>% 
+         ) |> 
 # setting initial column order + attaching everything so far not considered to the end
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
@@ -353,18 +334,17 @@ Arb.09 <- Raw.09 %>%
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything() 
-         ) %>% 
+         ) |> 
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro) 
 
-View(Arb.09)
 
 ##----------------------------------------------------------------------------------------------------------------
 
 ##----------------------------------------------------------------------------------------------------------------
 ## Arb.14 Data cleaning ------------------------------------------------------------------------------------------
 
-Arb.14 <- Raw.14 %>% 
+Arb.14 <- Raw.14 |> 
 # nomralizing names
   rename(Anio = Anio_C3,
          Estado = Estado_C3,
@@ -409,8 +389,8 @@ Arb.14 <- Raw.14 %>%
          Especie_APG = Especie_APG_C3,
          X = X_C3,
          Y = Y_C3
-         ) %>% 
-# mutate() %>% ### einfügen von cgl_sit_reg   <----- HIER MUSS NOCH WAS REIN
+         ) |> 
+# mutate() |> ### einfügen von cgl_sit_reg   <----- HIER MUSS NOCH WAS REIN
 # Correction of categoric and specific entry mistakes 
   mutate(
         # "FormaBiologica" Correction - "NULL" -> NA 
@@ -436,6 +416,17 @@ Arb.14 <- Raw.14 %>%
                                         TRUE ~ TransparenciaCopa),
         # "MuerteRegresiva" Correction - "No capturado" -> NA -> still 3 entry mistakes with 42309, 44682, 44840
           MuerteRegresiva = case_when(MuerteRegresiva == "No capturado" ~ NA,
+                                      MuerteRegresiva == "00" ~ "Sin parámetro",
+                                      MuerteRegresiva == "1-5" ~ "1 - 5", MuerteRegresiva == "6-10" ~ "6 - 10",
+                                      MuerteRegresiva == "11-15" ~ "11 - 15", MuerteRegresiva == "16-20" ~ "16 - 20",
+                                      MuerteRegresiva == "21-25" ~ "21 - 25", MuerteRegresiva == "26-30" ~ "26 - 30",
+                                      MuerteRegresiva == "31-35" ~ "31 - 35", MuerteRegresiva == "36-40" ~ "36 - 40",
+                                      MuerteRegresiva == "41-45" ~ "41 - 45", MuerteRegresiva == "46-50" ~ "46 - 50",
+                                      MuerteRegresiva == "51-55" ~ "51 - 55", MuerteRegresiva == "56-60" ~ "56 - 60",
+                                      MuerteRegresiva == "61-65" ~ "61 - 65", MuerteRegresiva == "66-70" ~ "66 - 70",
+                                      MuerteRegresiva == "71-75" ~ "71 - 75", MuerteRegresiva == "76-80" ~ "76 - 80",
+                                      MuerteRegresiva == "81-85" ~ "81 - 85", MuerteRegresiva == "86-90" ~ "86 - 90",
+                                      MuerteRegresiva == "91-95" ~ "91 - 95", MuerteRegresiva == "96-100" ~ "96 - 100",
                                       TRUE ~ MuerteRegresiva),
         # "Severidad1" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
           Severidad1 = case_when(Severidad1 == "No capturado" ~ NA,
@@ -448,7 +439,7 @@ Arb.14 <- Raw.14 %>%
           Severidad2 = case_when(Severidad2 == "No capturado" ~ NA,
                                  Severidad2 == "No aplica" ~ NA,
                                  TRUE ~ as.numeric(Severidad2))
-         ) %>% 
+         ) |> 
 # setting initial column order + attaching everything so far not considered to the end
   select(Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
          NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal, AlturaFusteLimpio, AlturaComercial,
@@ -456,7 +447,7 @@ Arb.14 <- Raw.14 %>%
          TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion, Danio1, Severidad1, Danio2, Severidad2, NumeroTallos,
          LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything()
-         ) %>% 
+         ) |> 
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
@@ -471,35 +462,34 @@ Arb.14 <- Raw.14 %>%
 #-----------------------------------------------------------------------------------------------------------------
 
 
-
 #-----------------------------------------------------------------------------------------------------------------
 ## Merging files together for selected variables -----------------------------------------------------------------
 
-M.04 <- Arb.04 %>%
+M.04 <- Arb.04 |>
   mutate(File = as.factor(1),
          CveVeg = CveVeg_S5,
-         TipoVeg = TipoVeg_S5) %>% 
+         TipoVeg = TipoVeg_S5) |> 
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
 
-M.09 <- Arb.09 %>%
+M.09 <- Arb.09 |>
   mutate(File = as.factor(2),
          CveVeg = CveVeg_S5,
-         TipoVeg = TipoVeg_S5) %>% 
+         TipoVeg = TipoVeg_S5) |> 
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
 
-M.14 <- Arb.14 %>%
+M.14 <- Arb.14 |>
   mutate(File = as.factor(3),
          cgl_sit_reg = NA,
          CveVeg = CveVeg_S7,
-         TipoVeg = TipoVeg_S7) %>% 
+         TipoVeg = TipoVeg_S7) |> 
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
@@ -546,11 +536,11 @@ View(Arb.04)
 # Testing ------------------------------------
 # CURRENT: Edad 999
 
-T.04 <- Arb.04 %>%
-  select(GrosorCorteza) %>% 
-  #filter(LongitudAnillos10 == 999) %>% 
-  distinct() %>% 
-  arrange(GrosorCorteza) #%>% count()
+T.04 <- Arb.04 |>
+  select(GrosorCorteza) |> 
+  #filter(LongitudAnillos10 == 999) |> 
+  distinct() |> 
+  arrange(GrosorCorteza) #|> count()
 
 View(T.04)
 
@@ -589,11 +579,11 @@ View(Arb.09)
 # Testing ------------------------------------
 # CURRENT: MuerteRegresiva
 
-T.09 <- Arb.09 %>%
-  select(Severidad1) %>% 
-  #filter(MuerteRegresiva == 0) %>% 
-  distinct() %>% 
-  arrange(Severidad1) #%>% count()
+T.09 <- Arb.09 |>
+  select(Severidad1) |> 
+  #filter(MuerteRegresiva == 0) |> 
+  distinct() |> 
+  arrange(Severidad1) #|> count()
 
 View(T.09)
 
@@ -629,22 +619,22 @@ View(Arb.14)
 # Testing ------------------------------------
 # CURRENT: 
 
-T.14 <- Arb.14 %>% 
+T.14 <- Arb.14 |> 
   mutate(Severidad1 = case_when(Severidad1 == "No capturado" ~ NA,
                                 Severidad1 == "No aplica" ~ NA,
-                                TRUE ~ as.numeric(Severidad1))) %>% 
-  ##filter(MuerteRegresiva == 44840) %>% 
-  select(Severidad1) %>% 
-  distinct() %>% 
-  arrange(Severidad1) #%>% count
+                                TRUE ~ as.numeric(Severidad1))) |> 
+  ##filter(MuerteRegresiva == 44840) |> 
+  select(Severidad1) |> 
+  distinct() |> 
+  arrange(Severidad1) #|> count
 
 View(T.14)
 
-T.14 <- Arb.14 %>% 
-  select(TipoVeg_S7) %>% 
-  #filter(DensidadCopa == "Sin parámetro") %>% 
-  distinct() %>% 
-  arrange(TipoVeg_S7) #%>% count()
+T.14 <- Arb.14 |> 
+  select(TipoVeg_S7) |> 
+  #filter(DensidadCopa == "Sin parámetro") |> 
+  distinct() |> 
+  arrange(TipoVeg_S7) #|> count()
 
 View(T.14)
 
@@ -665,14 +655,14 @@ View(T.14)
 
 # Step 0 - Preperations -> mutate important to adapt values of CveVeg of Arb.04 and Arb.09 to Arb.14 standards
 
-T.04 <- Arb.04 %>%
-  select(CveVeg_S5, TipoVeg_S5) %>%
-  arrange(CveVeg_S5) %>%
+T.04 <- Arb.04 |>
+  select(CveVeg_S5, TipoVeg_S5) |>
+  arrange(CveVeg_S5) |>
   distinct()
 
 
 
-T.09 <- Arb.09 %>% 
+T.09 <- Arb.09 |> 
   mutate(CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
          TipoVeg_S5 = ifelse(str_detect(CveVeg_S5, "VSa"), 
                              paste("VEGETACION SECUNDARIA ARBUSTIVA DE ", TipoVeg_S5, sep = ""), 
@@ -682,16 +672,16 @@ T.09 <- Arb.09 %>%
                              TipoVeg_S5),
          TipoVeg_S5 = ifelse(str_detect(CveVeg_S5, "VSh"),
                              paste("VEGETACION SECUNDARIA HERBACEA DE ", TipoVeg_S5, sep = ""),
-                             TipoVeg_S5)) %>% 
-  select(CveVeg_S5, TipoVeg_S5) %>% 
+                             TipoVeg_S5)) |> 
+  select(CveVeg_S5, TipoVeg_S5) |> 
   rename(CveVeg_S5_09 = CveVeg_S5,
-         TipoVeg_S5_09 = TipoVeg_S5) %>% 
-  arrange(CveVeg_S5_09) %>% 
+         TipoVeg_S5_09 = TipoVeg_S5) |> 
+  arrange(CveVeg_S5_09) |> 
   distinct()
 
 
-T.14 <- Arb.14 %>%
-  select(CveVeg_S7, TipoVeg_S7) %>%
+T.14 <- Arb.14 |>
+  select(CveVeg_S7, TipoVeg_S7) |>
   mutate(
     TipoVeg_S7 = str_replace_all(TipoVeg_S7, c(
       "Í" = "I",
@@ -704,8 +694,8 @@ T.14 <- Arb.14 %>%
       "HALÓFILA XERÓFILA" = "HALOFILA XEROFILA",
       "Ñ" = "N"
     ))
-  ) %>%
-  arrange(CveVeg_S7) %>%
+  ) |>
+  arrange(CveVeg_S7) |>
   distinct()
 
 
@@ -718,32 +708,32 @@ T.merged <- data.frame(CveVeg = distinct_values)
 View(T.merged)
 
 # Step 2
-distinct_combinations <- T.04 %>% 
-  select(CveVeg_S5, TipoVeg_S5) %>% 
+distinct_combinations <- T.04 |> 
+  select(CveVeg_S5, TipoVeg_S5) |> 
   distinct()
 
-T.merged <- T.merged %>%
+T.merged <- T.merged |>
   left_join(distinct_combinations, by = c("CveVeg" = "CveVeg_S5"))
 
 View(T.merged)
 
 # Step 3
-distinct_combinations_tipo <- T.09 %>%
-  select(CveVeg_S5_09, TipoVeg_S5_09) %>%
+distinct_combinations_tipo <- T.09 |>
+  select(CveVeg_S5_09, TipoVeg_S5_09) |>
   distinct()
 
-T.merged <- T.merged %>%
+T.merged <- T.merged |>
   left_join(distinct_combinations_tipo, by = c("CveVeg" = "CveVeg_S5_09"))
 
 View(T.merged)
 
 # Step 4
-distinct_combinations_tipo <- T.14 %>%
-  select(CveVeg_S7, TipoVeg_S7) %>%
+distinct_combinations_tipo <- T.14 |>
+  select(CveVeg_S7, TipoVeg_S7) |>
   distinct()
 
-T.merged <- T.merged %>%
-  left_join(distinct_combinations_tipo, by = c("CveVeg" = "CveVeg_S7")) %>% 
+T.merged <- T.merged |>
+  left_join(distinct_combinations_tipo, by = c("CveVeg" = "CveVeg_S7")) |> 
   arrange(CveVeg)
 
 View(T.merged)
@@ -757,70 +747,65 @@ View(T.merged)
 
 ##----------------------------------------------------------------------------------------
 # Testing and Plotting  ------------------------------------------------------------------
-
-# testing and screening of ds
-
-View(T.09)
-
-# Arb.09 PLOTTING ---------------------------------------------------------------------
+# Arb.09 PLOTTING ------------------------------------------------------------------------
 
 # Adding a "Rank" for Family Abundance in order to filter easily if needed
-T.09 <- Arb.09 %>% 
-  count(Familia_APG, Estado, sort = TRUE) %>% 
-  group_by(Familia_APG) %>% 
-  mutate(Fam_Total = sum(n)) %>% 
-  ungroup() %>%
-  select(Fam_Total, Familia_APG) %>% 
-  distinct() %>%
-  arrange(desc(Fam_Total), Familia_APG) %>% 
-  mutate(Familia_APG_Rank = row_number()) %>% 
+T.09 <- Arb.09 |> 
+  count(Familia_APG, Estado, sort = TRUE) |> 
+  group_by(Familia_APG) |> 
+  mutate(Fam_Total = sum(n)) |> 
+  ungroup() |>
+  select(Fam_Total, Familia_APG) |> 
+  distinct() |>
+  arrange(desc(Fam_Total), Familia_APG) |> 
+  mutate(Familia_APG_Rank = row_number()) |> 
   left_join(Arb.09, by = "Familia_APG") 
 
 View(T.09)
 
 # V1 - Distribution of most common families (using rank size distribution) by state 
-T.09 %>%  
+T.09 |>  
   ggplot(aes(x = fct_infreq(Familia_APG), fill = Estado)) +
-  geom_bar(data = T.09 %>% filter(Familia_APG_Rank <= 5))
+  geom_bar(data = T.09 |> filter(Familia_APG_Rank <= 5))
            
 # V2 - Distribution of most common families and "Others" (using rank size distribution) by state - works but not ordered
-T.09 %>%  
+T.09 |>  
   ggplot(aes(x = fct_infreq(Familia_APG), fill = Estado)) +
-  geom_bar(data = T.09 %>% filter(Familia_APG_Rank <= 5)) +
-  geom_bar(data = T.09 %>% filter(Familia_APG_Rank > 5), aes(x = "Others", fill = Estado), position = "stack", na.rm = T)
+  geom_bar(data = T.09 |> filter(Familia_APG_Rank <= 5)) +
+  geom_bar(data = T.09 |> filter(Familia_APG_Rank > 5), aes(x = "Others", fill = Estado), position = "stack", na.rm = T)
 
 # V2 - Distribution of most common families and "Others" (using rank size distribution) by state - Filter by fct_lump_n(), no Rank needed
-T.09 %>% 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) %>% # Only keep the 5 most frequent categories and lump the rest into "Other"
-        # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) %>%  # making it two tone
+T.09 |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
+        # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
   ggplot(aes(x = Familia, fill = Estado)) +
   geom_bar()
 
 # V3 - Distribution of most common families (defined by their rank) by state (relative frequency plot)
-T.09 %>% 
-  group_by(Familia_APG_Rank) %>% 
-  filter(Familia_APG_Rank <= 5) %>% 
+T.09 |> 
+  group_by(Familia_APG_Rank) |> 
+  filter(Familia_APG_Rank <= 5) |> 
   ggplot(aes(x = Familia_APG, fill = Estado)) +
   geom_bar(position = "fill")
 
 # V4 - Distribution of most common families (using rank size distribution) by VigorEtapa 
-T.09 %>% 
-  group_by(Familia_APG_Rank) %>% 
-  filter(Familia_APG_Rank <= 5) %>% 
+T.09 |> 
+  group_by(Familia_APG_Rank) |> 
+  filter(Familia_APG_Rank <= 5) |> 
   ggplot(aes(x = Familia_APG, fill = VigorEtapa)) +
   geom_bar(position = "fill")
 
 # V5 -Distribution of most common families (using rank size distribution) by VigorEtapa (relative frequency plot)
-T.09 %>% 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) %>% # Only keep the 5 most frequent categories and lump the rest into "Other"
-  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) %>%  # making it two tone
+T.09 |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
+  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
   ggplot(aes(x = Familia, fill = VigorEtapa)) +
   geom_bar(position = "fill")
 
 # V6 - Messing around
-T.09 %>% 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) %>% # Only keep the 5 most frequent categories and lump the rest into "Other"
-  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) %>%  # making it two tone
+T.09 |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
+  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
   ggplot(aes(x = Familia, fill = VigorEtapa)) +
   geom_bar(position = "dodge")
 
@@ -831,13 +816,13 @@ T.09 %>%
 # EDA_v1 --------------------------------------------------------------------------------------------------------
 
 # freqplot
-T.09 %>% 
+T.09 |> 
   ggplot(aes(x = AlturaTotal, y = after_stat(density))) +
   geom_freqpoly(aes(color = VigorEtapa), binwidth = 1)
 
 
 # boxplot
-T.09 %>% 
+T.09 |> 
   ggplot(aes(x = fct_reorder(VigorEtapa, AreaCopa, median), y = AreaCopa)) +
   geom_boxplot() 
 
@@ -845,17 +830,188 @@ T.09 %>%
 
 
 # comparison Arb.04 - Arb.09
-merged %>% 
+merged |> 
   ggplot(aes(x = VigorEtapa, fill = File)) +
   geom_bar(position = "dodge")
 
-merged %>% 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) %>% # Only keep the 5 most frequent categories and lump the rest into "Other"
-  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) %>%  # making it two tone
+merged |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
+  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
   ggplot(aes(x = Familia, fill = File)) +
   geom_bar()
 
 
+
+# grid comparison
+
+# test: most abundant families by FormaBiologica and File
+merged |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
+  ggplot(aes(x= Familia, fill = Familia)) +
+  geom_bar() + 
+  facet_wrap(~File)
+
+# test: Edad ~ AlturaTotal Correlation
+merged |>
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
+  subset(!is.na(Edad)) |> 
+  ggplot(aes(x = Edad, y = AlturaTotal, color = Familia)) +
+  geom_point(alpha = 0.3, 
+             position = "jitter") + 
+  geom_smooth(method = lm) +
+  xlim(1, 300) +
+  facet_wrap(~File)
+
+# test: AlturaTotal ~ Familia
+merged |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> 
+  subset(!is.na(Familia)) |> 
+  ggplot(aes(x = AlturaTotal, y = Familia, fill = Familia, color = Familia)) +
+  geom_density_ridges(alpha = 0.5)
+
+# test: AlturaFusteLimpio ~ Familia
+merged |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> 
+  subset(!is.na(Familia)) |> 
+  ggplot(aes(x = AlturaFusteLimpio, y = Familia, fill = Familia, color = Familia)) +
+  geom_density_ridges(alpha = 0.5) 
+
+merged |>
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
+  subset(!is.na(Edad)) |> 
+  ggplot(aes(x = DiametroNormal, y = AlturaTotal, color = Familia)) +
+  geom_point(alpha = 0.3, 
+             position = "jitter") + 
+  ylim(0, 75) +
+  geom_smooth(method = lm) 
+
+# test: Family Abundance by state
+merged |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
+  subset(!is.na(Familia)) |> 
+  ggplot(aes(x= Familia, fill = Familia)) +
+  geom_bar() + 
+  facet_wrap(~Estado, scales = "free")
+
+merged |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
+  ggplot(aes(x = X, y = Y, colour = Estado)) +
+  geom_point(alpha = 0.5,
+             position = "jitter")
+
+
+
+
+# test: qualitative variables
+# exposicion copa
+
+merged |> 
+  subset(!is.na(ExposicionCopa)) |> 
+  ggplot(aes(y = ExposicionCopa)) +
+  geom_bar() +
+  facet_wrap(~File)
+
+
+# posicion copa -> interesting for surpimido and codominante
+merged |> 
+  subset(!is.na(PosicionCopa)) |> 
+  ggplot(aes(y = PosicionCopa)) +
+  geom_bar() +
+  facet_wrap(~File)
+
+# comparison of both
+merged |> 
+  subset(!is.na(ExposicionCopa) & !is.na(PosicionCopa)) |> 
+  ggplot(aes(x = PosicionCopa, y = ExposicionCopa)) +
+  geom_count() +
+  facet_wrap(~File) + 
+  guides(x = guide_axis(angle = 90))
+
+  
+# muerte regressiva
+merged |> 
+  subset(!is.na(MuerteRegresiva) & MuerteRegresiva != "Sin parámetro") |> 
+  ggplot(aes(x = MuerteRegresiva)) +
+  geom_bar() +
+  facet_grid(File~.)
+  
+merged |> 
+  subset(!is.na(MuerteRegresiva) & MuerteRegresiva != "Sin parámetro") |> 
+  ggplot(aes(x = MuerteRegresiva)) +
+  geom_bar()
+  
+# age-class distribution (kinda...) -> right now no area relationship
+merged |> 
+  mutate(AgeClass = case_when(Edad < 1 ~ "0",
+                              Edad >= 1 & Edad <= 20 ~ "1 - 20",
+                              Edad >= 21 & Edad <= 40 ~ "21 - 40",
+                              Edad >= 41 & Edad <= 60 ~ "41 - 60",
+                              Edad >= 61 & Edad <= 80 ~ "61 - 80",
+                              Edad >= 81 & Edad <= 100 ~ "81 - 100",
+                              Edad >= 101 & Edad <= 120 ~ "101 - 120",
+                              Edad >= 121 & Edad <= 140 ~ "121 - 140",
+                              Edad >= 141 & Edad <= 160 ~ "141 - 160",
+                              Edad > 160 ~ ">160",
+                              TRUE ~ NA)) |> 
+  mutate(AgeClass = factor(AgeClass, levels = c("0", "1 - 20", "21 - 40", "41 - 60", "61 - 80", 
+                                                "81 - 100", "101 - 120", "121 - 140", "141 - 160", ">160"))) |> 
+  subset(!is.na(AgeClass)) |> 
+  ggplot(aes(x = AgeClass)) +
+  geom_bar() +
+  facet_wrap(~File)
+
+merged <- merged |> 
+  mutate(AgeClass = case_when(Edad < 1 ~ "0",
+                              Edad >= 1 & Edad <= 20 ~ "1 - 20",
+                              Edad >= 21 & Edad <= 40 ~ "21 - 40",
+                              Edad >= 41 & Edad <= 60 ~ "41 - 60",
+                              Edad >= 61 & Edad <= 80 ~ "61 - 80",
+                              Edad >= 81 & Edad <= 100 ~ "81 - 100",
+                              Edad >= 101 & Edad <= 120 ~ "101 - 120",
+                              Edad >= 121 & Edad <= 140 ~ "121 - 140",
+                              Edad >= 141 & Edad <= 160 ~ "141 - 160",
+                              Edad > 160 ~ ">160",
+                              TRUE ~ NA)) |> 
+  mutate(AgeClass = factor(AgeClass, levels = c("0", "1 - 20", "21 - 40", "41 - 60", "61 - 80", 
+                                                "81 - 100", "101 - 120", "121 - 140", "141 - 160", ">160")))  
+
+merged |> 
+  subset(!is.na(AgeClass)) |> 
+ # subset(AgeClass != 0) |> 
+  group_by(AgeClass) |> 
+  count() |> 
+  mutate(N = as.numeric(n)) |> 
+  ungroup() |> 
+  mutate(Sum = sum(N),
+         AgePercNA = N/Sum) |> 
+  ggplot(aes(x = AgeClass, y = AgePercNA)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::percent)
+
+
+
+
+Test <- merged |> 
+  group_by(AgeClass) |> 
+  filter(!is.na(AgeClass)) |>
+  count() |> 
+  mutate(A = n,
+         A = as.numeric(A),
+         AgePerc = sprintf(A/))
+  mutate(AgePerc = n / sum(n))
+  ggplot(aes(x = AgeClass)) +
+  geom_bar() +
+  facet_wrap(~File)
+
+  View(merged)
+  
+View(Test)
+
+class(Test$n)
+
+sum(Test$n)
+ 
+sprintf(x, fmt = '%#.3f')
 
 
 # Outliers --------------------------
@@ -865,8 +1021,10 @@ merged %>%
 
 
 
-
-
+merged |> 
+  select(PosicionCopa) |> 
+  distinct() |> 
+  count()
 
 
 
