@@ -847,11 +847,11 @@ merged |>
 # test: most abundant families by FormaBiologica and File
 merged |> 
   mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
-  ggplot(aes(x= Familia, fill = Familia)) +
+  ggplot(aes(x= Familia, fill = FormaBiologica)) +
   geom_bar() + 
   facet_wrap(~File)
 
-# test: Edad ~ AlturaTotal Correlation
+# test: Edad ~ AlturaTotal Correlation --> gap for file 1 & 2
 merged |>
   mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
   subset(!is.na(Edad)) |> 
@@ -861,6 +861,7 @@ merged |>
   geom_smooth(method = lm) +
   xlim(1, 300) +
   facet_wrap(~File)
+
 
 # test: AlturaTotal ~ Familia
 merged |> 
@@ -990,28 +991,23 @@ merged |>
 
 
 
+#### sensible plotting from now on (kind of)
+
+## species richness by state
 
 Test <- merged |> 
-  group_by(AgeClass) |> 
-  filter(!is.na(AgeClass)) |>
-  count() |> 
-  mutate(A = n,
-         A = as.numeric(A),
-         AgePerc = sprintf(A/))
-  mutate(AgePerc = n / sum(n))
-  ggplot(aes(x = AgeClass)) +
-  geom_bar() +
-  facet_wrap(~File)
-
-  View(merged)
+  group_by(Estado, NombreCientifico_APG) |> 
+  select(Estado, NombreCientifico_APG) |> 
+  distinct() |> 
+  ungroup() |> 
+  group_by(Estado) |> 
+  arrange(Estado, NombreCientifico_APG) |> 
+  ggplot(aes(y = Estado)) +
+  geom_bar()
   
 View(Test)
+  
 
-class(Test$n)
-
-sum(Test$n)
- 
-sprintf(x, fmt = '%#.3f')
 
 
 # Outliers --------------------------
@@ -1020,11 +1016,6 @@ sprintf(x, fmt = '%#.3f')
 
 
 
-
-merged |> 
-  select(PosicionCopa) |> 
-  distinct() |> 
-  count()
 
 
 
