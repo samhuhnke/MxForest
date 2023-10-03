@@ -117,7 +117,10 @@ Arb.04 <- Raw.04 |>
         # "NumeroAnillos25" Correction - class "character" -> class "numeric"
           NumeroAnillos25 = as.numeric(NumeroAnillos25),
         # "GrosorCorteza" Correction - class "character" -> class "numeric"
-          GrosorCorteza = as.numeric(GrosorCorteza)
+          GrosorCorteza = as.numeric(GrosorCorteza),
+        # "NombreCientifico_APG" Correction - "ZZ Desconocido" -> NA
+          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Desconocido" ~ NA,
+                                           TRUE ~ NombreCientifico_APG)
         ) |>
 # setting initial column order +
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
@@ -326,6 +329,9 @@ Arb.09 <- Raw.09 |>
         # "NumeroAnillos25" Correction - 
           NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
                                       TRUE ~ NumeroAnillos25),
+        # "NombreCientifico_APG" Correction - "ZZ_Desconocido" -> NA
+          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ_Desconocido" ~ NA,
+                                           TRUE ~ NombreCientifico_APG)
          ) |> 
 # setting initial column order + attaching everything so far not considered to the end
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
@@ -438,7 +444,10 @@ Arb.14 <- Raw.14 |>
         # "Severidad2" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
           Severidad2 = case_when(Severidad2 == "No capturado" ~ NA,
                                  Severidad2 == "No aplica" ~ NA,
-                                 TRUE ~ as.numeric(Severidad2))
+                                 TRUE ~ as.numeric(Severidad2)),
+        # "NombreCientifico" Correction - "ZZ Genero Desconocido" -> NA
+          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ NA,
+                                           TRUE ~ NombreCientifico_APG)
          ) |> 
 # setting initial column order + attaching everything so far not considered to the end
   select(Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
@@ -450,8 +459,6 @@ Arb.14 <- Raw.14 |>
          ) |> 
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
-
-
 
 
 
@@ -995,31 +1002,54 @@ merged |>
 
 ## species richness by state
 
-Test <- merged |> 
-  group_by(Estado, NombreCientifico_APG) |> 
-  select(Estado, NombreCientifico_APG) |> 
+merged |> 
+  group_by(File, Estado, NombreCientifico_APG) |> 
+  select(File, Estado, NombreCientifico_APG) |> 
   distinct() |> 
   ungroup() |> 
-  group_by(Estado) |> 
-  arrange(Estado, NombreCientifico_APG) |> 
+  group_by(File, Estado) |> 
+  arrange(File, Estado, NombreCientifico_APG) |> 
   ggplot(aes(y = Estado)) +
-  geom_bar()
+  geom_bar() +
+  facet_wrap(~File)
   
 View(Test)
   
 
+merged |> 
+  filter(File == 3) |> 
+  select(Conglomerado) |> 
+  distinct() |> 
+  count()
+
+merged |> 
+  group_by(File, NombreCientifico_APG) |> 
+  select(File, NombreCientifico_APG) |> 
+  distinct() |> 
+  ggplot(aes(x = File)) +
+  geom_bar()
 
 
-# Outliers --------------------------
-
-## Arb.09 - DiametroCopa - 280
 
 
+# Testing --------------------------
+
+## Species Richness per file
 
 
+Test <- merged |> 
+  group_by(NombreCientifico_APG) |> 
+  count() |> 
+  arrange(n)
 
+View(Test)
 
+Test.1 <- Arb.04|> 
+  group_by(NombreCientifico_APG) |> 
+  count() |> 
+  arrange(n)
 
+View(Test.1)
 
 
 
