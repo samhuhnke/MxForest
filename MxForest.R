@@ -1002,58 +1002,211 @@ merged |>
 
 ## species richness by state
 
-merged |> 
-  group_by(File, Estado, NombreCientifico_APG) |> 
-  select(File, Estado, NombreCientifico_APG) |> 
-  distinct() |> 
-  ungroup() |> 
-  group_by(File, Estado) |> 
-  arrange(File, Estado, NombreCientifico_APG) |> 
-  ggplot(aes(y = Estado)) +
-  geom_bar() +
-  facet_wrap(~File)
-  
-View(Test)
-  
+  merged |> 
+    group_by(File, Estado, NombreCientifico_APG) |> 
+    select(File, Estado, NombreCientifico_APG) |> 
+    distinct() |> 
+    ungroup() |> 
+    group_by(File, Estado) |> 
+    arrange(File, Estado, NombreCientifico_APG) |> 
+    ggplot(aes(y = Estado)) +
+    geom_bar() +
+    facet_wrap(~File)
 
-merged |> 
-  filter(File == 3) |> 
-  select(Conglomerado) |> 
-  distinct() |> 
-  count()
 
-merged |> 
-  group_by(File, NombreCientifico_APG) |> 
-  select(File, NombreCientifico_APG) |> 
-  distinct() |> 
-  ggplot(aes(x = File)) +
-  geom_bar()
+## gamma-diversity by file
+  merged |> 
+    group_by(File, NombreCientifico_APG) |> 
+    select(File, NombreCientifico_APG) |> 
+    distinct() |> 
+    ggplot(aes(x = File)) +
+    geom_bar()
+
+## Species Richness per file 
+
+  # Arb.04 Setup 
+  Arb.04.01 <- Arb.04 |> 
+    select(Estado, Conglomerado, Sitio) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(PlotCount = n)
+  
+  Arb.04.02 <- Arb.04 |> 
+    select(Estado, NombreCientifico_APG) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(SpeciesCount = n)
+  
+  Arb.04.RSR <- Arb.04.01 |> 
+    left_join(Arb.04.02, by = "Estado") |> 
+    mutate(RSR = SpeciesCount/PlotCount,
+           RSR = round(RSR, 3),
+           File = as.factor(1)) 
+
+  # Arb.09 Setup 
+  Arb.09.01 <- Arb.09 |> 
+    select(Estado, Conglomerado, Sitio) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(PlotCount = n)
+  
+  Arb.09.02 <- Arb.09 |> 
+    select(Estado, NombreCientifico_APG) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(SpeciesCount = n)
+  
+  Arb.09.RSR <- Arb.09.01 |> 
+    left_join(Arb.09.02, by = "Estado") |> 
+    mutate(RSR = SpeciesCount/PlotCount,
+           RSR = round(RSR, 3),
+           File = as.factor(2)) 
+  
+  View(Arb.09.RSR)
+  
+  # Arb.14 Setup 
+  Arb.14.01 <- Arb.14 |> 
+    select(Estado, Conglomerado, Sitio) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(PlotCount = n)
+  
+  Arb.14.02 <- Arb.14 |> 
+    select(Estado, NombreCientifico_APG) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(SpeciesCount = n)
+  
+  Arb.14.RSR <- Arb.14.01 |> 
+    left_join(Arb.14.02, by = "Estado") |> 
+    mutate(RSR = SpeciesCount/PlotCount,
+           RSR = round(RSR, 3),
+           File = as.factor(3)) 
+  
+  # final table
+  Merged.RSR <- rbind(Arb.04.RSR, Arb.09.RSR, Arb.14.RSR)
+  
+  Merged.RSR |> 
+    select(File, Estado, RSR) |> 
+    ggplot(aes(x = RSR, y = Estado)) +
+    geom_col() +
+    facet_wrap(~File)
+  
 
 
 
 
 # Testing --------------------------
 
-## Species Richness per file
+
+## Species Richness per file V2
+  
+  # Arb.04 Setup 
+  Arb.04.01 <- Arb.04 |> 
+    select(Estado, Conglomerado, Sitio) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(PlotCount = n)
+  
+  Arb.04.02 <- Arb.04 |> 
+    select(Estado, NombreCientifico_APG) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(SpeciesCount = n)
+  
+  Arb.04.RSR <- Arb.04.01 |> 
+    left_join(Arb.04.02, by = "Estado") |> 
+    mutate(RSR = (SpeciesCount*PlotCount)/68108,
+           RSR = round(RSR, 3),
+           File = as.factor(1)) 
+  
+  # Arb.09 Setup 
+  Arb.09.01 <- Arb.09 |> 
+    select(Estado, Conglomerado, Sitio) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(PlotCount = n)
+  
+  Arb.09.02 <- Arb.09 |> 
+    select(Estado, NombreCientifico_APG) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(SpeciesCount = n)
+  
+  Arb.09.RSR <- Arb.09.01 |> 
+    left_join(Arb.09.02, by = "Estado") |> 
+    mutate(RSR = (SpeciesCount*PlotCount)/71437,
+           RSR = round(RSR, 3),
+           File = as.factor(2)) 
+  
+  View(Arb.09.RSR)
+  
+  # Arb.14 Setup 
+  Arb.14.01 <- Arb.14 |> 
+    select(Estado, Conglomerado, Sitio) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(PlotCount = n)
+  
+  Arb.14.02 <- Arb.14 |> 
+    select(Estado, NombreCientifico_APG) |> 
+    distinct() |> 
+    group_by(Estado) |> 
+    count() |> 
+    rename(SpeciesCount = n)
+  
+  Arb.14.RSR <- Arb.14.01 |> 
+    left_join(Arb.14.02, by = "Estado") |> 
+    mutate(RSR = (SpeciesCount*PlotCount)/34913,
+           RSR = round(RSR, 3),
+           File = as.factor(3)) 
+  
+  # final table
+  Merged.RSR <- rbind(Arb.04.RSR, Arb.09.RSR, Arb.14.RSR)
+  
+  Merged.RSR |> 
+    select(File, Estado, RSR) |> 
+    ggplot(aes(x = RSR, y = Estado)) +
+    geom_col() +
+    facet_wrap(~File)
+  
+  
 
 
-Test <- merged |> 
-  group_by(NombreCientifico_APG) |> 
-  count() |> 
-  arrange(n)
 
-View(Test)
+## other testing stuff
 
-Test.1 <- Arb.04|> 
-  group_by(NombreCientifico_APG) |> 
-  count() |> 
-  arrange(n)
+Arb.14 |> 
+  select(Estado, NombreCientifico_APG) |> 
+    group_by(Estado) |> 
+  distinct() |> 
+  count()
 
-View(Test.1)
+Arb.04 |> 
+  select(Conglomerado, Sitio) |> 
+  distinct() |> 
+  count()
 
+Arb.09 |> 
+  select(Conglomerado, Sitio) |> 
+  distinct() |> 
+  count()
 
-
-
+Arb.14 |> 
+  select(Conglomerado, Sitio) |> 
+  distinct() |> 
+  count()
 
 
 
