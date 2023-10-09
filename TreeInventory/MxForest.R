@@ -1,9 +1,6 @@
 
 ### MxForestInventory Data Cleansing --------------------------------------
 
-#testing_2
-
-
 # neccesary packages 
 
 library(data.table) #fread()
@@ -1180,4 +1177,34 @@ Arb.14 |>
 
 
 
+
+
+
+## ---------------------------------------------------------------------
+
+# Raw.04
+# count all NAs per column
+NAs <- Raw.04 |> 
+  select(everything()) |>   # replace to your needs
+  summarise_all(funs(sum(is.na(.))))
+View(NAs)
+
+# count all 0s per column
+ZEROs <- lapply(Raw.04, function(x){ length(which(x==0))})
+View(ZEROs)
+
+# count all distinct values per column
+Raw.04 |>  
+  summarise_all(list(~n_distinct(.)))
+
+# 
+ulst <- lapply(Raw.04, unique)
+
+
+
+View(ulst)
+
+library(Hmisc)
+
+describe(Raw.04)
 
