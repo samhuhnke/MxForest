@@ -1,8 +1,6 @@
 
 ### MxForestInventory Data Cleansing --------------------------------------
 
-#Test
-
 
 # neccesary packages 
 
