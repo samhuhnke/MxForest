@@ -3,6 +3,8 @@
 
 # neccesary packages 
 
+
+
 library(data.table) #fread()
 library(readxl)     #read_xlsx()
 library(here)       #here()
@@ -81,18 +83,6 @@ Arb.04 <- Raw.04 |>
             str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
             str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
             TRUE ~ TipoVeg_S5),
-        # "AlturaFusteLimpio" Correction - class "character" -> class "numeric"
-          AlturaFusteLimpio = as.numeric(AlturaFusteLimpio),
-        # "AlturaComercial" Correction - class "character" ->  class "numeric"
-          AlturaComercial = as.numeric(AlturaComercial),
-        # "DiametroBasal" Correction - class "character" ->  class "numeric"
-          DiametroBasal = as.numeric(DiametroBasal),
-        # "DiametroCopa" Correction - class "character" ->  class "numeric"
-          DiametroCopa = as.numeric(DiametroCopa),
-        # "AreaBasal" Correction - class "character" ->  class "numeric"
-          AreaBasal = as.numeric(AreaBasal),
-        # "AreaCopa" Correction - class "character" ->  class "numeric"
-          AreaCopa = as.numeric(AreaCopa),
         # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
           VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
                                  VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
@@ -132,6 +122,9 @@ Arb.04 <- Raw.04 |>
          ) |>
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
+
+
+class(Arb.04$Diametro_normal)
 
 
 ##----------------------------------------------------------------------------------------------------------------
@@ -1200,11 +1193,76 @@ Raw.04 |>
 # 
 ulst <- lapply(Raw.04, unique)
 
-
-
 View(ulst)
 
 library(Hmisc)
 
 describe(Raw.04)
 
+## --------------------------------------------------------------------
+## Checks
+
+Arb.04 |> 
+  select(TipoVeg_S5) |> 
+  distinct() |> 
+  arrange(TipoVeg_S5) |> 
+  print(n = 133)
+
+
+## ---------------------------------------------------------------------
+
+# Raw.09
+# count all NAs per column
+NAs <- Raw.09 |> 
+  select(everything()) |>   # replace to your needs
+  summarise_all(funs(sum(is.na(.))))
+View(NAs)
+
+# count all 0s per column
+ZEROs <- lapply(Raw.09, function(x){ length(which(x==0))})
+View(ZEROs)
+
+# count all distinct values per column
+Raw.09 |>  
+  summarise_all(list(~n_distinct(.)))
+
+# 
+ulst <- lapply(Raw.09, unique)
+
+View(ulst)
+
+library(Hmisc)
+
+describe(Raw.09)
+
+## ---------------------------------------------------------------------
+
+# Raw.14
+# count all NAs per column
+NAs <- Raw.14 |> 
+  select(everything()) |>   # replace to your needs
+  summarise_all(funs(sum(is.na(.))))
+View(NAs)
+
+NAs <- lapply(Raw.14, function(x){ length(which(is.na(x)))})
+
+# count all 0s per column
+ZEROs <- lapply(Raw.14, function(x){ length(which(x==0))})
+View(ZEROs)
+
+# count all distinct values per column
+Raw.14 |>  
+  summarise_all(list(~n_distinct(.)))
+
+# 
+ulst <- lapply(Raw.14, unique)
+
+View(ulst)
+
+library(Hmisc)
+
+describe(Raw.14)
+
+Raw.14 |> 
+  select(es_para_estimacion_ByC) |> 
+  distinct()
