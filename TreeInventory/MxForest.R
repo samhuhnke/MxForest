@@ -100,14 +100,6 @@ Arb.04 <- Raw.04 |>
           Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
                                 Condicion == "Vivo" ~ "Arbol vivo",
                                 TRUE ~ Condicion),
-        # "NumeroTallos" Correction - class "character" -> class "numeric"
-          NumeroTallos = as.numeric(NumeroTallos),
-        # "LongitudAnillos10" Correction - class "character" -> class "numeric"
-          LongitudAnillos10 = as.numeric(LongitudAnillos10),
-        # "NumeroAnillos25" Correction - class "character" -> class "numeric"
-          NumeroAnillos25 = as.numeric(NumeroAnillos25),
-        # "GrosorCorteza" Correction - class "character" -> class "numeric"
-          GrosorCorteza = as.numeric(GrosorCorteza),
         # "NombreCientifico_APG" Correction - "ZZ Desconocido" -> NA
           NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Desconocido" ~ NA,
                                            TRUE ~ NombreCientifico_APG)
@@ -123,8 +115,6 @@ Arb.04 <- Raw.04 |>
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
-
-class(Arb.04$Diametro_normal)
 
 
 ##----------------------------------------------------------------------------------------------------------------
