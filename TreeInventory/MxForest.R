@@ -99,10 +99,7 @@ Arb.04 <- Raw.04 |>
         # "Condicion" Correction - values names -> new value names
           Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
                                 Condicion == "Vivo" ~ "Arbol vivo",
-                                TRUE ~ Condicion),
-        # "NombreCientifico_APG" Correction - "ZZ Desconocido" -> NA
-          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Desconocido" ~ NA,
-                                           TRUE ~ NombreCientifico_APG)
+                                TRUE ~ Condicion)
         ) |>
 # setting initial column order +
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
