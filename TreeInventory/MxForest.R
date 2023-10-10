@@ -32,7 +32,7 @@ Raw.04 <- fread(here("data", "arbolado", "INFyS_Arbolado_2004_2007.csv"), na.str
 Raw.09 <- fread(here("data", "arbolado", "INFyS_Arbolado_2009_2014.csv"), na.strings = "NULL")
 
 ## 2015 - 2020
-Raw.14 <- readxl::read_xlsx(here("data", "arbolado", "INFYS_Arbolado_2015_2020.xlsx"), sheet= 1, na = c("999991", "999993"))
+Raw.14 <- readxl::read_xlsx(here("data", "arbolado", "INFYS_Arbolado_2015_2020.xlsx"), sheet= 1, na = c("NULL", "999991", "999993"))
 
 
 ##----------------------------------------------------------------------------------------------------------------
@@ -314,11 +314,8 @@ Arb.09 <- Raw.09 |>
           NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
                                       TRUE ~ NumeroAnillos25),
         # "NombreCientifico_APG" Correction - "ZZ_Desconocido" -> NA
-          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ_Desconocido" ~ NA,
-                                           TRUE ~ NombreCientifico_APG),
-        # "Familia_APG" Correction - ZZ Familia Desconocida -> NA
-          Familia_APG = case_when(Familia_APG == "ZZ Familia Desconocida" ~ NA,
-                                  TRUE ~ Familia_APG)
+          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ_Desconocido" ~ "ZZ Desconocido",
+                                           TRUE ~ NombreCientifico_APG)
          ) |> 
 # setting initial column order + attaching everything so far not considered to the end
   select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
@@ -387,8 +384,7 @@ Arb.14 <- Raw.14 |>
 # Correction of categoric and specific entry mistakes 
   mutate(
         # "FormaBiologica" Correction - "NULL" -> NA 
-          FormaBiologica = case_when(FormaBiologica == "NULL" ~ NA,
-                                     FormaBiologica == "Indeterminada" ~ NA,
+          FormaBiologica = case_when(FormaBiologica == "Indeterminada" ~ NA,
                                      TRUE ~ FormaBiologica),
         # "PosicionCopa" Correction - "No aplicacion" + "No aplica" + "No capturado" -> NA
           PosicionCopa = case_when(PosicionCopa == "No aplicacion" ~ NA, 
@@ -437,12 +433,8 @@ Arb.14 <- Raw.14 |>
                                  Severidad2 == "No aplica" ~ NA,
                                  TRUE ~ as.numeric(Severidad2)),
         # "NombreCientifico" Correction - "ZZ Genero Desconocido" -> NA
-          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ NA,
-                                           TRUE ~ NombreCientifico_APG),
-        # "Familia_APG" Correction - ZZ Familia Desconocida + NULL -> NA
-        Familia_APG = case_when(Familia_APG == "ZZ Familia Desconocida" ~ NA,
-                                Familia_APG == "NULL" ~ NA,
-                                TRUE ~ Familia_APG)
+          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ "ZZ Desconocido",
+                                           TRUE ~ NombreCientifico_APG)
          ) |> 
 # setting initial column order + attaching everything so far not considered to the end
   select(Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
