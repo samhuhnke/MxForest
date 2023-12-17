@@ -10,6 +10,8 @@ library(readxl)     #read_xlsx()
 library(here)       #here()
 library(tidyverse)  #data tidying
 library(ggridges)   #geom_density_ridges()
+library(terra)      #geo_spatial coordinates
+library(vegan)      #for shannon-index and pielou-eveness
 
 
 # categorical values should pot. be represented as factors in R (like VigorEtapa)
@@ -147,12 +149,10 @@ Arb.09 <- Raw.09 |>
                              Estado == "San Luis Potosi" ~ "San Luis Potosí",
                              Estado == "Yucatan" ~ "Yucatán",
                              TRUE ~ Estado),
-        # "Registro" Correction + "cgl_sit_arb" Correction - obviously wrong entries -> corrected to expected entry 
-          Registro = case_when(Registro == 316 ~ 16,
+        # "Registro" Correction + "cgl_sit_arb" Correction - obviously wrong entries -> replaced with NAs
+          Registro = case_when(Registro == 316 ~ NA,
                                TRUE ~ Registro),
-          cgl_sit_reg = str_replace(string = cgl_sit_reg, "316$", "16"),
-          cgl_sit_reg = str_replace(string = cgl_sit_reg, "4_147$", "4_28"),
-          Registro = ifelse(cgl_sit_reg == "21314_4_28", as.integer(str_extract(cgl_sit_reg, "\\d+$")), Registro),
+          Registro = ifelse(cgl_sit_reg == "21314_4_147", NA, Registro),
         # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
           CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
         # "TipoVeg_S5" Correction - changing names based on CveVeg_S5 data to fit Arb.14
@@ -493,123 +493,7 @@ View(merged)
 
 ##-----------------------------------------------------------------------------------------------------------
 
-
-##----------------------------------------------------------------------------------------
-# Plotting  ----------------------------------------------------------
-# Arb.09 PLOTTING (ARCHIVE) ------------------------------------------------------------------------
-
-# Adding a "Rank" for Family Abundance in order to filter easily if needed
-T.09 <- Arb.09 |> 
-  count(Familia_APG, Estado, sort = TRUE) |> 
-  group_by(Familia_APG) |> 
-  mutate(Fam_Total = sum(n)) |> 
-  ungroup() |>
-  select(Fam_Total, Familia_APG) |> 
-  distinct() |>
-  arrange(desc(Fam_Total), Familia_APG) |> 
-  mutate(Familia_APG_Rank = row_number()) |> 
-  left_join(Arb.09, by = "Familia_APG") 
-
-View(T.09)
-
-# V1 - Distribution of most common families (using rank size distribution) by state 
-T.09 |>  
-  ggplot(aes(x = fct_infreq(Familia_APG), fill = Estado)) +
-  geom_bar(data = T.09 |> filter(Familia_APG_Rank <= 5))
-           
-# V2 - Distribution of most common families and "Others" (using rank size distribution) by state - works but not ordered
-T.09 |>  
-  ggplot(aes(x = fct_infreq(Familia_APG), fill = Estado)) +
-  geom_bar(data = T.09 |> filter(Familia_APG_Rank <= 5)) +
-  geom_bar(data = T.09 |> filter(Familia_APG_Rank > 5), aes(x = "Others", fill = Estado), position = "stack", na.rm = T)
-
-# V2 - Distribution of most common families and "Others" (using rank size distribution) by state - Filter by fct_lump_n(), no Rank needed
-T.09 |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
-        # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
-  ggplot(aes(x = Familia, fill = Estado)) +
-  geom_bar()
-
-# V3 - Distribution of most common families (defined by their rank) by state (relative frequency plot)
-T.09 |> 
-  group_by(Familia_APG_Rank) |> 
-  filter(Familia_APG_Rank <= 5) |> 
-  ggplot(aes(x = Familia_APG, fill = Estado)) +
-  geom_bar(position = "fill")
-
-# V4 - Distribution of most common families (using rank size distribution) by VigorEtapa 
-T.09 |> 
-  group_by(Familia_APG_Rank) |> 
-  filter(Familia_APG_Rank <= 5) |> 
-  ggplot(aes(x = Familia_APG, fill = VigorEtapa)) +
-  geom_bar(position = "fill")
-
-# V5 -Distribution of most common families (using rank size distribution) by VigorEtapa (relative frequency plot)
-T.09 |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
-  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
-  ggplot(aes(x = Familia, fill = VigorEtapa)) +
-  geom_bar(position = "fill")
-
-# V6 - Messing around
-T.09 |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
-  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
-  ggplot(aes(x = Familia, fill = VigorEtapa)) +
-  geom_bar(position = "dodge")
-
-# V7 - freqplot
-T.09 |> 
-  ggplot(aes(x = AlturaTotal, y = after_stat(density))) +
-  geom_freqpoly(aes(color = VigorEtapa), binwidth = 1)
-
-# V8 - boxplot
-T.09 |> 
-  ggplot(aes(x = fct_reorder(VigorEtapa, AreaCopa, median), y = AreaCopa)) +
-  geom_boxplot() 
-
-# V9 - normed family abundances
-
-Normed.Family <- rbind((merged |> 
-                          filter(File == 1) |> 
-                          group_by(Familia_APG) |> 
-                          count() |> 
-                          mutate(Normalized = n/1305130,
-                                 File = "1")),
-                       (merged |> 
-                          filter(File == 2) |> 
-                          group_by(Familia_APG) |> 
-                          count() |> 
-                          mutate(Normalized = n/1581022,
-                                 File = "2")),
-                       (merged |> 
-                          filter(File == 3) |> 
-                          group_by(Familia_APG) |> 
-                          count() |> 
-                          mutate(Normalized = n/831331,
-                                 File = "3")))
-
-View(Normed.Family)
-
-
-
-Normed.Family |> 
-  select(File, Familia_APG, Normalized) |>
-  ungroup() |> 
-  arrange(desc(Normalized)) |> 
-  mutate(Rank = row_number()) |> 
-  filter(Rank <= 30) |> 
-  ggplot(aes(x = reorder(Familia_APG, -Normalized, sum), y = Normalized)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_col() + 
-  facet_wrap(~File)
-
-
-#---------------------------------------------------------------------
-
 # Exploratory Data Analysis (Figures) ---------------------------------------------------------
-
-
 
 # Fig.1.1 Total most Common Families (by file) 
 merged |> 
@@ -619,10 +503,7 @@ merged |>
   theme(axis.text.x = element_text(angle = 90)) +
   geom_bar(position = "dodge")
 
-
-
-# Fig.1.2 Most common families normalized over entries per file
-
+# Fig.1.2 Most common families normalized (over entries per file)s
 Normed.Family <- rbind((merged |> 
                           filter(File == 1) |> 
                           group_by(Familia_APG) |> 
@@ -642,8 +523,6 @@ Normed.Family <- rbind((merged |>
                           mutate(Normalized = n/831331,
                                  File = "3")))
 
-View(Normed.Family)
-
 Normed.Family |> 
   select(File, Familia_APG, Normalized) |>
   ungroup() |> 
@@ -653,15 +532,12 @@ Normed.Family |>
   ggplot(aes(x = reorder(Familia_APG, -Normalized, sum), y = Normalized, fill = File)) +
   theme(axis.text.x = element_text(angle = 90)) +
   geom_col(position = "dodge")
-  
 
-# Fig.2.1 Total biological form abundances by file
-merged |> 
-  ggplot(aes(x = FormaBiologica, fill = File)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_bar(position = "dodge")
 
-# Fig.2.2 Normalized biological form abundances by file
+
+
+
+# Fig.2.1 Normalized (over entries per file) biological form abundances by file
 Normed.Form <- rbind((merged |> 
                         filter(File == 1) |> 
                         group_by(FormaBiologica) |> 
@@ -681,22 +557,13 @@ Normed.Form <- rbind((merged |>
                         mutate(Normalized = n/831331,
                                File = "3")))
 
-View(Normed.Form)
-
 Normed.Form |> 
   select(File, FormaBiologica, Normalized) |>
   ggplot(aes(x = reorder(FormaBiologica, -Normalized, sum), y = Normalized, fill = File)) +
   theme(axis.text.x = element_text(angle = 90)) +
   geom_col(position = "dodge")
 
-# Fig.2.3 total most abundant families by FormaBiologica and File
-merged |> 
-  filter(Familia_APG == c("Fagaceae",  "Fabaceae",  "Pinaceae", "Burseraceae",
-                          "Polygonaceae", "Cactaceae", "Rubiaceae")) |> 
-  ggplot(aes(x= Familia_APG, fill = FormaBiologica)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_bar() + 
-  facet_wrap(~File)
+
 
 
 
@@ -708,7 +575,6 @@ merged |>
   ggplot(aes(x = Danio1, fill = File)) +
   theme(axis.text.x = element_text(angle = 90)) +
   geom_bar(position = "dodge")
-
 
 # Fig.3.2 Normalized disturbances by file
 Normed.Disturbance1 <- rbind((merged |> 
@@ -733,8 +599,6 @@ Normed.Disturbance1 <- rbind((merged |>
                         mutate(Normalized = n/666710,
                                File = "3")))
 
-View(Normed.Disturbance1)
-
 Normed.Disturbance1 |> 
   #subset(!is.na(Danio1)) |> 
   select(File, Danio1, Normalized) |>
@@ -744,16 +608,6 @@ Normed.Disturbance1 |>
 
 
 # Fig.3.3 Absolute disturbances for comparison
-merged |> 
-  filter(File == 2) |> 
-  #subset(!is.na(Danio1)) |> 
-  select(File, Danio1) |> 
-  group_by(Danio1) |> 
-  count() |> 
-  ggplot(aes(x = reorder(Danio1, -n, sum), y = n, fill = "")) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_col()
-
 Absolute.Disturbance <- rbind((merged |> 
                                  filter(File == 2) |> 
                                  select(Danio1) |> 
@@ -767,454 +621,69 @@ Absolute.Disturbance <- rbind((merged |>
                                  count() |> 
                                  mutate(File = "3"))
                               )
+
 Absolute.Disturbance |>  
   ggplot(aes(x = reorder(Danio1, -n, sum), y = n, fill = File)) +
   theme(axis.text.x = element_text(angle = 90)) +
   geom_col(position = "dodge")
-    
-
-
-
-
-
-
-# test: (USELESS) Edad ~ AlturaTotal Correlation --> gap for file 1 & 2
-merged |>
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
-  subset(!is.na(Edad)) |> 
-  ggplot(aes(x = Edad, y = AlturaTotal, color = Familia)) +
-  geom_point(alpha = 0.3, 
-             position = "jitter") + 
-  geom_smooth(method = lm) +
-  xlim(1, 300) +
-  facet_wrap(~File)
-
-
-# test: AlturaTotal ~ Familia
-merged |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> 
-  subset(!is.na(Familia)) |> 
-  ggplot(aes(x = AlturaTotal, y = Familia, fill = Familia, color = Familia)) +
-  geom_density_ridges(alpha = 0.5)
-
-# test: AlturaFusteLimpio ~ Familia
-merged |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |> 
-  subset(!is.na(Familia)) |> 
-  ggplot(aes(x = AlturaFusteLimpio, y = Familia, fill = Familia, color = Familia)) +
-  geom_density_ridges(alpha = 0.5) 
-
-# test: (USELESS) AlturaTotal ~ DiametroNormal
-merged |>
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 5)) |>
-  subset(!is.na(Edad)) |> 
-  ggplot(aes(x = DiametroNormal, y = AlturaTotal, color = Familia)) +
-  geom_point(alpha = 0.3, 
-             position = "jitter") + 
-  ylim(0, 75) +
-  geom_smooth(method = lm) 
-
-# Fig.4 Family Abundance by state (all files)
-merged |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 10)) |>
-  subset(!is.na(Familia)) |> 
-  ggplot(aes(x= Familia, fill = Familia)) +
-  geom_bar() + 
-  theme(axis.text.x = element_blank()) +
-  facet_wrap(~Estado, scales = "fixed")
-
-# File 1
-merged |> 
-  filter(File == 1) |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 7)) |>
-  subset(!is.na(Familia)) |> 
-  ggplot(aes(x= Familia, fill = Familia)) +
-  geom_bar() + 
-  theme(axis.text.x = element_blank()) +
-  facet_wrap(~Estado, scales = "fixed")
-
-# File 2
-merged |> 
-  filter(File == 2) |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 7)) |>
-  subset(!is.na(Familia)) |> 
-  ggplot(aes(x= Familia, fill = Familia)) +
-  geom_bar() + 
-  theme(axis.text.x = element_blank()) +
-  facet_wrap(~Estado, scales = "fixed")
-
-# File 3
-merged |> 
-  filter(File == 3) |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 7)) |>
-  subset(!is.na(Familia)) |> 
-  ggplot(aes(x= Familia, fill = Familia)) +
-  geom_bar() + 
-  theme(axis.text.x = element_blank()) +
-  facet_wrap(~Estado, scales = "fixed")
-
-
-
-# test: posicion copa -> interesting for surpimido and codominante
-merged |> 
-  subset(!is.na(PosicionCopa)) |> 
-  ggplot(aes(y = PosicionCopa)) +
-  geom_bar() +
-  facet_wrap(~File)
-
-# test: comparison of both -> interesting because of how data seems to be assembled in file 3
-merged |> 
-  subset(!is.na(ExposicionCopa) & !is.na(PosicionCopa)) |> 
-  ggplot(aes(x = PosicionCopa, y = ExposicionCopa)) +
-  geom_count() +
-  facet_wrap(~File) + 
-  guides(x = guide_axis(angle = 90))
-
-  
-# test: muerte regressiva -> weird mistakes/NAs in File 3
-merged |> 
-  subset(!is.na(MuerteRegresiva) & MuerteRegresiva != "Sin parámetro") |> 
-  ggplot(aes(x = MuerteRegresiva)) +
-  geom_bar() +
-  facet_grid(File~.)
-  
-merged |> 
-  subset(!is.na(MuerteRegresiva) & MuerteRegresiva != "Sin parámetro") |> 
-  ggplot(aes(x = MuerteRegresiva)) +
-  geom_bar()
-  
-# age-class distribution (kinda...) -> right now no area relationship
-merged |> 
-  mutate(AgeClass = case_when(Edad < 1 ~ "0",
-                              Edad >= 1 & Edad <= 20 ~ "1 - 20",
-                              Edad >= 21 & Edad <= 40 ~ "21 - 40",
-                              Edad >= 41 & Edad <= 60 ~ "41 - 60",
-                              Edad >= 61 & Edad <= 80 ~ "61 - 80",
-                              Edad >= 81 & Edad <= 100 ~ "81 - 100",
-                              Edad >= 101 & Edad <= 120 ~ "101 - 120",
-                              Edad >= 121 & Edad <= 140 ~ "121 - 140",
-                              Edad >= 141 & Edad <= 160 ~ "141 - 160",
-                              Edad > 160 ~ ">160",
-                              TRUE ~ NA)) |> 
-  mutate(AgeClass = factor(AgeClass, levels = c("0", "1 - 20", "21 - 40", "41 - 60", "61 - 80", 
-                                                "81 - 100", "101 - 120", "121 - 140", "141 - 160", ">160"))) |> 
-  subset(!is.na(AgeClass)) |> 
-  ggplot(aes(x = AgeClass)) +
-  geom_bar() +
-  facet_wrap(~File)
-
-merged <- merged |> 
-  mutate(AgeClass = case_when(Edad < 1 ~ "0",
-                              Edad >= 1 & Edad <= 20 ~ "1 - 20",
-                              Edad >= 21 & Edad <= 40 ~ "21 - 40",
-                              Edad >= 41 & Edad <= 60 ~ "41 - 60",
-                              Edad >= 61 & Edad <= 80 ~ "61 - 80",
-                              Edad >= 81 & Edad <= 100 ~ "81 - 100",
-                              Edad >= 101 & Edad <= 120 ~ "101 - 120",
-                              Edad >= 121 & Edad <= 140 ~ "121 - 140",
-                              Edad >= 141 & Edad <= 160 ~ "141 - 160",
-                              Edad > 160 ~ ">160",
-                              TRUE ~ NA)) |> 
-  mutate(AgeClass = factor(AgeClass, levels = c("0", "1 - 20", "21 - 40", "41 - 60", "61 - 80", 
-                                                "81 - 100", "101 - 120", "121 - 140", "141 - 160", ">160"))) |> 
-  subset(!is.na(AgeClass)) |> 
-  # subset(AgeClass != 0) |> 
-  group_by(AgeClass) |> 
-  count() |> 
-  mutate(N = as.numeric(n)) |> 
-  ungroup() |> 
-  mutate(Sum = sum(N),
-         AgePercNA = N/Sum) |> 
-  ggplot(aes(x = AgeClass, y = AgePercNA)) +
-  geom_bar(stat = "identity") +
-  scale_y_continuous(labels = scales::percent)
-
-
-#### sensible plotting from now on (kind of)
-
-## species richness by state
-
-merged |> 
-    group_by(File, Estado, NombreCientifico_APG) |> 
-    select(File, Estado, NombreCientifico_APG) |> 
-    distinct() |> 
-    ungroup() |> 
-    group_by(File, Estado) |> 
-    arrange(File, Estado, NombreCientifico_APG) |> 
-    ggplot(aes(y = Estado)) +
-    geom_bar() +
-    facet_wrap(~File)
-
-
-## gamma-diversity by file
-  merged |> 
-    group_by(File, NombreCientifico_APG) |> 
-    select(File, NombreCientifico_APG) |> 
-    distinct() |> 
-    ggplot(aes(x = File)) +
-    geom_bar()
-
-## Species Richness per file 
-
-  # Arb.04 Setup 
-  Arb.04.01 <- Arb.04 |> 
-    select(Estado, Conglomerado, Sitio) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(PlotCount = n)
-  
-  Arb.04.02 <- Arb.04 |> 
-    select(Estado, NombreCientifico_APG) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(SpeciesCount = n)
-  
-  Arb.04.RSR <- Arb.04.01 |> 
-    left_join(Arb.04.02, by = "Estado") |> 
-    mutate(RSR = SpeciesCount/PlotCount,
-           RSR = round(RSR, 3),
-           File = as.factor(1)) 
-View(Arb.04.RSR)
-  
-  # Arb.09 Setup 
-  Arb.09.01 <- Arb.09 |> 
-    select(Estado, Conglomerado, Sitio) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(PlotCount = n)
-  
-  Arb.09.02 <- Arb.09 |> 
-    select(Estado, NombreCientifico_APG) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(SpeciesCount = n)
-  
-  Arb.09.RSR <- Arb.09.01 |> 
-    left_join(Arb.09.02, by = "Estado") |> 
-    mutate(RSR = SpeciesCount/PlotCount,
-           RSR = round(RSR, 3),
-           File = as.factor(2)) 
-  
-  View(Arb.09.RSR)
-  
-  # Arb.14 Setup 
-  Arb.14.01 <- Arb.14 |> 
-    select(Estado, Conglomerado, Sitio) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(PlotCount = n)
-  
-  Arb.14.02 <- Arb.14 |> 
-    select(Estado, NombreCientifico_APG) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(SpeciesCount = n)
-  
-  Arb.14.RSR <- Arb.14.01 |> 
-    left_join(Arb.14.02, by = "Estado") |> 
-    mutate(RSR = SpeciesCount/PlotCount,
-           RSR = round(RSR, 3),
-           File = as.factor(3)) 
-  
-  # final table
-  Merged.RSR <- rbind(Arb.04.RSR, Arb.09.RSR, Arb.14.RSR)
-  
-  View(Merged.RSR)
-  
-  Merged.RSR |> 
-    select(File, Estado, RSR) |> 
-    ggplot(aes(x = RSR, y = Estado)) +
-    geom_col() +
-    facet_wrap(~File)
-  
-
-
-
-
   
   
 
-# Testing --------------------------
-
-
-## Species Richness per file V2
-  
-  # Arb.04 Setup 
-  Arb.04.01 <- Arb.04 |> 
-    select(Estado, Conglomerado, Sitio) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(PlotCount = n)
-  
-  Arb.04.02 <- Arb.04 |> 
-    select(Estado, NombreCientifico_APG) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(SpeciesCount = n)
-  
-  Arb.04.RSR <- Arb.04.01 |> 
-    left_join(Arb.04.02, by = "Estado") |> 
-    mutate(RSR = (SpeciesCount*PlotCount)/68108,
-           RSR = round(RSR, 3),
-           File = as.factor(1)) 
-  
-  # Arb.09 Setup 
-  Arb.09.01 <- Arb.09 |> 
-    select(Estado, Conglomerado, Sitio) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(PlotCount = n)
-  
-  Arb.09.02 <- Arb.09 |> 
-    select(Estado, NombreCientifico_APG) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(SpeciesCount = n)
-  
-  Arb.09.RSR <- Arb.09.01 |> 
-    left_join(Arb.09.02, by = "Estado") |> 
-    mutate(RSR = (SpeciesCount*PlotCount)/71437,
-           RSR = round(RSR, 3),
-           File = as.factor(2)) 
-  
-  View(Arb.09.RSR)
-  
-  # Arb.14 Setup 
-  Arb.14.01 <- Arb.14 |> 
-    select(Estado, Conglomerado, Sitio) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(PlotCount = n)
-  
-  Arb.14.02 <- Arb.14 |> 
-    select(Estado, NombreCientifico_APG) |> 
-    distinct() |> 
-    group_by(Estado) |> 
-    count() |> 
-    rename(SpeciesCount = n)
-  
-  Arb.14.RSR <- Arb.14.01 |> 
-    left_join(Arb.14.02, by = "Estado") |> 
-    mutate(RSR = (SpeciesCount*PlotCount)/34913,
-           RSR = round(RSR, 3),
-           File = as.factor(3)) 
-  
-  # final table
-  Merged.RSR <- rbind(Arb.04.RSR, Arb.09.RSR, Arb.14.RSR)
-  
-  Merged.RSR |> 
-    select(File, Estado, RSR) |> 
-    ggplot(aes(x = RSR, y = Estado)) +
-    geom_col() +
-    facet_wrap(~File)
-  
-  
-
-
-
-## other testing stuff
-
-Arb.14 |> 
-  select(Estado, NombreCientifico_APG) |> 
-    group_by(Estado) |> 
-  distinct() |> 
-  count()
-
-Arb.04 |> 
-  select(Conglomerado, Sitio) |> 
-  distinct() |> 
-  count()
-
-Arb.09 |> 
-  select(Conglomerado, Sitio) |> 
-  distinct() |> 
-  count()
-
-Arb.14 |> 
-  select(Conglomerado, Sitio) |> 
-  distinct() |> 
-  count()
-
-
-
-
-
-
-
-## ---------------------------------------------------------------------
+## Metadata  analysis ---------------------------------------------------------------------
 
 # Raw.04
-# count all NAs per column
+## count all NAs per column
 NAs <- Raw.04 |> 
   select(everything()) |>   # replace to your needs
   summarise_all(funs(sum(is.na(.))))
 View(NAs)
 
-# count all 0s per column
+## count all 0s per column
 ZEROs <- lapply(Raw.04, function(x){ length(which(x==0))})
 View(ZEROs)
 
-# count all distinct values per column
+
+## distince values per column (various methods)
+# method 1
 Raw.04 |>  
   summarise_all(list(~n_distinct(.)))
 
-# 
+# method 2
 ulst <- lapply(Raw.04, unique)
-
 View(ulst)
 
+## Alternative way for NAs and unsique values
 library(Hmisc)
-
 describe(Raw.04)
 
-## --------------------------------------------------------------------
-## Checks
 
-Arb.04 |> 
-  select(TipoVeg_S5) |> 
-  distinct() |> 
-  arrange(TipoVeg_S5) |> 
-  print(n = 133)
-
-
-## ---------------------------------------------------------------------
 
 # Raw.09
-# count all NAs per column
+## count all NAs per column
 NAs <- Raw.09 |> 
   select(everything()) |>   # replace to your needs
   summarise_all(funs(sum(is.na(.))))
 View(NAs)
 
-# count all 0s per column
+## count all 0s per column
 ZEROs <- lapply(Raw.09, function(x){ length(which(x==0))})
 View(ZEROs)
 
-# count all distinct values per column
+## distince values per column (various methods)
+# method 1
 Raw.09 |>  
   summarise_all(list(~n_distinct(.)))
 
-# 
+# method 2
 ulst <- lapply(Raw.09, unique)
-
 View(ulst)
 
+## Alternative way for NAs and unsique values
 library(Hmisc)
-
 describe(Raw.09)
 
-## ---------------------------------------------------------------------
+
+
 
 # Raw.14
 # count all NAs per column
@@ -1229,19 +698,298 @@ NAs <- lapply(Raw.14, function(x){ length(which(is.na(x)))})
 ZEROs <- lapply(Raw.14, function(x){ length(which(x==0))})
 View(ZEROs)
 
-# count all distinct values per column
+## distince values per column (various methods)
+# method 1
 Raw.14 |>  
   summarise_all(list(~n_distinct(.)))
 
-# 
+# method 2
 ulst <- lapply(Raw.14, unique)
-
 View(ulst)
 
+## Alternative way for NAs and unsique values
 library(Hmisc)
-
 describe(Raw.14)
 
-Raw.14 |> 
-  select(es_para_estimacion_ByC) |> 
-  distinct()
+View(Arb.04)
+View(Arb.14)
+
+
+# species richness by cluster + preparation for geospaptial analysis --------------------------------------------------
+
+## Arb.04
+ArbSpat.04 <- Arb.04 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            species_count=n_distinct(NombreCientifico_APG),
+            X=mean(X),
+            Y=mean(Y))
+
+ArbSpat.04 <- vect(ArbSpat.04, geom=c("X","Y"), crs="+proj=longlat +datum=WGS84")
+
+plot(ArbSpat.04)
+
+#writeVector(ArbSpat.04, "treeInv_richness_04.shp")
+
+
+## Arb.09
+ArbSpat.09 <- Arb.09 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            species_count = n_distinct(NombreCientifico_APG),
+            X = mean(X),
+            Y = mean(Y))
+
+ArbSpat.09 <- vect(ArbSpat.09, geom = c("X", "Y"), crs = "+proj=longlat + datum=WGS84")
+
+plot(ArbSpat.09)
+
+#writeVector(ArbSpat.09, "treeInv_richness_09.shp")
+
+
+## Arb.14
+
+ARbSpat.14 <- Arb.14 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            species_count = n_distinct(NombreCientifico_APG),
+            X = mean(X),
+            Y = mean(Y))
+
+ArbSpat.14 <- vect(ARbSpat.14, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
+
+plot(ArbSpat.14)
+
+#writeVector(ArbSpat.14, "treeInv_richness_14.shp")
+
+
+# Species Richness per Plot + Total Species Count per plot -----------------------------------
+
+# 04
+PlotSR.04 <- Arb.04 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado, Sitio) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            species_count=n_distinct(NombreCientifico_APG),
+            total_abundance= n(),
+            X=mean(X),
+            Y=mean(Y)) 
+
+View(PlotSR.04)
+
+PlotSR.04 |> ggplot(aes(x= species_count)) +
+  geom_histogram(binwidth = 1)
+
+PlotSR.04 |> ggplot(aes(x= species_count)) +
+  stat_ecdf(geom = "step")
+
+PlotSR.04 |> ggplot(aes(x= total_abundance)) +
+  geom_histogram(binwidth = 1)
+
+PlotSR.04 |> ggplot(aes(x= total_abundance)) +
+  stat_ecdf(geom = "step")
+
+# 09
+PlotSR.09 <- Arb.09 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado, Sitio) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            species_count=n_distinct(NombreCientifico_APG),
+            total_abundance= n(),
+            X=mean(X),
+            Y=mean(Y)) 
+
+PlotSR.09 |> ggplot(aes(x= species_count)) +
+  geom_histogram(binwidth = 1)
+
+PlotSR.09 |> ggplot(aes(x= species_count)) +
+  stat_ecdf(geom = "step")
+
+PlotSR.09 |> ggplot(aes(x= total_abundance)) +
+  geom_histogram(binwidth = 1)
+
+PlotSR.09 |> ggplot(aes(x= total_abundance)) +
+  stat_ecdf(geom = "step")
+
+# 14
+PlotSR.14 <- Arb.14 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado, Sitio) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            species_count=n_distinct(NombreCientifico_APG),
+            total_abundance= n(),
+            X=mean(X),
+            Y=mean(Y)) 
+
+PlotSR.14 |> ggplot(aes(x= species_count)) +
+  geom_histogram(binwidth = 1)
+
+PlotSR.14 |> ggplot(aes(x= species_count)) +
+  stat_ecdf(geom = "step")
+
+PlotSR.14 |> ggplot(aes(x= total_abundance)) +
+  geom_histogram(binwidth = 1)
+
+PlotSR.14 |> ggplot(aes(x= total_abundance)) +
+  stat_ecdf(geom = "step")
+
+
+# Species abundances per plot --------------------------------
+
+# 04
+PlotSA.04 <- Arb.04 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado, Sitio, NombreCientifico_APG) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            abundance=n(),
+            X=mean(X),
+            Y=mean(Y)) 
+
+PlotSA.04 |> ggplot(aes(x= abundance)) +
+  geom_histogram(binwidth = 1)
+
+PlotSA.04 |> ggplot(aes(x= abundance)) +
+  stat_ecdf(geom = "step")
+
+# 09
+PlotSA.09 <- Arb.09 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado, Sitio, NombreCientifico_APG) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            abundance=n(),
+            X=mean(X),
+            Y=mean(Y)) 
+
+PlotSA.09 |> ggplot(aes(x= abundance)) +
+  geom_histogram(binwidth = 1)
+
+PlotSA.09 |> ggplot(aes(x= abundance)) +
+  stat_ecdf(geom = "step")
+
+# 14
+PlotSA.14 <- Arb.14 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado, Sitio, NombreCientifico_APG) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            abundance=n(),
+            X=mean(X),
+            Y=mean(Y)) 
+
+PlotSA.14 |> ggplot(aes(x= abundance)) +
+  geom_histogram(binwidth = 1)
+
+PlotSA.14 |> ggplot(aes(x= abundance)) +
+  stat_ecdf(geom = "step")
+
+
+
+
+
+
+# mockup to one data table
+Plot.04 <- left_join(PlotSA.04, PlotSR.04, by= c("Conglomerado", "Sitio")) |>
+  mutate(Plot_ID = paste(Conglomerado, Sitio, sep= "_")) |> 
+  select(Plot_ID, Conglomerado, Sitio, species_count, NombreCientifico_APG, abundance, total_abundance, X.x, Y.y)
+View(Plot.04)
+
+Plot.09 <- left_join(PlotSA.09, PlotSR.09, by= c("Conglomerado", "Sitio")) |>
+  mutate(Plot_ID = paste(Conglomerado, Sitio, sep= "_")) |> 
+  select(Plot_ID, Conglomerado, Sitio, species_count, NombreCientifico_APG, abundance, total_abundance, X.x, Y.y)
+
+Plot.14 <- left_join(PlotSA.14, PlotSR.14, by= c("Conglomerado", "Sitio")) |>
+  mutate(Plot_ID = paste(Conglomerado, Sitio, sep= "_")) |> 
+  select(Plot_ID, Conglomerado, Sitio, species_count, NombreCientifico_APG, abundance, total_abundance, X.x, Y.y)
+
+# mockup shannon index H + pielous eveness J - 04
+
+## create presence-absence dataset for species per plot (values are abundances)
+temp.Shannon.04 <- Plot.04 |> 
+  ungroup() |> 
+  select(Plot_ID, NombreCientifico_APG, abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+# exchange NAs with Zeros
+df.Shannon.04 <- temp.Shannon.04 |> 
+  replace(is.na(temp.Shannon.04), 0) #|> 
+ # select(everything(), -Plot_ID)            # not ideal
+
+# Calculate H using diversity() 
+H4 <- diversity(df.Shannon.04[,-1])
+H4
+
+# mockup eveness
+# calculate J
+J4 <- H4/log(specnumber(df.Shannon.04[, -1]))
+J4
+
+# mockup table 
+diagnostics <- data.frame(df.Shannon.04$Plot_ID, H4, J4)
+View(diagnostics)
+
+
+
+# mockup shannon index H + pielous eveness J - 09
+
+## create presence-absence dataset for species per plot (values are abundances)
+temp.Shannon.09 <- Plot.09 |> 
+  ungroup() |> 
+  select(Plot_ID, NombreCientifico_APG, abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+# exchange NAs with Zeros
+df.Shannon.09 <- temp.Shannon.09 |> 
+  replace(is.na(temp.Shannon.09), 0) #|> 
+# select(everything(), -Plot_ID)            # not ideal - not needed anymore
+
+# Calculate H using diversity() 
+H9 <- diversity(df.Shannon.09[,-1])
+H9
+
+# mockup eveness
+# calculate J
+J9 <- H9/log(specnumber(df.Shannon.09[, -1]))
+J9
+
+
+# mockup table 
+diagnostics <- data.frame(df.Shannon.09$Plot_ID, H9, J9)
+View(diagnostics)
+
+
+
+# mockup shannon index H + pielous eveness J - 14
+
+## create presence-absence dataset for species per plot (values are abundances)
+temp.Shannon.14 <- Plot.14 |> 
+  ungroup() |> 
+  select(Plot_ID, NombreCientifico_APG, abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+# exchange NAs with Zeros
+df.Shannon.14 <- temp.Shannon.14 |> 
+  replace(is.na(temp.Shannon.14), 0) #|> 
+# select(everything(), -Plot_ID)            # not ideal
+
+# Calculate H using diversity() 
+H14 <- diversity(df.Shannon.14[,-1])
+H14
+
+# mockup eveness
+# calculate J
+J14 <- H14/log(specnumber(df.Shannon.14[, -1]))
+J14
+
+# mockup table 
+diagnostics <- data.frame(df.Shannon.14$Plot_ID, H14, J14)
+View(diagnostics)
+
+
