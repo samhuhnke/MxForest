@@ -101,10 +101,12 @@ Arb.04 <- Raw.04 |>
         # "Condicion" Correction - values names -> new value names
           Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
                                 Condicion == "Vivo" ~ "Arbol vivo",
-                                TRUE ~ Condicion)
+                                TRUE ~ Condicion),
+        # Added File number 
+          File = "1"
         ) |>
 # setting initial column order +
-  select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
+  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
@@ -113,8 +115,6 @@ Arb.04 <- Raw.04 |>
          ) |>
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
-
-
 
 ##----------------------------------------------------------------------------------------------------------------
 
@@ -312,10 +312,12 @@ Arb.09 <- Raw.09 |>
                                       TRUE ~ NumeroAnillos25),
         # "NombreCientifico_APG" Correction - "ZZ_Desconocido" -> NA
           NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ_Desconocido" ~ "ZZ Desconocido",
-                                           TRUE ~ NombreCientifico_APG)
+                                           TRUE ~ NombreCientifico_APG),
+        # Added File number 
+          File = "2"
          ) |> 
 # setting initial column order + attaching everything so far not considered to the end
-  select(Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
+  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
@@ -431,10 +433,12 @@ Arb.14 <- Raw.14 |>
                                  TRUE ~ as.numeric(Severidad2)),
         # "NombreCientifico" Correction - "ZZ Genero Desconocido" -> NA
           NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ "ZZ Desconocido",
-                                           TRUE ~ NombreCientifico_APG)
+                                           TRUE ~ NombreCientifico_APG),
+        # Added File number 
+          File = "3"
          ) |> 
 # setting initial column order + attaching everything so far not considered to the end
-  select(Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
+  select(File, Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
          NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal, AlturaFusteLimpio, AlturaComercial,
          DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa, PosicionCopa, ExposicionCopa, DensidadCopa,
          TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion, Danio1, Severidad1, Danio2, Severidad2, NumeroTallos,
@@ -457,8 +461,7 @@ Arb.14 <- Raw.14 |>
 ## Merging files together for selected variables -----------------------------------------------------------------
 
 M.04 <- Arb.04 |>
-  mutate(File = as.factor(1),
-         CveVeg = CveVeg_S5,
+  mutate(CveVeg = CveVeg_S5,
          TipoVeg = TipoVeg_S5) |> 
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
@@ -467,8 +470,7 @@ M.04 <- Arb.04 |>
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
 
 M.09 <- Arb.09 |>
-  mutate(File = as.factor(2),
-         CveVeg = CveVeg_S5,
+  mutate(CveVeg = CveVeg_S5,
          TipoVeg = TipoVeg_S5) |> 
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
@@ -477,8 +479,7 @@ M.09 <- Arb.09 |>
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
 
 M.14 <- Arb.14 |>
-  mutate(File = as.factor(3),
-         cgl_sit_reg = NA,
+  mutate(cgl_sit_reg = NA,
          CveVeg = CveVeg_S7,
          TipoVeg = TipoVeg_S7) |> 
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
@@ -487,9 +488,11 @@ M.14 <- Arb.14 |>
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
 
-merged <- rbind(M.04, M.09, M.14)
+merged <- rbind(M.04, M.09, M.14) |> 
+  mutate(Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_")) |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, everything())
 
-View(merged)
+
 
 ##-----------------------------------------------------------------------------------------------------------
 
@@ -742,9 +745,7 @@ ArbSpat.04 <- Arb.04 |>
 ArbSpat.04 <- vect(ArbSpat.04, geom=c("X","Y"), crs="+proj=longlat +datum=WGS84")
 
 plot(ArbSpat.04)
-
 #writeVector(ArbSpat.04, "treeInv_richness_04.shp")
-
 
 ## Arb.09
 ArbSpat.09 <- Arb.09 |> 
@@ -758,9 +759,7 @@ ArbSpat.09 <- Arb.09 |>
 ArbSpat.09 <- vect(ArbSpat.09, geom = c("X", "Y"), crs = "+proj=longlat + datum=WGS84")
 
 plot(ArbSpat.09)
-
 #writeVector(ArbSpat.09, "treeInv_richness_09.shp")
-
 
 ## Arb.14
 
@@ -775,99 +774,55 @@ ARbSpat.14 <- Arb.14 |>
 ArbSpat.14 <- vect(ARbSpat.14, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
 
 plot(ArbSpat.14)
-
 #writeVector(ArbSpat.14, "treeInv_richness_14.shp")
 
 
-# Species Richness per Plot + Total Species Count per plot -----------------------------------
 
-# 04
-PlotSR.04 <- Arb.04 |> 
-  select(Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado, Sitio) |> 
-  summarise(Anio = mean(Anio),
+
+# SPECIES RICHNESS + TOTAL INDIVIDUAL ENTRIES PER PLOT ################### DATA ON PLOT LEVEL####################
+
+SpecRich <- merged |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, Sitio) |> 
+  summarise(File = mean(as.integer(File)),
             Conglomerado = mean(Conglomerado),
             Sitio = mean(Sitio),
-            species_count=n_distinct(NombreCientifico_APG),
-            total_entries= n(),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  mutate(File = "1")
+            Anio = mean(Anio),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            species_count = n_distinct(NombreCientifico_APG),
+            total_entries = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  relocate(Plot_ID)
 
-
-PlotSR.04 |> ggplot(aes(x= species_count)) +
+## Plotting ------------------------------------------------
+# for individual file plots -------------
+SpecRich |> 
+  subset(File == 1) |>              # Enter 1, 2, or 3
+  ggplot(aes(x= species_count)) +
   geom_histogram(binwidth = 1) +
   labs(x= "Species Count per Plot",
        y= "Plot Count")
 
-PlotSR.04 |> ggplot(aes(x= species_count)) +
+SpecRich |> 
+  subset(File == 1) |>              # Enter 1, 2, or 3
+  ggplot(aes(x= species_count)) +
   stat_ecdf(geom = "step")
 
-PlotSR.04 |> ggplot(aes(x= total_entries)) +
+SpecRich |> 
+  subset(File == 1) |>              # Enter 1, 2, or 3
+  ggplot(aes(x= total_entries)) +
   geom_histogram(binwidth = 1)
 
-PlotSR.04 |> ggplot(aes(x= total_entries)) +
+SpecRich |> 
+  subset(File == 1) |>              # Enter 1, 2, or 3 
+  ggplot(aes(x= total_entries)) +
   stat_ecdf(geom = "step")
 
-# 09
-PlotSR.09 <- Arb.09 |> 
-  select(Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado, Sitio) |> 
-  summarise(Anio = mean(Anio),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            species_count=n_distinct(NombreCientifico_APG),
-            total_entries= n(),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  mutate(File = "2")
-
-PlotSR.09 |> ggplot(aes(x= species_count)) +
-  geom_histogram(binwidth = 1)
-
-PlotSR.09 |> ggplot(aes(x= species_count)) +
-  stat_ecdf(geom = "step")
-
-PlotSR.09 |> ggplot(aes(x= total_entries)) +
-  geom_histogram(binwidth = 1)
-
-PlotSR.09 |> ggplot(aes(x= total_entries)) +
-  stat_ecdf(geom = "step")
-
-# 14
-PlotSR.14 <- Arb.14 |> 
-  select(Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado, Sitio) |> 
-  summarise(Anio = mean(Anio),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            species_count=n_distinct(NombreCientifico_APG),
-            total_entries= n(),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  mutate(File = "3")
-
-PlotSR.14 |> ggplot(aes(x= species_count)) +
-  geom_histogram(binwidth = 1)
-
-PlotSR.14 |> ggplot(aes(x= species_count)) +
-  stat_ecdf(geom = "step")
-
-PlotSR.14 |> ggplot(aes(x= total_entries)) +
-  geom_histogram(binwidth = 1)
-
-PlotSR.14 |> ggplot(aes(x= total_entries)) +
-  stat_ecdf(geom = "step")
-
-
-#merging ########################################### DATA ON PLOT LEVEL #############
-PlotSR <- rbind(PlotSR.04, PlotSR.09, PlotSR.14) |> 
-  mutate(Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep= "_"))
-
-View(PlotSR)
-
+# for combined plots ------------
 # Species Richness per Plot
-PlotSR |> 
+SpecRich |> 
+  mutate(File = as.factor(File)) |> 
   ggplot(aes(x = species_count, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
   labs(x = "Species Count per Plot",
@@ -875,7 +830,8 @@ PlotSR |>
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-PlotSR |> 
+SpecRich |> 
+  mutate(File = as.factor(File)) |> 
   ggplot(aes(x = species_count, colour = File)) +
   geom_freqpoly(binwidth = 1) +
   labs(x = "Species Count per Plot",
@@ -883,90 +839,62 @@ PlotSR |>
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-PlotSR |> 
+SpecRich |> 
+  mutate(File = as.factor(File)) |> 
   ggplot(aes(x= species_count, colour = File)) +
   stat_ecdf(geom = "smooth") +
   labs(x = "Species Count per Plot",
        y = "") 
 
 # Total Entries per Plot 
-PlotSR |> ggplot(aes(x= total_entries, fill = File)) +
+SpecRich|> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= total_entries, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3)
 
-PlotSR |> 
+SpecRich|> 
+  mutate(File = as.factor(File)) |>  
   ggplot(aes(x = total_entries, colour = File)) +
   geom_freqpoly(binwidth = 1)
 
-
-PlotSR |> ggplot(aes(x= total_entries, colour = File)) +
+SpecRich|> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
   stat_ecdf(geom = "step")
 
 
 
 
-# Species abundances per plot ----------------------------------------------------------
 
-# 04
-PlotSA.04 <- Arb.04 |> 
-  select(Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado, Sitio, NombreCientifico_APG) |> 
-  summarise(Anio = mean(Anio),
+# SPECIES ABUNDANCES PER PLOT ############### DATA ON SPECIES LEVEL ########## NEEDED FOR SHANNON AND EVENESS #################
+SpecAbun <- merged |> 
+  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, Sitio, NombreCientifico_APG) |> 
+  summarise(File = mean(as.integer(File)),
             Conglomerado = mean(Conglomerado),
             Sitio = mean(Sitio),
+            Anio = mean(Anio),
             abundance=n(),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
             X=mean(X),
             Y=mean(Y)) |> 
-  mutate(File = "1") 
+  relocate(Plot_ID)
 
-PlotSA.04 |> ggplot(aes(x= abundance)) +
+## Plotting ------------------------------------------------
+# for individual file plots -------------
+SpecAbun |> 
+  subset(File == 1) |>              # Enter 1, 2, or 3 
+  ggplot(aes(x= abundance)) +
   geom_histogram(binwidth = 1)
 
-PlotSA.04 |> ggplot(aes(x= abundance)) +
+SpecAbun |>
+  subset(File == 1) |>              # Enter 1, 2, or 3 
+  ggplot(aes(x= abundance)) +
   stat_ecdf(geom = "step")
 
-# 09
-PlotSA.09 <- Arb.09 |> 
-  select(Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado, Sitio, NombreCientifico_APG) |> 
-  summarise(Anio = mean(Anio),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            abundance=n(),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  mutate(File = "2")
-
-PlotSA.09 |> ggplot(aes(x= abundance)) +
-  geom_histogram(binwidth = 1)
-
-PlotSA.09 |> ggplot(aes(x= abundance)) +
-  stat_ecdf(geom = "step")
-
-# 14
-PlotSA.14 <- Arb.14 |> 
-  select(Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado, Sitio, NombreCientifico_APG) |> 
-  summarise(Anio = mean(Anio),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            abundance=n(),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  mutate(File = "3")
-
-PlotSA.14 |> ggplot(aes(x= abundance)) +
-  geom_histogram(binwidth = 1)
-
-PlotSA.14 |> ggplot(aes(x= abundance)) +
-  stat_ecdf(geom = "step")
-
-#merging ###################### DATA ON SPECIES LEVEL ##### NEEDED FOR EVENESS AND DIVERSITY #########################
-PlotSA <- rbind(PlotSA.04, PlotSA.09, PlotSA.14) |> 
-  mutate(Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep= "_"))
-
-View(PlotSA)
-
-PlotSA |> 
+# for combined plots ------------
+SpecAbun |> 
+  mutate(File = as.factor(File)) |> 
   ggplot(aes(x = abundance, colour = File)) +
   geom_freqpoly(binwidth = 1) +
   labs(x = "Species Count per Plot",
@@ -974,35 +902,32 @@ PlotSA |>
        title = "Frequency Distribution of Species Abundances") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-PlotSA |> 
+SpecAbun |> 
+  mutate(File = as.factor(File)) |> 
   ggplot(aes(x= abundance, colour = File)) +
   stat_ecdf(geom = "smooth") +
   labs(x = "Species Count per Plot",
        y = "") 
 
 
-View(PlotSA)
+# control data table ###################### DATA ON SPECIES LEVEL ############################## ONLY TEMPORARY - CAN BE SKIPPED ##############
+Temp.Control <- left_join(SpecAbun, SpecRich, by= c("Plot_ID","File", "Conglomerado", "Sitio", "Anio", "X", "Y" )) |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, X, Y)
 
-
-#one data table ###################### DATA ON SPECIES LEVEL ############################## ONLY TEMPORARY ##############
-Plot <- left_join(PlotSA, PlotSR, by= c("Plot_ID","File", "Conglomerado", "Sitio", "Anio" )) |> 
-  select(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, X.x, Y.y)
-
-View(Plot)
-#######################################################################################################################
+View(Temp.Control)
 
 
 ## shannon index H + pielous eveness J - all 3 files ############### CREATED DATASETS MOSTLY TEMPORARY  ------------------------------------------------------------- 
 
 ## presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
-temp.Shannon <- PlotSA |> 
+Temp.Shannon <- SpecAbun |> 
   ungroup() |> 
   select(Plot_ID, NombreCientifico_APG, abundance) |> 
   pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
 
 # exchange NAs with Zeros ######### CAN BE USED FURTHER
-PresenceAbsence <- temp.Shannon |> 
-  replace(is.na(temp.Shannon), 0)
+PresenceAbsence <- Temp.Shannon |> 
+  replace(is.na(Temp.Shannon), 0)
 
 # Calculate Shannon-Index H using diversity()  ###### TEMPORARY
 H <- diversity(PresenceAbsence[,-1])
@@ -1011,35 +936,38 @@ H <- diversity(PresenceAbsence[,-1])
 J <- H/log(specnumber(PresenceAbsence[, -1]))
 
 # merging H and J into dataframe + renaming ID-Column to be in lign with other datasets
-diagnostics <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
+Temp.HJ <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
   rename(Plot_ID = PresenceAbsence.Plot_ID)
 
 
 # merged data table #################### DATA ON SPECIES LEVEL ########################### MIGHT BE SKIPPED ###############################
-Plot1 <- left_join(PlotSR, PLotSA, diagnostics, by= c("Plot_ID")) |> 
+Plot1 <- left_join(SpecRich, SpecAbun, Temp.HJ, by= c("Plot_ID")) |> 
   select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, H, J, X.x, Y.y)
 
-
 # merged data table #################### DATA ON PLOT LEVEL ############################
-Plot2 <- left_join(PlotSR, diagnostics, by= c("Plot_ID")) |> 
+Diagnostics.1 <- left_join(SpecRich, Temp.HJ, by= c("Plot_ID")) |> 
   select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, X, Y)
 
-View(Plot2)
+
+
 
 # plots shannon-index
-Plot2 |> 
+Diagnostics.1 |> 
+  mutate(File = as.factor(File)) |> 
   select(File, Plot_ID, H) |> 
   group_by(Plot_ID) |> 
   ggplot(aes(x= H, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-Plot2 |> 
+Diagnostics.1 |> 
+  mutate(File = as.factor(File)) |> 
   select(File, Plot_ID, H) |> 
   group_by(Plot_ID) |> 
   ggplot(aes(x= H, colour = File)) +
   geom_freqpoly()
 
-Plot2 |> 
+Diagnostics.1 |> 
+  mutate(File = as.factor(File)) |> 
   select(File, Plot_ID, H) |> 
   group_by(Plot_ID) |> 
   ggplot(aes(x= H, colour = File)) +
@@ -1047,19 +975,22 @@ Plot2 |>
 
 
 # plots pielou eveness
-Plot2 |> 
+Diagnostics.1 |> 
+  mutate(File = as.factor(File)) |> 
   select(File, Plot_ID, J) |> 
   group_by(Plot_ID) |> 
   ggplot(aes(x = J, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-Plot2 |> 
+Diagnostics.1 |> 
+  mutate(File = as.factor(File)) |> 
   select(File, Plot_ID, J) |> 
   group_by(Plot_ID) |> 
   ggplot(aes(x= J, colour = File)) +
   geom_freqpoly()
 
-Plot2 |> 
+Diagnostics.1 |> 
+  mutate(File = as.factor(File)) |> 
   select(File, Plot_ID, J) |> 
   group_by(Plot_ID) |> 
   ggplot(aes(x= J, colour = File)) +
@@ -1071,11 +1002,13 @@ Plot2 |>
 
 View(Arb.04)
 
-TreeMorphology.04 <- Arb.04 |> 
-  group_by(Conglomerado, Sitio) |> 
-  summarise(Anio = mean(Anio),
+TreeMorp <- merged |> 
+  group_by(File, Conglomerado, Sitio) |> 
+  summarise(File = mean(as.integer(File)),
             Conglomerado = mean(Conglomerado),
             Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
             AvgTreeHeight = mean(AlturaTotal, na.rm = T),
             AvgDbh = mean(DiametroNormal, na.rm = T),
             AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
@@ -1083,12 +1016,15 @@ TreeMorphology.04 <- Arb.04 |>
             AvgCrownArea = mean(AreaCopa, na.rm = T),
             X=mean(X),
             Y=mean(Y)) |> 
-  mutate(File = "1") 
-
-View(TreeMorphology.04)
+  relocate(Plot_ID)
 
 
+# Complete Diagnostics Dataset (excluding Biomass; 12/22/2023)
 
+Selection <- left_join(Diagnostics.1, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> 
+  relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
 
+View(Selection)
 
+write.csv(Selection, "INFyS_Selection.csv")
 
