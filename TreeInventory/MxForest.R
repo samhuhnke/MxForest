@@ -789,12 +789,11 @@ PlotSR.04 <- Arb.04 |>
             Conglomerado = mean(Conglomerado),
             Sitio = mean(Sitio),
             species_count=n_distinct(NombreCientifico_APG),
-            total_abundance= n(),
+            total_entries= n(),
             X=mean(X),
             Y=mean(Y)) |> 
   mutate(File = "1")
 
-View(PlotSR.04)
 
 PlotSR.04 |> ggplot(aes(x= species_count)) +
   geom_histogram(binwidth = 1) +
@@ -804,10 +803,10 @@ PlotSR.04 |> ggplot(aes(x= species_count)) +
 PlotSR.04 |> ggplot(aes(x= species_count)) +
   stat_ecdf(geom = "step")
 
-PlotSR.04 |> ggplot(aes(x= total_abundance)) +
+PlotSR.04 |> ggplot(aes(x= total_entries)) +
   geom_histogram(binwidth = 1)
 
-PlotSR.04 |> ggplot(aes(x= total_abundance)) +
+PlotSR.04 |> ggplot(aes(x= total_entries)) +
   stat_ecdf(geom = "step")
 
 # 09
@@ -818,7 +817,7 @@ PlotSR.09 <- Arb.09 |>
             Conglomerado = mean(Conglomerado),
             Sitio = mean(Sitio),
             species_count=n_distinct(NombreCientifico_APG),
-            total_abundance= n(),
+            total_entries= n(),
             X=mean(X),
             Y=mean(Y)) |> 
   mutate(File = "2")
@@ -829,10 +828,10 @@ PlotSR.09 |> ggplot(aes(x= species_count)) +
 PlotSR.09 |> ggplot(aes(x= species_count)) +
   stat_ecdf(geom = "step")
 
-PlotSR.09 |> ggplot(aes(x= total_abundance)) +
+PlotSR.09 |> ggplot(aes(x= total_entries)) +
   geom_histogram(binwidth = 1)
 
-PlotSR.09 |> ggplot(aes(x= total_abundance)) +
+PlotSR.09 |> ggplot(aes(x= total_entries)) +
   stat_ecdf(geom = "step")
 
 # 14
@@ -843,7 +842,7 @@ PlotSR.14 <- Arb.14 |>
             Conglomerado = mean(Conglomerado),
             Sitio = mean(Sitio),
             species_count=n_distinct(NombreCientifico_APG),
-            total_abundance= n(),
+            total_entries= n(),
             X=mean(X),
             Y=mean(Y)) |> 
   mutate(File = "3")
@@ -854,17 +853,27 @@ PlotSR.14 |> ggplot(aes(x= species_count)) +
 PlotSR.14 |> ggplot(aes(x= species_count)) +
   stat_ecdf(geom = "step")
 
-PlotSR.14 |> ggplot(aes(x= total_abundance)) +
+PlotSR.14 |> ggplot(aes(x= total_entries)) +
   geom_histogram(binwidth = 1)
 
-PlotSR.14 |> ggplot(aes(x= total_abundance)) +
+PlotSR.14 |> ggplot(aes(x= total_entries)) +
   stat_ecdf(geom = "step")
 
 
-#merging
-PlotSR <- rbind(PlotSR.04, PlotSR.09, PlotSR.14)
+#merging ########################################### DATA ON PLOT LEVEL #############
+PlotSR <- rbind(PlotSR.04, PlotSR.09, PlotSR.14) |> 
+  mutate(Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep= "_"))
 
 View(PlotSR)
+
+# Species Richness per Plot
+PlotSR |> 
+  ggplot(aes(x = species_count, fill = File)) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
+  labs(x = "Species Count per Plot",
+       y = "Plot Count",
+       title = "Frequency Distribution of Species Richness") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
 PlotSR |> 
   ggplot(aes(x = species_count, colour = File)) +
@@ -876,9 +885,21 @@ PlotSR |>
 
 PlotSR |> 
   ggplot(aes(x= species_count, colour = File)) +
-  stat_ecdf(geom = "step") +
+  stat_ecdf(geom = "smooth") +
   labs(x = "Species Count per Plot",
        y = "") 
+
+# Total Entries per Plot 
+PlotSR |> ggplot(aes(x= total_entries, fill = File)) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.3)
+
+PlotSR |> 
+  ggplot(aes(x = total_entries, colour = File)) +
+  geom_freqpoly(binwidth = 1)
+
+
+PlotSR |> ggplot(aes(x= total_entries, colour = File)) +
+  stat_ecdf(geom = "step")
 
 
 
@@ -895,7 +916,7 @@ PlotSA.04 <- Arb.04 |>
             abundance=n(),
             X=mean(X),
             Y=mean(Y)) |> 
-  mutate(File = "1")
+  mutate(File = "1") 
 
 PlotSA.04 |> ggplot(aes(x= abundance)) +
   geom_histogram(binwidth = 1)
@@ -939,55 +960,78 @@ PlotSA.14 |> ggplot(aes(x= abundance)) +
 PlotSA.14 |> ggplot(aes(x= abundance)) +
   stat_ecdf(geom = "step")
 
-#merging
-PlotSA <- rbind(PlotSA.04, PlotSA.09, PlotSA.14)
+#merging ###################### DATA ON SPECIES LEVEL ##### NEEDED FOR EVENESS AND DIVERSITY #########################
+PlotSA <- rbind(PlotSA.04, PlotSA.09, PlotSA.14) |> 
+  mutate(Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep= "_"))
+
+View(PlotSA)
+
+PlotSA |> 
+  ggplot(aes(x = abundance, colour = File)) +
+  geom_freqpoly(binwidth = 1) +
+  labs(x = "Species Count per Plot",
+       y = "Plot Count",
+       title = "Frequency Distribution of Species Abundances") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
+
+PlotSA |> 
+  ggplot(aes(x= abundance, colour = File)) +
+  stat_ecdf(geom = "smooth") +
+  labs(x = "Species Count per Plot",
+       y = "") 
+
+
 View(PlotSA)
 
 
-#one data table
-Plot <- left_join(PlotSA, PlotSR, by= c("Conglomerado", "Sitio", "Anio", "File")) |>
-  mutate(Plot_ID = paste(Conglomerado, Sitio, Anio, sep= "_")) |> 
-  select(Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_abundance, X.x, Y.y, File)
+#one data table ###################### DATA ON SPECIES LEVEL ############################## ONLY TEMPORARY ##############
+Plot <- left_join(PlotSA, PlotSR, by= c("Plot_ID","File", "Conglomerado", "Sitio", "Anio" )) |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, X.x, Y.y)
+
 View(Plot)
+#######################################################################################################################
 
 
+## shannon index H + pielous eveness J - all 3 files ############### CREATED DATASETS MOSTLY TEMPORARY  ------------------------------------------------------------- 
 
-## shannon index H + pielous eveness J - all ------------------------------------------------------------- 
-
-## presence-absence dataset for species per plot (vales are abundances)
-temp.Shannon <- Plot |> 
+## presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
+temp.Shannon <- PlotSA |> 
   ungroup() |> 
   select(Plot_ID, NombreCientifico_APG, abundance) |> 
   pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
 
-# exchange NAs with Zeros
-df.Shannon <- temp.Shannon |> 
-  replace(is.na(temp.Shannon), 0) #|> 
-# select(everything(), -Plot_ID)            # not ideal
+# exchange NAs with Zeros ######### CAN BE USED FURTHER
+PresenceAbsence <- temp.Shannon |> 
+  replace(is.na(temp.Shannon), 0)
 
-# Calculate H using diversity() 
-H <- diversity(df.Shannon[,-1])
-H
+# Calculate Shannon-Index H using diversity()  ###### TEMPORARY
+H <- diversity(PresenceAbsence[,-1])
 
-# mockup eveness
-# calculate J
-J <- H/log(specnumber(df.Shannon[, -1]))
-J
+# calculate Eveness J ######## TEMPORARY
+J <- H/log(specnumber(PresenceAbsence[, -1]))
 
-# mockup table 
-diagnostics <- data.frame(df.Shannon$Plot_ID, H, J) |> 
-  rename(Plot_ID = df.Shannon.Plot_ID)
+# merging H and J into dataframe + renaming ID-Column to be in lign with other datasets
+diagnostics <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
+  rename(Plot_ID = PresenceAbsence.Plot_ID)
 
-Plot2 <- left_join(Plot, diagnostics, by= c("Plot_ID")) |> 
-  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_abundance, H, J, X.x, Y.y)
 
+# merged data table #################### DATA ON SPECIES LEVEL ########################### MIGHT BE SKIPPED ###############################
+Plot1 <- left_join(PlotSR, PLotSA, diagnostics, by= c("Plot_ID")) |> 
+  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, H, J, X.x, Y.y)
+
+
+# merged data table #################### DATA ON PLOT LEVEL ############################
+Plot2 <- left_join(PlotSR, diagnostics, by= c("Plot_ID")) |> 
+  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, X, Y)
+
+View(Plot2)
 
 # plots shannon-index
 Plot2 |> 
   select(File, Plot_ID, H) |> 
   group_by(Plot_ID) |> 
   ggplot(aes(x= H, fill = File)) +
-  geom_histogram()
+  geom_histogram(position = "identity", alpha = 0.3)
 
 Plot2 |> 
   select(File, Plot_ID, H) |> 
@@ -995,12 +1039,19 @@ Plot2 |>
   ggplot(aes(x= H, colour = File)) +
   geom_freqpoly()
 
+Plot2 |> 
+  select(File, Plot_ID, H) |> 
+  group_by(Plot_ID) |> 
+  ggplot(aes(x= H, colour = File)) +
+  stat_ecdf(geom = "step")
+
+
 # plots pielou eveness
 Plot2 |> 
   select(File, Plot_ID, J) |> 
   group_by(Plot_ID) |> 
   ggplot(aes(x = J, fill = File)) +
-  geom_histogram()
+  geom_histogram(position = "identity", alpha = 0.3)
 
 Plot2 |> 
   select(File, Plot_ID, J) |> 
@@ -1008,7 +1059,33 @@ Plot2 |>
   ggplot(aes(x= J, colour = File)) +
   geom_freqpoly()
 
+Plot2 |> 
+  select(File, Plot_ID, J) |> 
+  group_by(Plot_ID) |> 
+  ggplot(aes(x= J, colour = File)) +
+  stat_ecdf(geom = "step")
 
+
+
+# Average Tree Height, DbH, Crown Area, Crown Diameter per Plot + Variance maybe? 
+
+View(Arb.04)
+
+TreeMorphology.04 <- Arb.04 |> 
+  group_by(Conglomerado, Sitio) |> 
+  summarise(Anio = mean(Anio),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
+            AvgDbh = mean(DiametroNormal, na.rm = T),
+            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
+            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),
+            AvgCrownArea = mean(AreaCopa, na.rm = T),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  mutate(File = "1") 
+
+View(TreeMorphology.04)
 
 
 
