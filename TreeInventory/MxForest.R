@@ -1103,49 +1103,35 @@ View(C_TreeMorp)
 # Example: for Tree Height Means are on average -20cm compared to Median
 
 # Means
-C_TreeMorpMeans <- merged |> 
+C_TreeMorp <- merged |> 
   group_by(File, Conglomerado) |> 
   summarise(File = mean(as.integer(File)),
             Conglomerado = mean(Conglomerado),
             Anio = mean(Anio),
             Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
             AvgTreeHeight = mean(AlturaTotal, na.rm = T),
+            Med_AvgTreeHeight = median(AlturaTotal, na.rm = T),
             AvgDbh = mean(DiametroNormal, na.rm = T),
+            Med_AvgDbh = median(DiametroNormal, na.rm = T),
             AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
-            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),
+            Med_AvgCrownDiameter = median(DiametroCopa, na.rm = T),
+            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),          # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
+            Med_AvgCrownHeight = median(AlturaTotal - AlturaFusteLimpio, na.rm = T),    # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
             AvgCrownArea = mean(AreaCopa, na.rm = T),
+            Med_AvgCrownArea = median(AreaCopa, na.rm = T),
             X=mean(X),
             Y=mean(Y)) |> 
   relocate(Cluster_ID)
-
-# Meadians
-C_TreeMorpMedians <- merged |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Anio = mean(Anio),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
-            AvgTreeHeight = median(AlturaTotal, na.rm = T),
-            AvgDbh = median(DiametroNormal, na.rm = T),
-            AvgCrownDiameter = median(DiametroCopa, na.rm = T),
-            AvgCrownHeight = median(AlturaTotal - AlturaFusteLimpio, na.rm = T),
-            AvgCrownArea = median(AreaCopa, na.rm = T),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  relocate(Cluster_ID)
-
 
 
 # COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 12/22/2023) ###########  PLOT-LEVEL ######################################
 
-Comp_Plot_Mean_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> 
+Comp_Plot_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> #still missing median values
   relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
 
-Comp_C_Mean_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorpMeans, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
-  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
+Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
+  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, 
+           AvgTreeHeight, Med_AvgTreeHeight, AvgDbh, Med_AvgDbh, AvgCrownDiameter, Med_AvgCrownDiameter, AvgCrownHeight, Med_AvgCrownHeight, AvgCrownArea, Med_AvgCrownArea, X, Y)
 
-Comp_C_Median_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorpMedian, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
-  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
-
-#write.csv(Selection, "INFyS_Selection.csv")
+write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
 
