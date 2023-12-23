@@ -640,7 +640,7 @@ Absolute.Disturbance |>
   
   
 
-## Metadata  analysis ---------------------------------------------------------------------
+## METADATA ANALYSIS #######################################################
 
 # Raw.04
 ## count all NAs per column
@@ -695,7 +695,6 @@ describe(Raw.09)
 
 
 
-
 # Raw.14
 # count all NAs per column
 NAs <- Raw.14 |> 
@@ -725,13 +724,13 @@ describe(Raw.14)
 View(Arb.04)
 View(Arb.14)
 
+##### METADATA ANALYSIS END #################################################
 
 
 
 
 
-
-# species richness by cluster + preparation for geospaptial analysis --------------------------------------------------
+##### SPECIES RICHNESS BY CLUSTER + PREPARATION FOR GEOSPATIAL ANALYSIS ###################
 
 ## Arb.04
 ArbSpat.04 <- Arb.04 |> 
@@ -779,8 +778,9 @@ plot(ArbSpat.14)
 
 
 
-# SPECIES RICHNESS + TOTAL INDIVIDUAL ENTRIES PER PLOT ################### DATA ON PLOT LEVEL####################
+# SPECIES RICHNESS + TOTAL INDIVIDUAL ENTRIES #######################################
 
+#### DATA ON PLOT LEVEL
 SpecRich <- merged |> 
   select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
   group_by(File, Conglomerado, Sitio) |> 
@@ -795,8 +795,23 @@ SpecRich <- merged |>
             Y = mean(Y)) |> 
   relocate(Plot_ID)
 
+#### DATA ON CLUSTER LEVEL
+C_SpecRich <- merged |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            species_count = n_distinct(NombreCientifico_APG),
+            total_entries = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  relocate(Cluster_ID)
+
+
 ## Plotting ------------------------------------------------
-# for individual file plots -------------
+# for individual file  -------------
 SpecRich |> 
   subset(File == 1) |>              # Enter 1, 2, or 3
   ggplot(aes(x= species_count)) +
@@ -819,9 +834,9 @@ SpecRich |>
   ggplot(aes(x= total_entries)) +
   stat_ecdf(geom = "step")
 
-# for combined plots ------------
-# Species Richness per Plot
-SpecRich |> 
+# for combined data ------------
+# Species Richness 
+SpecRich |>                         # Use "SpecRich" or "C_SpecRich" 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x = species_count, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
@@ -830,7 +845,7 @@ SpecRich |>
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-SpecRich |> 
+SpecRich |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x = species_count, colour = File)) +
   geom_freqpoly(binwidth = 1) +
@@ -839,25 +854,25 @@ SpecRich |>
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-SpecRich |> 
+SpecRich |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= species_count, colour = File)) +
-  stat_ecdf(geom = "smooth") +
+  stat_ecdf(geom = "step") +
   labs(x = "Species Count per Plot",
        y = "") 
 
-# Total Entries per Plot 
-SpecRich|> 
+# Total Entries 
+SpecRich|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= total_entries, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3)
 
-SpecRich|> 
+SpecRich|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |>  
   ggplot(aes(x = total_entries, colour = File)) +
   geom_freqpoly(binwidth = 1)
 
-SpecRich|> 
+SpecRich|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= total_entries, colour = File)) +
   stat_ecdf(geom = "step")
@@ -866,7 +881,9 @@ SpecRich|>
 
 
 
-# SPECIES ABUNDANCES PER PLOT ############### DATA ON SPECIES LEVEL ########## NEEDED FOR SHANNON AND EVENESS #################
+# SPECIES ABUNDANCES ############### DATA ON SPECIES LEVEL ########## NEEDED FOR SHANNON AND EVENESS #################
+
+#### DATA CALCULATED PER PLOT #############
 SpecAbun <- merged |> 
   select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
   group_by(File, Conglomerado, Sitio, NombreCientifico_APG) |> 
@@ -879,6 +896,20 @@ SpecAbun <- merged |>
             X=mean(X),
             Y=mean(Y)) |> 
   relocate(Plot_ID)
+
+#### DATA CALCULATED PER CLUSTER ############
+C_SpecAbun <- merged |> 
+  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, NombreCientifico_APG) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            abundance=n(),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Cluster_ID)
+
 
 ## Plotting ------------------------------------------------
 # for individual file plots -------------
@@ -893,7 +924,7 @@ SpecAbun |>
   stat_ecdf(geom = "step")
 
 # for combined plots ------------
-SpecAbun |> 
+C_SpecAbun |>                         # Enter "SpecAbun" or "C_SpecAbun" 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x = abundance, colour = File)) +
   geom_freqpoly(binwidth = 1) +
@@ -902,7 +933,7 @@ SpecAbun |>
        title = "Frequency Distribution of Species Abundances") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-SpecAbun |> 
+C_SpecAbun |>                         # Enter "SpecAbun" or "C_SpecAbun" 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= abundance, colour = File)) +
   stat_ecdf(geom = "smooth") +
@@ -917,91 +948,117 @@ Temp.Control <- left_join(SpecAbun, SpecRich, by= c("Plot_ID","File", "Conglomer
 View(Temp.Control)
 
 
-## shannon index H + pielous eveness J - all 3 files ############### CREATED DATASETS MOSTLY TEMPORARY  ------------------------------------------------------------- 
+## SHANNON INDEX H + PIELOU EVENESS J - all 3 files ############### CREATED DATASETS MOSTLY TEMPORARY  #######################################
 
-## presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
+## STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
+#### DATA ON PLOT LEVEL
 Temp.Shannon <- SpecAbun |> 
   ungroup() |> 
   select(Plot_ID, NombreCientifico_APG, abundance) |> 
   pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
 
-# exchange NAs with Zeros ######### CAN BE USED FURTHER
+#### DATA ON CLUSTER LEVEL
+C_Temp.Shannon <- C_SpecAbun |> 
+  ungroup() |> 
+  select(Cluster_ID, NombreCientifico_APG, abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+# STEP 2: exchange NAs with Zeros ######### CAN BE USED FURTHER --------------------------------------------------------------------------
+#### DATA ON PLOT LEVEL
 PresenceAbsence <- Temp.Shannon |> 
   replace(is.na(Temp.Shannon), 0)
 
-# Calculate Shannon-Index H using diversity()  ###### TEMPORARY
+#### DATA ON CLUSTER LEVEL
+C_PresenceAbsence <- C_Temp.Shannon |> 
+  replace(is.na(C_Temp.Shannon), 0)
+
+# STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY --------------------------------------------------------------------
+#### DATA ON PLOT LEVEL
 H <- diversity(PresenceAbsence[,-1])
 
-# calculate Eveness J ######## TEMPORARY
+#### DATA ON CLUSTER LEVEL
+H <- diversity(C_PresenceAbsence[,-1])
+
+# STEP 4: calculate Eveness J ######## TEMPORARY ----------------------------------------------------------------------------------------
+#### DATA ON PLOT LEVEL
 J <- H/log(specnumber(PresenceAbsence[, -1]))
 
-# merging H and J into dataframe + renaming ID-Column to be in lign with other datasets
+#### DATA ON CLUSTER LEVEL
+J <- H/log(specnumber(C_PresenceAbsence[, -1]))
+
+# STEP 5: merging H and J into dataframe + renaming ID-Column to be in lign with other datasets ---------------------------------------------
 Temp.HJ <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
   rename(Plot_ID = PresenceAbsence.Plot_ID)
 
+C_Temp.HJ <- data.frame(C_PresenceAbsence$Cluster_ID, H, J) |> 
+  rename(Cluster_ID = C_PresenceAbsence.Cluster_ID)
 
-# merged data table #################### DATA ON SPECIES LEVEL ########################### MIGHT BE SKIPPED ###############################
-Plot1 <- left_join(SpecRich, SpecAbun, Temp.HJ, by= c("Plot_ID")) |> 
+# merged data table #################### DATA ON SPECIES LEVEL ########################### CAN BE SKIPPED ###############################
+SpecDiagnostics <- left_join(SpecRich, SpecAbun, Temp.HJ, by= c("Plot_ID")) |> 
   select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, H, J, X.x, Y.y)
 
-# merged data table #################### DATA ON PLOT LEVEL ############################
-Diagnostics.1 <- left_join(SpecRich, Temp.HJ, by= c("Plot_ID")) |> 
+# STEP 6: merged data table #################### DATA ON PLOT LEVEL ############################
+#### DATA ON PLOT LEVEL
+PlotDiagnostics <- left_join(SpecRich, Temp.HJ, by= c("Plot_ID")) |> 
   select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, X, Y)
 
+#### DATA ON CLUSTER LEVEL
+ClusterDiagnostics <- left_join(C_SpecRich, C_Temp.HJ, by= c("Cluster_ID")) |> 
+  select(File, Cluster_ID, Conglomerado, Anio, species_count, total_entries, H, J, X, Y)
 
 
 
-# plots shannon-index
-Diagnostics.1 |> 
+# plots shannon-index ---------------------------------------------------------------------------------------------------------------------
+ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
   mutate(File = as.factor(File)) |> 
-  select(File, Plot_ID, H) |> 
-  group_by(Plot_ID) |> 
+  select(File, Cluster_ID, H) |>                      # Enter "Plot_ID" or "Cluster_ID" 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-Diagnostics.1 |> 
+PlotDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Plot_ID, H) |> 
-  group_by(Plot_ID) |> 
+  select(File, Plot_ID, H) |>                      # Enter "Plot_ID" or "Cluster_ID" 
+  group_by(Plot_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, colour = File)) +
   geom_freqpoly()
 
-Diagnostics.1 |> 
+ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Plot_ID, H) |> 
-  group_by(Plot_ID) |> 
+  select(File, Cluster_ID, H) |>                      # Enter "Plot_ID" or "Cluster_ID" 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, colour = File)) +
   stat_ecdf(geom = "step")
 
 
 # plots pielou eveness
-Diagnostics.1 |> 
+PlotDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Plot_ID, J) |> 
-  group_by(Plot_ID) |> 
+  select(File, Plot_ID, J) |>                      # Enter "Plot_ID" or "Cluster_ID" 
+  group_by(Plot_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x = J, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-Diagnostics.1 |> 
+PlotDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Plot_ID, J) |> 
-  group_by(Plot_ID) |> 
+  select(File, Plot_ID, J) |>                      # Enter "Plot_ID" or "Cluster_ID" 
+  group_by(Plot_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= J, colour = File)) +
   geom_freqpoly()
 
-Diagnostics.1 |> 
+PlotDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Plot_ID, J) |> 
-  group_by(Plot_ID) |> 
+  select(File, Plot_ID, J) |>                      # Enter "Plot_ID" or "Cluster_ID" 
+  group_by(Plot_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= J, colour = File)) +
   stat_ecdf(geom = "step")
 
 
 
-# Average Tree Height, DbH, Crown Area, Crown Diameter per Plot + Variance maybe? 
+# TREE MORPHOLOGY DATA - AVERAGES OVER INDIVIDUAL PLOTS ##############################
 
-View(Arb.04)
-
+#### DATA ON PLOT LEVEL
+# Means
 TreeMorp <- merged |> 
   group_by(File, Conglomerado, Sitio) |> 
   summarise(File = mean(as.integer(File)),
@@ -1019,12 +1076,76 @@ TreeMorp <- merged |>
   relocate(Plot_ID)
 
 
-# Complete Diagnostics Dataset (excluding Biomass; 12/22/2023)
+#### DATA ON CLUSTER LEVEL ----- calculated by plot means
+# need more analysis which one makes more sense - or what the effects of this are -> think it depends on whether you see the plot or cluster as the most basic unit
+C2_TreeMorp <- TreeMorp |>           
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            AvgTreeHeight_2 = mean(AvgTreeHeight, na.rm = T),
+            AvgDbh_2 = mean(AvgDbh, na.rm = T),
+            AvgCrownDiameter_2 = mean(AvgCrownDiameter, na.rm = T),
+            AvgCrownHeight_2 = mean(AvgCrownHeight, na.rm = T),
+            AvgCrownArea_2 = mean(AvgCrownArea, na.rm = T),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Cluster_ID)
 
-Selection <- left_join(Diagnostics.1, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> 
+View(C2_TreeMorp)
+View(C_TreeMorp)
+
+
+
+#### DATA ON CLUSTER LEVEL ----- calculated by individual entries
+# need more thought going into whether to use means or medians
+# Example: for Tree Height Means are on average -20cm compared to Median
+
+# Means
+C_TreeMorpMeans <- merged |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
+            AvgDbh = mean(DiametroNormal, na.rm = T),
+            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
+            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),
+            AvgCrownArea = mean(AreaCopa, na.rm = T),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Cluster_ID)
+
+# Meadians
+C_TreeMorpMedians <- merged |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            AvgTreeHeight = median(AlturaTotal, na.rm = T),
+            AvgDbh = median(DiametroNormal, na.rm = T),
+            AvgCrownDiameter = median(DiametroCopa, na.rm = T),
+            AvgCrownHeight = median(AlturaTotal - AlturaFusteLimpio, na.rm = T),
+            AvgCrownArea = median(AreaCopa, na.rm = T),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Cluster_ID)
+
+
+
+# COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 12/22/2023) ###########  PLOT-LEVEL ######################################
+
+Comp_Plot_Mean_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> 
   relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
 
-View(Selection)
+Comp_C_Mean_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorpMeans, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
+  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
 
-write.csv(Selection, "INFyS_Selection.csv")
+Comp_C_Median_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorpMedian, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
+  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
+
+#write.csv(Selection, "INFyS_Selection.csv")
 
