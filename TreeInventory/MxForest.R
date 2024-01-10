@@ -17,15 +17,14 @@ library(vegan)      #for shannon-index and pielou-eveness
 # categorical values should pot. be represented as factors in R (like VigorEtapa)
 
 
-# Analysis: TotalDiameter of ds, mean(diameter) of ds, -> sampled by randomly selected rows -< equual data amount of each ds
+# Analysis: TotalDiameter of ds, mean(diameter) of ds, -> sampled by randomly selected rows -> equal data amount of each ds
 # -> mutate(Mean_XY = mean(xy, na.rm = T)
 # Analysis: heat map of coordniates and tree count (x=x, y=y and color/size of dot = tree count), for example
 # Analysis: amount of disturbances by type and severity
 # Analysis: Scatterplot by numeric values -> color: VigorEtapa, Family (or sorting by family and color by species?), Estado (categorical values)
 
 
-
-# tree inventory data from 2004 - 2020 --------------------------------------------
+###### 1) LOAD RAW DATA ------------------------------------------------------------
 
 ## 2004 - 2007 -> changing "NULL" character values to NA
 Raw.04 <- fread(here("data", "arbolado", "INFyS_Arbolado_2004_2007.csv"), na.strings = "NULL")
@@ -37,9 +36,9 @@ Raw.09 <- fread(here("data", "arbolado", "INFyS_Arbolado_2009_2014.csv"), na.str
 Raw.14 <- readxl::read_xlsx(here("data", "arbolado", "INFYS_Arbolado_2015_2020.xlsx"), sheet= 1, na = c("NULL", "999991", "999993"))
 
 
-##----------------------------------------------------------------------------------------------------------------
-## Arb.04 Data cleaning ------------------------------------------------------------------------------------------
+###### 2) DATA CLEANING ------------------------------------------------------------
 
+## Arb.04
 Arb.04 <- Raw.04 |>  
 # normalizing names
   rename(cgl_sit_reg = cgl_sit_arb,
@@ -116,11 +115,8 @@ Arb.04 <- Raw.04 |>
 # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
-##----------------------------------------------------------------------------------------------------------------
 
-##----------------------------------------------------------------------------------------------------------------
-## Arb.09 Data cleaning ------------------------------------------------------------------------------------------
-
+## Arb.09 
 Arb.09 <- Raw.09 |> 
 # nomralizing names
   rename(cgl_sit_reg = cgl_sit_arb,
@@ -328,11 +324,7 @@ Arb.09 <- Raw.09 |>
   arrange(Estado, Conglomerado, Sitio, Registro) 
 
 
-##----------------------------------------------------------------------------------------------------------------
-
-##----------------------------------------------------------------------------------------------------------------
-## Arb.14 Data cleaning ------------------------------------------------------------------------------------------
-
+## Arb.14 
 Arb.14 <- Raw.14 |> 
 # nomralizing names
   rename(Anio = Anio_C3,
@@ -450,16 +442,9 @@ Arb.14 <- Raw.14 |>
 
 
 
+###### 3) MERGE FILES FOR OVERLAPPING VARIABLES ------------------------------------------------------
 
-
-
-
-#-----------------------------------------------------------------------------------------------------------------
-
-
-#-----------------------------------------------------------------------------------------------------------------
-## Merging files together for selected variables -----------------------------------------------------------------
-
+#Arb.04
 M.04 <- Arb.04 |>
   mutate(CveVeg = CveVeg_S5,
          TipoVeg = TipoVeg_S5) |> 
@@ -469,6 +454,7 @@ M.04 <- Arb.04 |>
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
 
+#Arb.09
 M.09 <- Arb.09 |>
   mutate(CveVeg = CveVeg_S5,
          TipoVeg = TipoVeg_S5) |> 
@@ -478,6 +464,7 @@ M.09 <- Arb.09 |>
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
 
+#Arb.14
 M.14 <- Arb.14 |>
   mutate(cgl_sit_reg = NA,
          CveVeg = CveVeg_S7,
@@ -488,15 +475,14 @@ M.14 <- Arb.14 |>
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y)
 
+#merge
 merged <- rbind(M.04, M.09, M.14) |> 
   mutate(Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_")) |> 
   select(Plot_ID, File, Conglomerado, Sitio, Anio, everything())
 
 
 
-##-----------------------------------------------------------------------------------------------------------
-
-# Exploratory Data Analysis (Figures) ---------------------------------------------------------
+###### 4) FIRST EDA - can be skipped --------------------------
 
 # Fig.1.1 Total most Common Families (by file) 
 merged |> 
@@ -640,7 +626,7 @@ Absolute.Disturbance |>
   
   
 
-## METADATA ANALYSIS #######################################################
+###### 5) METADATA ANALYSIS - can be skipped --------------------------------------------------------
 
 # Raw.04
 ## count all NAs per column
@@ -724,13 +710,7 @@ describe(Raw.14)
 View(Arb.04)
 View(Arb.14)
 
-##### METADATA ANALYSIS END #################################################
-
-
-
-
-
-##### SPECIES RICHNESS BY CLUSTER + PREPARATION FOR GEOSPATIAL ANALYSIS ###################
+###### 6) PREPARATION CODE FOR GEOSPATIAL ANALYSIS - optional -------------------
 
 ## Arb.04
 ArbSpat.04 <- Arb.04 |> 
@@ -776,10 +756,10 @@ plot(ArbSpat.14)
 #writeVector(ArbSpat.14, "treeInv_richness_14.shp")
 
 
+###### 7) EDA - optional -------------------------------------------------------
 
 
-# SPECIES RICHNESS + TOTAL INDIVIDUAL ENTRIES #######################################
-
+## Species Richness + Total Entries per plot/cluster
 #### DATA ON PLOT LEVEL
 SpecRich <- merged |> 
   select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
@@ -1102,7 +1082,6 @@ View(C_TreeMorp)
 # need more thought going into whether to use means or medians
 # Example: for Tree Height Means are on average -20cm compared to Median
 
-# Means
 C_TreeMorp <- merged |> 
   group_by(File, Conglomerado) |> 
   summarise(File = mean(as.integer(File)),
@@ -1134,4 +1113,16 @@ Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_I
            AvgTreeHeight, Med_AvgTreeHeight, AvgDbh, Med_AvgDbh, AvgCrownDiameter, Med_AvgCrownDiameter, AvgCrownHeight, Med_AvgCrownHeight, AvgCrownArea, Med_AvgCrownArea, X, Y)
 
 write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
+
+
+
+
+
+##### CHANGE DETECTION
+
+setwd("C:/Users/samhu/Desktop/Projects/MxForest")
+
+Results <- read.csv("./python/iMAD_results.csv", header=FALSE)
+hist(Results[,7], breaks=100)
+
 
