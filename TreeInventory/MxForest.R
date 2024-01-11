@@ -1009,7 +1009,7 @@ SpecDiagnostics <- left_join(SpecRich, SpecAbun, Temp.HJ, by= c("Plot_ID")) |>
   select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, H, J, X.x, Y.y)
 
 
-###### 7.4) TREE MORPHOLOGY 
+###### 7.4) TREE MORPHOLOGY -----------------------------------------------
 
 #### DATA ON PLOT LEVEL
 # Means
@@ -1082,7 +1082,7 @@ C_TreeMorp |>
   ggplot(aes(x= AvgCrownArea, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-# COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 12/22/2023) ###########  PLOT-LEVEL ######################################
+###### 7.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024) ----------------------------
 
 Comp_Plot_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> #still missing median values
   relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
@@ -1093,13 +1093,304 @@ Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_I
 
 View(Comp_C_Diagnostics)
 
-write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
+# write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
+
+
+
+###### 8) METADATE STUFF ----------------------------------------
+
+# Adding the Number of Plots per Cluster ("Plots")
+PlotCounts <- merged |> 
+  group_by(File, Conglomerado, Sitio, X, Y) |> 
+  count() |>
+  ungroup() |> 
+  select(File, Conglomerado, Sitio, X, Y) |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.numeric(File)),
+            Conglomerado = mean(Conglomerado),
+            X = mean(X),
+            Y = mean(Y),
+            Plots = n())
+
+PlotCounts
+
+# combined dataset
+Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("File", "Conglomerado")) |> 
+  select(everything(), -c("X.y", "Y.y")) |> 
+  rename(X = X.x,
+         Y = Y.x)
+  
+View(Comp_C_Diagnostics_V2)
+
+#correlation of number of plots per cluster with total entries per cluster - scatterplot
+Comp_C_Diagnostics_V2 |>
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= Plots, y= total_entries, color = File)) +
+  geom_point(alpha = 0.3, position = "jitter") 
+
+#correlation of number of plots per cluster with total entries per cluster - boxplots
+Comp_C_Diagnostics_V2 |> 
+  mutate(Plots = as.factor(Plots),
+         File = as.factor(File)) |> 
+  ggplot(aes(x = Plots, y = total_entries)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  labs(x = "Plots per Cluster",
+       y = "Individual Trees per Cluster")
+
+Comp_C_Diagnostics_V2 |> 
+  mutate(Plots = as.factor(Plots),
+         File = as.factor(File)) |> 
+  ggplot(aes(x = Plots, y = total_entries, fill = File)) +
+  geom_boxplot(position = "dodge",
+               outlier.alpha = 0.2) +
+  labs(x = "Plots per Cluster",
+       y = "Individual Trees per Cluster")
+
+#frequency distribution of total entries per cluster by number of plots per cluster - histogram
+Comp_C_Diagnostics_V2 |> 
+  mutate(Plots = as.factor(Plots)) |> 
+  ggplot(aes(x= total_entries)) +
+  geom_histogram(binwidth = 1) +
+  labs(x= "Individual Trees per Cluster")
+
+#frequency distribution of total entries per cluster by number of plots per cluster - histogram
+Comp_C_Diagnostics_V2 |> 
+  mutate(Plots = as.factor(Plots)) |> 
+  ggplot(aes(x= total_entries, fill = Plots)) +
+  geom_histogram(alpha = 0.3, binwidth = 1) +
+  labs(x= "Individual Trees per Cluster")
+
+#frequency distribution of total entries per cluster by number of plots per cluster - histogram
+Comp_C_Diagnostics_V2 |> 
+  mutate(Plots = as.factor(Plots)) |> 
+  ggplot(aes(x= total_entries, fill = Plots)) +
+  geom_histogram(position = "identity", alpha = 0.3, binwidth = 1) +
+  labs(x= "Individual Trees per Cluster") +
+  facet_grid(~File)
+
+
+View(Comp_C_Diagnostics_V2)
+
+#frequency distribution of total entries per cluster by number of plots per cluster - freqpoly
+Comp_C_Diagnostics_V2 |> 
+  mutate(Plots = as.factor(Plots)) |> 
+  ggplot(aes(x= total_entries, color = Plots)) +
+  geom_freqpoly()
+
+
+# Number of clusters by their availability across cycles
+Comp_C_Diagnostics_V2 |> 
+  select(Cluster_ID, File, Conglomerado, Anio, Plots, X, Y) |> 
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  #count()
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X), 
+            Y = mean(Y)) |>
+  mutate(n = as.factor(n)) #|> 
+  ggplot(aes(x= X, y= Y, color = n)) +
+  geom_point(alpha = 0.2)
+  
+
+Comp_C_Diagnostics_V2 |> 
+  select(Cluster_ID, File, Conglomerado, Anio, Plots, X, Y) |> 
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  #count()
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X), 
+            Y = mean(Y)) |>
+  mutate(n = as.factor(n)) |> 
+  ggplot(aes(x= X, y= Y, color = n)) +
+  geom_point() +
+  facet_grid(~n)
+
+
+# number of clusters available for each cycle per plot count 
+#4 plots
+All4 <- Comp_C_Diagnostics_V2 |> 
+  select(File, Conglomerado, Anio, Plots, X, Y) |> 
+  filter(Plots == 4) |>                           #insert 1, 2, 3, 4
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  rename(n_cycles_four = n) 
+
+# 3 plots
+All3 <- Comp_C_Diagnostics_V2 |> 
+  select(File, Conglomerado, Anio, Plots, X, Y) |> 
+  filter(Plots == 3) |>                           #insert 1, 2, 3, 4
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  rename(n_cycles_three = n) 
+
+
+# 2 plots
+All2 <- Comp_C_Diagnostics_V2 |> 
+  select(File, Conglomerado, Anio, Plots, X, Y) |> 
+  filter(Plots == 2) |>                           #insert 1, 2, 3, 4
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  rename(n_cycles_two = n) 
+
+# 1 plot
+All1 <- Comp_C_Diagnostics_V2 |> 
+  select(File, Conglomerado, Anio, Plots, X, Y) |> 
+  filter(Plots == 1) |>                           #insert 1, 2, 3, 4
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  rename(n_cycles_one = n) 
+
+
+# adding all the 
+Test <- left_join(Comp_C_Diagnostics_V2, All4, by = c("Conglomerado")) |> 
+  select(everything(), -c("X.y", "Y.y")) |> 
+  arrange(Conglomerado)
+
+
+Test2 <- left_join(Test, All3, by = c("Conglomerado")) |> 
+  select(everything(), -c("X", "Y")) |> 
+  arrange(Conglomerado)
+
+
+Test3 <- left_join(Test2, All2, by = c("Conglomerado")) |> 
+  select(everything(), -c("X", "Y")) |> 
+  arrange(Conglomerado)
+
+
+Test4 <- left_join(Test3, All1, by = c("Conglomerado")) |> 
+  select(everything(), -c("X", "Y")) |> 
+  arrange(Conglomerado)
+
+Comp_C_Diagnostics_V3 <- Test4 |> 
+  mutate(Consistent = case_when(n_cycles_four == 3 ~ T, n_cycles_four <= 2 ~ F,
+                                n_cycles_three == 3 ~ T, n_cycles_three <= 2 ~ F,
+                                n_cycles_two == 3 ~ T, n_cycles_two <= 2 ~ F,
+                                n_cycles_one == 3 ~ T, n_cycles_one <= 2 ~ F))
+
+View(Comp_C_Diagnostics_V3)
+
+Comp_C_Diagnostics_V3 |> 
+  filter(Consistent == T) |> 
+  select(Cluster_ID, File, Conglomerado, Anio, Plots, X, Y) |> 
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X), 
+            Y = mean(Y)) |>
+  mutate(n = as.factor(n)) |> 
+  ggplot(aes(x= X, y= Y, color = n)) +
+  geom_point() +
+  facet_grid(~n)
+
+Comp_C_Diagnostics_V4 |> 
+  filter(Consistent == T) |>
+  select(File, Conglomerado, Anio, X, Y, cycles, Plots) |> 
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            X = mean(X), 
+            Y = mean(Y),
+            Plots = mean(Plots),
+            cycles = mean(cycles)) |> 
+  mutate(Plots = as.factor(Plots)) |> 
+  ggplot(aes(x= X, y= Y, color = Plots)) +
+  geom_point() +
+  facet_grid(~Plots)
+  
+
+
+CycleAvailability <- Comp_C_Diagnostics_V2 |> 
+  select(Cluster_ID, File, Conglomerado, Anio, Plots, X, Y) |> 
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  #count()
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X), 
+            Y = mean(Y)) |> 
+  rename(cycles = n)
+
+CycleAvailability |> 
+  filter(cycles == 1)
 
 
 
 
+# most up to date dataset
+Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, CycleAvailability, by = c("Conglomerado")) |> 
+  select(everything(), -c("X", "Y")) |> 
+  rename(X = X.x, Y = Y.x) |> 
+  arrange(Conglomerado)
 
-##### CHANGE DETECTION
+View(Comp_C_Diagnostics_V4)
+
+
+  
+  
+  
+
+#plot
+Comp_C_Diagnostics_V2 |> 
+  select(File, Conglomerado, Anio, Plots, X, Y) |> 
+  filter(Plots == 4) |>                           #insert 1, 2, 3, 4
+  group_by(Conglomerado) |> 
+  arrange(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            n = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  rename(n_cycles_full = n) |> 
+  filter(n_cycles_full == 3) |> 
+  ggplot(aes(x = X, y = Y)) + 
+  geom_point()
+  
+
+UnevenPlots_V2
+
+#merge into one big dataset 
+Comp_C_Diagnostics_V3 <- left_join(Comp_C_Diagnostics_V2, UnevenPlots, by = c("Conglomerado")) |> 
+  select(everything(), -c("X.y", "Y.y")) |> 
+  rename(X = X.x, Y = Y.x)
+
+View(Comp_C_Diagnostics_V3)
+
+
+
+
+merged |> 
+  select(Conglomerado) |> 
+  distinct() |> 
+  count()
+
+Comp_C_Diagnostics_V2 |> 
+  filter(Plots <= 3) |> 
+  mutate(Plots = as.factor(Plots)) |> 
+  select(Cluster_ID, File, Conglomerado, Anio, Plots, X, Y) |> 
+  ggplot(aes(x = X, y = Y, color = Plots)) +
+  geom_point()
+
+
+
+###### 9) MULTIVARIATE CHANGE DETECTION - data from python -----------------
 
 setwd("C:/Users/samhu/Desktop/Projects/MxForest")
 
