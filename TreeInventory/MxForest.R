@@ -1,21 +1,9 @@
 
 ### MxForestInventory Data Cleansing --------------------------------------
 
-# neccesary packages 
-
-
-
-library(data.table) #fread()
-library(readxl)     #read_xlsx()
-library(here)       #here()
-library(tidyverse)  #data tidying
-library(ggridges)   #geom_density_ridges()
-library(terra)      #geo_spatial coordinates
-library(vegan)      #for shannon-index and pielou-eveness
-
+#### RANDOM NOTES
 
 # categorical values should pot. be represented as factors in R (like VigorEtapa)
-
 
 # Analysis: TotalDiameter of ds, mean(diameter) of ds, -> sampled by randomly selected rows -> equal data amount of each ds
 # -> mutate(Mean_XY = mean(xy, na.rm = T)
@@ -27,9 +15,20 @@ library(vegan)      #for shannon-index and pielou-eveness
 # EDA: Geospatial Analysis for low individual clusters -> where are they located?
 # EDA: How many of the clusters contain all 4 plots? Is there a correlation between low individual clusters and missing plots?
 # EDA: addition to previous line - should also be seen in correlation with Shannon == 0 
-#
+
+##########################################################################################
 
 
+start.time <- Sys.time()
+###### 0) LOAD NECESSARY PACKAGES ----------------------------------------------------------
+
+library(data.table) #fread()
+library(readxl)     #read_xlsx()
+library(here)       #here()
+library(tidyverse)  #data tidying
+library(ggridges)   #geom_density_ridges()
+library(terra)      #geo_spatial coordinates
+library(vegan)      #for shannon-index and pielou-eveness
 
 ###### 1) LOAD RAW DATA ------------------------------------------------------------
 
@@ -489,151 +488,263 @@ merged <- rbind(M.04, M.09, M.14) |>
 
 
 
-###### 4) FIRST EDA - can be skipped --------------------------
+###### 4) EDA PREPARATION ------------------------------------------------------------------
+###### 4.1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ---------------------------
+#### DATA ON CLUSTER LEVEL
+C_SpecRich <- merged |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            species_count = n_distinct(NombreCientifico_APG),
+            total_entries = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  relocate(Cluster_ID)
 
-# Fig.1.1 Total most Common Families (by file) 
-merged |> 
-  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 10)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
-  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
-  ggplot(aes(x = Familia, fill = File)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_bar(position = "dodge")
+###### 4.2) SPECIES ABUNDANCES - needed for shannon index and eveness - DATA ON SPECIES LEVEL --------
 
-# Fig.1.2 Most common families normalized (over entries per file)s
-Normed.Family <- rbind((merged |> 
-                          filter(File == 1) |> 
-                          group_by(Familia_APG) |> 
-                          count() |> 
-                          mutate(Normalized = n/1305130,
-                                 File = "1")),
-                       (merged |> 
-                         filter(File == 2) |> 
-                         group_by(Familia_APG) |> 
-                         count() |> 
-                         mutate(Normalized = n/1581022,
-                                File = "2")),
-                       (merged |> 
-                          filter(File == 3) |> 
-                          group_by(Familia_APG) |> 
-                          count() |> 
-                          mutate(Normalized = n/831331,
-                                 File = "3")))
+#### DATA CALCULATED PER CLUSTER
+C_SpecAbun <- merged |> 
+  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, NombreCientifico_APG) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            abundance=n(),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Cluster_ID)
 
-View(Normed.Family)
 
-Normed.Family |> 
-  select(File, Familia_APG, Normalized) |>
+###### 4.3) SHANNON INDEX H + PIELOU EVENESS J - uses temporary created dataframes! -------------
+
+#### STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
+## DATA ON CLUSTER LEVEL
+C_Temp.Shannon <- C_SpecAbun |> 
   ungroup() |> 
-  mutate(NormPerc = Normalized*100) |> 
-  arrange(desc(NormPerc)) |> 
-  mutate(Rank = row_number()) |> 
-  filter(Rank <= 40) |> 
-  ggplot(aes(x = reorder(Familia_APG, -NormPerc, sum), y = NormPerc, fill = File)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_col(position = "dodge") +
-  labs(x = "Familiy",
-       y = "Relative Abundance [%]",
-       title = "Relative Abundances of 15 Most Common Families",
-       ) +
-  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
+  select(Cluster_ID, NombreCientifico_APG, abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+#### STEP 2: exchange NAs with Zeros 
+## DATA ON CLUSTER LEVEL
+C_PresenceAbsence <- C_Temp.Shannon |> 
+  replace(is.na(C_Temp.Shannon), 0)
+
+#### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
+## DATA ON CLUSTER LEVEL
+H <- diversity(C_PresenceAbsence[,-1])
+
+#### STEP 4: calculate Eveness J ######## TEMPORARY
+## DATA ON CLUSTER LEVEL
+J <- H/log(specnumber(C_PresenceAbsence[, -1]))
+
+#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
+C_Temp.HJ <- data.frame(C_PresenceAbsence$Cluster_ID, H, J) |> 
+  rename(Cluster_ID = C_PresenceAbsence.Cluster_ID)
+
+#### STEP 6: merged data table 
+## DATA ON CLUSTER LEVEL
+ClusterDiagnostics <- left_join(C_SpecRich, C_Temp.HJ, by= c("Cluster_ID")) |> 
+  select(File, Cluster_ID, Conglomerado, Anio, species_count, total_entries, H, J, X, Y)
+
+### STEP 7: Plots - section YY) PLOTTING
 
 
+###### 4.4) TREE MORPHOLOGY -----------------------------------------------
 
+#### DATA ON CLUSTER LEVEL ----- calculated by individual entries (alternatively by means of plot means)
+# need more thought going into whether to use means or medians
+# Example: for Tree Height Means are on average -20cm compared to Median
 
+C_TreeMorp <- merged |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
+            Med_AvgTreeHeight = median(AlturaTotal, na.rm = T),
+            AvgDbh = mean(DiametroNormal, na.rm = T),
+            Med_AvgDbh = median(DiametroNormal, na.rm = T),
+            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
+            Med_AvgCrownDiameter = median(DiametroCopa, na.rm = T),
+            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),          # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
+            Med_AvgCrownHeight = median(AlturaTotal - AlturaFusteLimpio, na.rm = T),    # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
+            AvgCrownArea = mean(AreaCopa, na.rm = T),
+            Med_AvgCrownArea = median(AreaCopa, na.rm = T),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Cluster_ID)
 
-# Fig.2.1 Normalized (over entries per file) biological form abundances by file
-Normed.Form <- rbind((merged |> 
-                        filter(File == 1) |> 
-                        group_by(FormaBiologica) |> 
-                        count() |> 
-                        mutate(Normalized = n/1305130,
-                               File = "1")),
-                     (merged |> 
-                        filter(File == 2) |> 
-                        group_by(FormaBiologica) |> 
-                        count() |> 
-                        mutate(Normalized = n/1581022,
-                               File = "2")),
-                     (merged |> 
-                        filter(File == 3) |> 
-                        group_by(FormaBiologica) |> 
-                        count() |> 
-                        mutate(Normalized = n/831331,
-                               File = "3")))
+###### 4.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024) ----------------------------
 
-Normed.Form |> 
-  select(File, FormaBiologica, Normalized) |>
-  ggplot(aes(x = reorder(FormaBiologica, -Normalized, sum), y = Normalized, fill = File)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_col(position = "dodge")
+Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
+  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, 
+           AvgTreeHeight, Med_AvgTreeHeight, AvgDbh, Med_AvgDbh, AvgCrownDiameter, Med_AvgCrownDiameter, AvgCrownHeight, Med_AvgCrownHeight, AvgCrownArea, Med_AvgCrownArea, X, Y)
 
+# write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
 
+###### 5) METADATA STUFF -------------------------------------------------------------------
+###### 5.1) PLOT COUNTS FOR EACH CLUSTER -----------------------------------------
 
+# Adding the Number of Plots per Cluster ("Plots")
+PlotCounts <- merged |> 
+  group_by(File, Conglomerado, Sitio, X, Y) |> 
+  count() |>
+  ungroup() |> 
+  select(File, Conglomerado, Sitio, X, Y) |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.numeric(File)),
+            Conglomerado = mean(Conglomerado),
+            X = mean(X),
+            Y = mean(Y),
+            Plots = n())
 
-
-# Fig.3.1 Total disturbances by file
-merged |> 
- # subset(!is.na(Danio1)) |> 
- # group_by(Danio1) |> 
- # count()
-  ggplot(aes(x = Danio1, fill = File)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_bar(position = "dodge")
-
-# Fig.3.2 Normalized disturbances by file
-Normed.Disturbance1 <- rbind((merged |> 
-                        filter(File == 1) |> 
-                        subset(!is.na(Danio1)) |> #excluding NAs in calculation
-                        group_by(Danio1) |> 
-                        count() |> 
-                        mutate(Normalized = n/1305130,
-                               File = "1")),
-                     (merged |> 
-                        filter(File == 2) |> 
-                        subset(!is.na(Danio1)) |> #excluding NAs in calculation
-                        group_by(Danio1) |> 
-                        count() |> 
-                        mutate(Normalized = n/571263,
-                               File = "2")),
-                     (merged |> 
-                        filter(File == 3) |> 
-                        subset(!is.na(Danio1)) |> #excluding NAs in calculation
-                        group_by(Danio1) |> 
-                        count() |> 
-                        mutate(Normalized = n/666710,
-                               File = "3")))
-
-Normed.Disturbance1 |> 
-  #subset(!is.na(Danio1)) |> 
-  select(File, Danio1, Normalized) |>
-  ggplot(aes(x = reorder(Danio1, -Normalized, sum), y = Normalized, fill = File)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_col(position = "dodge")
-
-
-# Fig.3.3 Absolute disturbances for comparison
-Absolute.Disturbance <- rbind((merged |> 
-                                 filter(File == 2) |> 
-                                 select(Danio1) |> 
-                                 group_by(Danio1) |> 
-                                 count() |> 
-                                 mutate(File = "2")),
-                              (merged |> 
-                                 filter(File == 3) |> 
-                                 select(Danio1) |> 
-                                 group_by(Danio1) |> 
-                                 count() |> 
-                                 mutate(File = "3"))
-                              )
-
-Absolute.Disturbance |>  
-  ggplot(aes(x = reorder(Danio1, -n, sum), y = n, fill = File)) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  geom_col(position = "dodge")
+# combined dataset
+Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("File", "Conglomerado")) |> 
+  select(everything(), -c("X.y", "Y.y")) |> 
+  rename(X = X.x,
+         Y = Y.x)
   
-  
+###### 5.2) AVAILABILITY OF PLOTS FOR EACH CLUSTER -----------------------------------------------
 
-###### 5) METADATA ANALYSIS - can be skipped --------------------------------------------------------
+# function to count number of cycles with a given number of plots 
+summarise_data <- function(data, plot_number) {
+  data |> 
+    select(File, Conglomerado, Anio, Plots, X, Y) |> 
+    filter(Plots == plot_number) |> 
+    group_by(Conglomerado) |> 
+    arrange(Conglomerado) |> 
+    summarise(Conglomerado = mean(Conglomerado),
+              n = n(),
+              X1 = mean(X),
+              Y1 = mean(Y)) |> 
+    rename(n_cycles_placeholder = n)
+}
+
+# combined dataset V3
+Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>% 
+  left_join(summarise_data(. ,4), by = "Conglomerado") %>%
+  left_join(summarise_data(. ,3), by = "Conglomerado") %>% 
+  left_join(summarise_data(. ,2), by = "Conglomerado") %>%
+  left_join(summarise_data(. ,1), by = "Conglomerado") %>%
+  select(-c("X1.x", "Y1.x", "X1.y", "Y1.y", "X1.x.x", "Y1.x.x", "X1.y.y", "Y1.y.y")) |> 
+  rename(cycles_four_plots = n_cycles_placeholder.x,
+         cycles_three_plots = n_cycles_placeholder.y,
+         cycles_two_plots = n_cycles_placeholder.x.x,
+         cycles_one_plots = n_cycles_placeholder.y.y,) |> 
+  arrange(Conglomerado) |> 
+  mutate(Consistent =  case_when(cycles_four_plots == 3 ~ T, cycles_four_plots <= 2 ~ F,
+                                 cycles_three_plots == 3 ~ T,cycles_three_plots <= 2 ~ F,
+                                 cycles_two_plots == 3 ~ T, cycles_two_plots <= 2 ~ F,
+                                 cycles_one_plots == 3 ~ T, cycles_one_plots <= 2 ~ F))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+
+###### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
+###### X4.1) Species Richness + Individual tree count ---------------------------
+#### DATA ON PLOT LEVEL
+SpecRich <- merged |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, Sitio) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            species_count = n_distinct(NombreCientifico_APG),
+            total_entries = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  relocate(Plot_ID)
+
+###### X4.2) Species Abundances ------------------------------------------------- 
+#### DATA CALCULATED PER PLOT 
+SpecAbun <- merged |> 
+  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, Sitio, NombreCientifico_APG) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            abundance=n(),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Plot_ID)
+
+###### X4.3) Shannon Index H + Pielou eveness J ---------------------------------
+
+#### STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
+## DATA ON PLOT LEVEL
+Temp.Shannon <- SpecAbun |> 
+  ungroup() |> 
+  select(Plot_ID, NombreCientifico_APG, abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+#### STEP 2: exchange NAs with Zeros 
+## DATA ON PLOT LEVEL
+PresenceAbsence <- Temp.Shannon |> 
+  replace(is.na(Temp.Shannon), 0)
+
+#### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
+## DATA ON PLOT LEVEL
+H <- diversity(PresenceAbsence[,-1])
+
+#### STEP 4: calculate Eveness J ######## TEMPORARY
+## DATA ON PLOT LEVEL
+J <- H/log(specnumber(PresenceAbsence[, -1]))
+
+#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
+Temp.HJ <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
+  rename(Plot_ID = PresenceAbsence.Plot_ID)
+
+#### STEP 6: merged data table 
+## DATA ON PLOT LEVEL
+PlotDiagnostics <- left_join(SpecRich, Temp.HJ, by= c("Plot_ID")) |> 
+  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, X, Y)
+
+###### X4.3.1) DATA TABLE ON SPECIES LEVEL 2 - optional ---------------------------
+
+#NEEDS PLOT LEVEL DATA - SECTION XX)
+SpecDiagnostics <- left_join(SpecRich, SpecAbun, Temp.HJ, by= c("Plot_ID")) |> 
+  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, H, J, X.x, Y.y)
+
+###### X4.4) Tree Morphology ----------------------------------------------------
+
+#### DATA ON PLOT LEVEL
+# currently: Means -- could also add medians
+TreeMorp <- merged |> 
+  group_by(File, Conglomerado, Sitio) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
+            AvgDbh = mean(DiametroNormal, na.rm = T),
+            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
+            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),
+            AvgCrownArea = mean(AreaCopa, na.rm = T),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Plot_ID)
+
+###### X7.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024)
+
+Comp_Plot_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> #still missing median values
+  relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
+
+
+###### ZZ) Archive Stuff -------------------------------------------------------------------
+###### Z1) METADATA ANALYSIS I -------------------------------------------------
 
 # Raw.04
 ## count all NAs per column
@@ -714,76 +825,153 @@ View(ulst)
 library(Hmisc)
 describe(Raw.14)
 
-View(Arb.04)
-View(Arb.14)
+###### Z2) FIRST EDA -----------------------------------------------------------
 
-###### 6) PREPARATION CODE FOR GEOSPATIAL ANALYSIS - optional -------------------
+# Fig.1.1 Total most Common Families (by file) 
+merged |> 
+  mutate(Familia = fct_lump_n(fct_infreq(Familia_APG), n = 10)) |> # Only keep the 5 most frequent categories and lump the rest into "Other"
+  # highlight = fct_other(Familia, keep = "Other", other_level = "Top N Groups")) |>  # making it two tone
+  ggplot(aes(x = Familia, fill = File)) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  geom_bar(position = "dodge")
 
-## Arb.04
-ArbSpat.04 <- Arb.04 |> 
-  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado) |> 
-  summarise(Conglomerado = mean(Conglomerado),
-            species_count=n_distinct(NombreCientifico_APG),
-            X=mean(X),
-            Y=mean(Y))
+# Fig.1.2 Most common families normalized (over entries per file)s
+Normed.Family <- rbind((merged |> 
+                          filter(File == 1) |> 
+                          group_by(Familia_APG) |> 
+                          count() |> 
+                          mutate(Normalized = n/1305130,
+                                 File = "1")),
+                       (merged |> 
+                          filter(File == 2) |> 
+                          group_by(Familia_APG) |> 
+                          count() |> 
+                          mutate(Normalized = n/1581022,
+                                 File = "2")),
+                       (merged |> 
+                          filter(File == 3) |> 
+                          group_by(Familia_APG) |> 
+                          count() |> 
+                          mutate(Normalized = n/831331,
+                                 File = "3")))
 
-ArbSpat.04 <- vect(ArbSpat.04, geom=c("X","Y"), crs="+proj=longlat +datum=WGS84")
+View(Normed.Family)
 
-plot(ArbSpat.04)
-#writeVector(ArbSpat.04, "treeInv_richness_04.shp")
-
-## Arb.09
-ArbSpat.09 <- Arb.09 |> 
-  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado) |> 
-  summarise(Conglomerado = mean(Conglomerado),
-            species_count = n_distinct(NombreCientifico_APG),
-            X = mean(X),
-            Y = mean(Y))
-
-ArbSpat.09 <- vect(ArbSpat.09, geom = c("X", "Y"), crs = "+proj=longlat + datum=WGS84")
-
-plot(ArbSpat.09)
-#writeVector(ArbSpat.09, "treeInv_richness_09.shp")
-
-## Arb.14
-
-ARbSpat.14 <- Arb.14 |> 
-  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(Conglomerado) |> 
-  summarise(Conglomerado = mean(Conglomerado),
-            species_count = n_distinct(NombreCientifico_APG),
-            X = mean(X),
-            Y = mean(Y))
-
-ArbSpat.14 <- vect(ARbSpat.14, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
-
-plot(ArbSpat.14)
-#writeVector(ArbSpat.14, "treeInv_richness_14.shp")
-
-
-###### 7) EDA- optional -------------------------------------------------------
+Normed.Family |> 
+  select(File, Familia_APG, Normalized) |>
+  ungroup() |> 
+  mutate(NormPerc = Normalized*100) |> 
+  arrange(desc(NormPerc)) |> 
+  mutate(Rank = row_number()) |> 
+  filter(Rank <= 40) |> 
+  ggplot(aes(x = reorder(Familia_APG, -NormPerc, sum), y = NormPerc, fill = File)) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  geom_col(position = "dodge") +
+  labs(x = "Familiy",
+       y = "Relative Abundance [%]",
+       title = "Relative Abundances of 15 Most Common Families",
+  ) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
 
-###### 7.1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ---------------------------
 
 
-#### DATA ON CLUSTER LEVEL
-C_SpecRich <- merged |> 
-  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Anio = mean(Anio),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
-            species_count = n_distinct(NombreCientifico_APG),
-            total_entries = n(),
-            X = mean(X),
-            Y = mean(Y)) |> 
-  relocate(Cluster_ID)
+
+# Fig.2.1 Normalized (over entries per file) biological form abundances by file
+Normed.Form <- rbind((merged |> 
+                        filter(File == 1) |> 
+                        group_by(FormaBiologica) |> 
+                        count() |> 
+                        mutate(Normalized = n/1305130,
+                               File = "1")),
+                     (merged |> 
+                        filter(File == 2) |> 
+                        group_by(FormaBiologica) |> 
+                        count() |> 
+                        mutate(Normalized = n/1581022,
+                               File = "2")),
+                     (merged |> 
+                        filter(File == 3) |> 
+                        group_by(FormaBiologica) |> 
+                        count() |> 
+                        mutate(Normalized = n/831331,
+                               File = "3")))
+
+Normed.Form |> 
+  select(File, FormaBiologica, Normalized) |>
+  ggplot(aes(x = reorder(FormaBiologica, -Normalized, sum), y = Normalized, fill = File)) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  geom_col(position = "dodge")
 
 
+
+
+
+# Fig.3.1 Total disturbances by file
+merged |> 
+  # subset(!is.na(Danio1)) |> 
+  # group_by(Danio1) |> 
+  # count()
+  ggplot(aes(x = Danio1, fill = File)) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  geom_bar(position = "dodge")
+
+# Fig.3.2 Normalized disturbances by file
+Normed.Disturbance1 <- rbind((merged |> 
+                                filter(File == 1) |> 
+                                subset(!is.na(Danio1)) |> #excluding NAs in calculation
+                                group_by(Danio1) |> 
+                                count() |> 
+                                mutate(Normalized = n/1305130,
+                                       File = "1")),
+                             (merged |> 
+                                filter(File == 2) |> 
+                                subset(!is.na(Danio1)) |> #excluding NAs in calculation
+                                group_by(Danio1) |> 
+                                count() |> 
+                                mutate(Normalized = n/571263,
+                                       File = "2")),
+                             (merged |> 
+                                filter(File == 3) |> 
+                                subset(!is.na(Danio1)) |> #excluding NAs in calculation
+                                group_by(Danio1) |> 
+                                count() |> 
+                                mutate(Normalized = n/666710,
+                                       File = "3")))
+
+Normed.Disturbance1 |> 
+  #subset(!is.na(Danio1)) |> 
+  select(File, Danio1, Normalized) |>
+  ggplot(aes(x = reorder(Danio1, -Normalized, sum), y = Normalized, fill = File)) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  geom_col(position = "dodge")
+
+
+# Fig.3.3 Absolute disturbances for comparison
+Absolute.Disturbance <- rbind((merged |> 
+                                 filter(File == 2) |> 
+                                 select(Danio1) |> 
+                                 group_by(Danio1) |> 
+                                 count() |> 
+                                 mutate(File = "2")),
+                              (merged |> 
+                                 filter(File == 3) |> 
+                                 select(Danio1) |> 
+                                 group_by(Danio1) |> 
+                                 count() |> 
+                                 mutate(File = "3"))
+)
+
+Absolute.Disturbance |>  
+  ggplot(aes(x = reorder(Danio1, -n, sum), y = n, fill = File)) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  geom_col(position = "dodge")
+
+
+
+
+###### YY) Plotting ------------------------------------------------------------------------
+###### Y1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ----------------------------
 ## Plotting 
 # Individual Species Count per Plot/Cluster
 C_SpecRich |>                         # Use "SpecRich" or "C_SpecRich" 
@@ -834,23 +1022,7 @@ C_SpecRich|>                         # Use "SpecRich" or "C_SpecRich"
        y = "Count") 
 
 
-
-###### 7.2) SPECIES ABUNDANCES - needed for shannon index and eveness - DATA ON SPECIES LEVEL --------
-
-#### DATA CALCULATED PER CLUSTER
-C_SpecAbun <- merged |> 
-  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado, NombreCientifico_APG) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Anio = mean(Anio),
-            abundance=n(),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  relocate(Cluster_ID)
-
-
+###### Y2) SPECIES ABUNDANCES --------------------------------------------------
 
 ## Plotting - can be skipped
 # for combined plots
@@ -865,46 +1037,7 @@ C_SpecAbun |>                         # Enter "SpecAbun" or "C_SpecAbun"
        title = "Frequency Distribution of Species Abundances") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-
-###### 7.2.1) DATA TABLE ON SPECIES LEVEL - optional -----------------------
-Temp.Control <- left_join(SpecAbun, SpecRich, by= c("Plot_ID","File", "Conglomerado", "Sitio", "Anio", "X", "Y" )) |> 
-  select(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, X, Y)
-
-View(Temp.Control)
-
-
-###### 7.3) SHANNON INDEX H + PIELOU EVENESS J - uses temporary created dataframes! -------------
-
-#### STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
-## DATA ON CLUSTER LEVEL
-C_Temp.Shannon <- C_SpecAbun |> 
-  ungroup() |> 
-  select(Cluster_ID, NombreCientifico_APG, abundance) |> 
-  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
-
-#### STEP 2: exchange NAs with Zeros 
-## DATA ON CLUSTER LEVEL
-C_PresenceAbsence <- C_Temp.Shannon |> 
-  replace(is.na(C_Temp.Shannon), 0)
-
-#### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
-## DATA ON CLUSTER LEVEL
-H <- diversity(C_PresenceAbsence[,-1])
-
-#### STEP 4: calculate Eveness J ######## TEMPORARY
-## DATA ON CLUSTER LEVEL
-J <- H/log(specnumber(C_PresenceAbsence[, -1]))
-
-#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
-C_Temp.HJ <- data.frame(C_PresenceAbsence$Cluster_ID, H, J) |> 
-  rename(Cluster_ID = C_PresenceAbsence.Cluster_ID)
-
-#### STEP 6: merged data table 
-## DATA ON CLUSTER LEVEL
-ClusterDiagnostics <- left_join(C_SpecRich, C_Temp.HJ, by= c("Cluster_ID")) |> 
-  select(File, Cluster_ID, Conglomerado, Anio, species_count, total_entries, H, J, X, Y)
-
-### STEP 7: Plots
+###### Y3) SHANNON INDEX H + PIELOU EVENESS J ---------------------------------------------------------
 # plots shannon-index 
 ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
   mutate(File = as.factor(File)) |> 
@@ -950,212 +1083,17 @@ ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" 
   ggplot(aes(x= J, colour = File)) +
   stat_ecdf(geom = "step")
 
-###### 7.3.1) DATA TABLE ON SPECIES LEVEL 2 - optional ---------------------------
 
-#NEEDS PLOT LEVEL DATA - SECTION XX)
-SpecDiagnostics <- left_join(SpecRich, SpecAbun, Temp.HJ, by= c("Plot_ID")) |> 
-  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, H, J, X.x, Y.y)
-
-
-###### 7.4) TREE MORPHOLOGY -----------------------------------------------
-
-#### DATA ON CLUSTER LEVEL ----- calculated by individual entries (alternatively by means of plot means)
-# need more thought going into whether to use means or medians
-# Example: for Tree Height Means are on average -20cm compared to Median
-
-C_TreeMorp <- merged |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Anio = mean(Anio),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
-            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
-            Med_AvgTreeHeight = median(AlturaTotal, na.rm = T),
-            AvgDbh = mean(DiametroNormal, na.rm = T),
-            Med_AvgDbh = median(DiametroNormal, na.rm = T),
-            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
-            Med_AvgCrownDiameter = median(DiametroCopa, na.rm = T),
-            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),          # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
-            Med_AvgCrownHeight = median(AlturaTotal - AlturaFusteLimpio, na.rm = T),    # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
-            AvgCrownArea = mean(AreaCopa, na.rm = T),
-            Med_AvgCrownArea = median(AreaCopa, na.rm = T),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  relocate(Cluster_ID)
-
+###### Y4) TREE MORPHOLOGY -----------------------------------------------------
 # example plot - only some metrics relevant as individual plots
 C_TreeMorp |> 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= AvgCrownArea, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-###### 7.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024) ----------------------------
-
-Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
-  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, 
-           AvgTreeHeight, Med_AvgTreeHeight, AvgDbh, Med_AvgDbh, AvgCrownDiameter, Med_AvgCrownDiameter, AvgCrownHeight, Med_AvgCrownHeight, AvgCrownArea, Med_AvgCrownArea, X, Y)
-
-View(Comp_C_Diagnostics)
-
-# write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
 
 
-
-###### 8) METADATA STUFF -------------------------------------------------------
-
-###### 8.1) PLOT COUNTS FOR EACH CLUSTER -----------------------------------------
-
-# Adding the Number of Plots per Cluster ("Plots")
-PlotCounts <- merged |> 
-  group_by(File, Conglomerado, Sitio, X, Y) |> 
-  count() |>
-  ungroup() |> 
-  select(File, Conglomerado, Sitio, X, Y) |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(as.numeric(File)),
-            Conglomerado = mean(Conglomerado),
-            X = mean(X),
-            Y = mean(Y),
-            Plots = n())
-
-# combined dataset
-Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("File", "Conglomerado")) |> 
-  select(everything(), -c("X.y", "Y.y")) |> 
-  rename(X = X.x,
-         Y = Y.x)
-  
-###### 8.2) AVAILABILITY OF PLOTS FOR EACH CLUSTER -----------------------------------------------
-
-# function to count number of cycles with a given number of plots 
-summarise_data <- function(data, plot_number) {
-  data |> 
-    select(File, Conglomerado, Anio, Plots, X, Y) |> 
-    filter(Plots == plot_number) |> 
-    group_by(Conglomerado) |> 
-    arrange(Conglomerado) |> 
-    summarise(Conglomerado = mean(Conglomerado),
-              n = n(),
-              X1 = mean(X),
-              Y1 = mean(Y)) |> 
-    rename(n_cycles_placeholder = n)
-}
-
-# combined dataset V3
-Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>% 
-  left_join(summarise_data(. ,4), by = "Conglomerado") %>%
-  left_join(summarise_data(. ,3), by = "Conglomerado") %>% 
-  left_join(summarise_data(. ,2), by = "Conglomerado") %>%
-  left_join(summarise_data(. ,1), by = "Conglomerado") %>%
-  select(-c("X1.x", "Y1.x", "X1.y", "Y1.y", "X1.x.x", "Y1.x.x", "X1.y.y", "Y1.y.y")) |> 
-  rename(cycles_four_plots = n_cycles_placeholder.x,
-         cycles_three_plots = n_cycles_placeholder.y,
-         cycles_two_plots = n_cycles_placeholder.x.x,
-         cycles_one_plots = n_cycles_placeholder.y.y,) |> 
-  arrange(Conglomerado) |> 
-  mutate(Consistent =  case_when(cycles_four_plots == 3 ~ T, cycles_four_plots <= 2 ~ F,
-                                 cycles_three_plots == 3 ~ T,cycles_three_plots <= 2 ~ F,
-                                 cycles_two_plots == 3 ~ T, cycles_two_plots <= 2 ~ F,
-                                 cycles_one_plots == 3 ~ T, cycles_one_plots <= 2 ~ F))
-
-
-
-
-
-
-
-###### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------
-
-###### X7.1) Species Richness + Individual tree count ---------------------------
-#### DATA ON PLOT LEVEL
-SpecRich <- merged |> 
-  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado, Sitio) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            Anio = mean(Anio),
-            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
-            species_count = n_distinct(NombreCientifico_APG),
-            total_entries = n(),
-            X = mean(X),
-            Y = mean(Y)) |> 
-  relocate(Plot_ID)
-
-###### X7.2) Species Abundances ------------------------------------------------- 
-#### DATA CALCULATED PER PLOT 
-SpecAbun <- merged |> 
-  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado, Sitio, NombreCientifico_APG) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            Anio = mean(Anio),
-            abundance=n(),
-            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  relocate(Plot_ID)
-
-###### X7.3) Shannon Index H + Pielou eveness J ---------------------------------
-
-#### STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
-## DATA ON PLOT LEVEL
-Temp.Shannon <- SpecAbun |> 
-  ungroup() |> 
-  select(Plot_ID, NombreCientifico_APG, abundance) |> 
-  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
-
-#### STEP 2: exchange NAs with Zeros 
-## DATA ON PLOT LEVEL
-PresenceAbsence <- Temp.Shannon |> 
-  replace(is.na(Temp.Shannon), 0)
-
-#### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
-## DATA ON PLOT LEVEL
-H <- diversity(PresenceAbsence[,-1])
-
-#### STEP 4: calculate Eveness J ######## TEMPORARY
-## DATA ON PLOT LEVEL
-J <- H/log(specnumber(PresenceAbsence[, -1]))
-
-#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
-Temp.HJ <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
-  rename(Plot_ID = PresenceAbsence.Plot_ID)
-
-#### STEP 6: merged data table 
-## DATA ON PLOT LEVEL
-PlotDiagnostics <- left_join(SpecRich, Temp.HJ, by= c("Plot_ID")) |> 
-  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, X, Y)
-
-
-###### X7.4) Tree Morphology ----------------------------------------------------
-
-#### DATA ON PLOT LEVEL
-# currently: Means -- could also add medians
-TreeMorp <- merged |> 
-  group_by(File, Conglomerado, Sitio) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            Anio = mean(Anio),
-            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
-            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
-            AvgDbh = mean(DiametroNormal, na.rm = T),
-            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
-            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),
-            AvgCrownArea = mean(AreaCopa, na.rm = T),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  relocate(Plot_ID)
-
-###### X7.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024)
-
-Comp_Plot_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> #still missing median values
-  relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
-
-
-###### YY) Plotting ------------------------------------------------------------
-
+###### YX) EVERYTHING ELSE POSSIBLY PLOTABLE -----------------------------------------------------
 
 #correlation of number of plots per cluster with total entries per cluster - scatterplot
 Comp_C_Diagnostics_V2 |>
@@ -1243,13 +1181,7 @@ Comp_C_Diagnostics_V2 |>
   facet_grid(~n)
 
 
-
-
-
 View(Comp_C_Diagnostics_V3)
-
-
-
 
 
 
@@ -1297,8 +1229,6 @@ CycleAvailability <- Comp_C_Diagnostics_V2 |>
 
 CycleAvailability |> 
   filter(cycles == 1)
-
-
 
 
 # most up to date dataset
@@ -1356,11 +1286,75 @@ Comp_C_Diagnostics_V2 |>
 
 
 
-###### 9) MULTIVARIATE CHANGE DETECTION - data from python -----------------
+###### AA) PREPARATION CODE FOR GEOSPATIAL ANALYSIS - optional -----------------
+
+## Arb.04
+ArbSpat.04 <- Arb.04 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            species_count=n_distinct(NombreCientifico_APG),
+            X=mean(X),
+            Y=mean(Y))
+
+ArbSpat.04 <- vect(ArbSpat.04, geom=c("X","Y"), crs="+proj=longlat +datum=WGS84")
+
+plot(ArbSpat.04)
+#writeVector(ArbSpat.04, "treeInv_richness_04.shp")
+
+## Arb.09
+ArbSpat.09 <- Arb.09 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            species_count = n_distinct(NombreCientifico_APG),
+            X = mean(X),
+            Y = mean(Y))
+
+ArbSpat.09 <- vect(ArbSpat.09, geom = c("X", "Y"), crs = "+proj=longlat + datum=WGS84")
+
+plot(ArbSpat.09)
+#writeVector(ArbSpat.09, "treeInv_richness_09.shp")
+
+## Arb.14
+
+ARbSpat.14 <- Arb.14 |> 
+  select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Conglomerado) |> 
+  summarise(Conglomerado = mean(Conglomerado),
+            species_count = n_distinct(NombreCientifico_APG),
+            X = mean(X),
+            Y = mean(Y))
+
+ArbSpat.14 <- vect(ARbSpat.14, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
+
+plot(ArbSpat.14)
+#writeVector(ArbSpat.14, "treeInv_richness_14.shp")
+
+###### 9) MULTIVARIATE CHANGE DETECTION - data from python ---------------------
 
 setwd("C:/Users/samhu/Desktop/Projects/MxForest")
 
 Results <- read.csv("./python/iMAD_results.csv", header=FALSE)
 hist(Results[,7], breaks=100)
+
+
+
+
+
+
+
+###### 10) PLACEHOLDER ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
 
 
