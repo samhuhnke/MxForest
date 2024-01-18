@@ -767,20 +767,7 @@ plot(ArbSpat.14)
 
 
 ###### 7.1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ---------------------------
-#### DATA ON PLOT LEVEL
-SpecRich <- merged |> 
-  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado, Sitio) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            Anio = mean(Anio),
-            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
-            species_count = n_distinct(NombreCientifico_APG),
-            total_entries = n(),
-            X = mean(X),
-            Y = mean(Y)) |> 
-  relocate(Plot_ID)
+
 
 #### DATA ON CLUSTER LEVEL
 C_SpecRich <- merged |> 
@@ -847,27 +834,8 @@ C_SpecRich|>                         # Use "SpecRich" or "C_SpecRich"
        y = "Count") 
 
 
-count(C_SpecRich)
-C_SpecRich |> 
-  subset(total_entries <= 15) |> 
-  count()
-
 
 ###### 7.2) SPECIES ABUNDANCES - needed for shannon index and eveness - DATA ON SPECIES LEVEL --------
-
-#### DATA CALCULATED PER PLOT 
-SpecAbun <- merged |> 
-  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado, Sitio, NombreCientifico_APG) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            Anio = mean(Anio),
-            abundance=n(),
-            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  relocate(Plot_ID)
 
 #### DATA CALCULATED PER CLUSTER
 C_SpecAbun <- merged |> 
@@ -908,12 +876,6 @@ View(Temp.Control)
 ###### 7.3) SHANNON INDEX H + PIELOU EVENESS J - uses temporary created dataframes! -------------
 
 #### STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
-## DATA ON PLOT LEVEL
-Temp.Shannon <- SpecAbun |> 
-  ungroup() |> 
-  select(Plot_ID, NombreCientifico_APG, abundance) |> 
-  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
-
 ## DATA ON CLUSTER LEVEL
 C_Temp.Shannon <- C_SpecAbun |> 
   ungroup() |> 
@@ -921,44 +883,28 @@ C_Temp.Shannon <- C_SpecAbun |>
   pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
 
 #### STEP 2: exchange NAs with Zeros 
-## DATA ON PLOT LEVEL
-PresenceAbsence <- Temp.Shannon |> 
-  replace(is.na(Temp.Shannon), 0)
-
 ## DATA ON CLUSTER LEVEL
 C_PresenceAbsence <- C_Temp.Shannon |> 
   replace(is.na(C_Temp.Shannon), 0)
 
 #### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
-## DATA ON PLOT LEVEL
-H <- diversity(PresenceAbsence[,-1])
-
 ## DATA ON CLUSTER LEVEL
 H <- diversity(C_PresenceAbsence[,-1])
 
 #### STEP 4: calculate Eveness J ######## TEMPORARY
-## DATA ON PLOT LEVEL
-J <- H/log(specnumber(PresenceAbsence[, -1]))
-
 ## DATA ON CLUSTER LEVEL
 J <- H/log(specnumber(C_PresenceAbsence[, -1]))
 
 #### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
-Temp.HJ <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
-  rename(Plot_ID = PresenceAbsence.Plot_ID)
-
 C_Temp.HJ <- data.frame(C_PresenceAbsence$Cluster_ID, H, J) |> 
   rename(Cluster_ID = C_PresenceAbsence.Cluster_ID)
 
 #### STEP 6: merged data table 
-## DATA ON PLOT LEVEL
-PlotDiagnostics <- left_join(SpecRich, Temp.HJ, by= c("Plot_ID")) |> 
-  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, X, Y)
-
 ## DATA ON CLUSTER LEVEL
 ClusterDiagnostics <- left_join(C_SpecRich, C_Temp.HJ, by= c("Cluster_ID")) |> 
   select(File, Cluster_ID, Conglomerado, Anio, species_count, total_entries, H, J, X, Y)
 
+### STEP 7: Plots
 # plots shannon-index 
 ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
   mutate(File = as.factor(File)) |> 
@@ -1005,54 +951,15 @@ ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" 
   stat_ecdf(geom = "step")
 
 ###### 7.3.1) DATA TABLE ON SPECIES LEVEL 2 - optional ---------------------------
+
+#NEEDS PLOT LEVEL DATA - SECTION XX)
 SpecDiagnostics <- left_join(SpecRich, SpecAbun, Temp.HJ, by= c("Plot_ID")) |> 
   select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, NombreCientifico_APG, abundance, total_entries, H, J, X.x, Y.y)
 
 
 ###### 7.4) TREE MORPHOLOGY -----------------------------------------------
 
-#### DATA ON PLOT LEVEL
-# Means
-TreeMorp <- merged |> 
-  group_by(File, Conglomerado, Sitio) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Sitio = mean(Sitio),
-            Anio = mean(Anio),
-            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
-            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
-            AvgDbh = mean(DiametroNormal, na.rm = T),
-            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
-            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),
-            AvgCrownArea = mean(AreaCopa, na.rm = T),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  relocate(Plot_ID)
-
-
-#### DATA ON CLUSTER LEVEL ----- calculated by plot means
-# need more analysis which one makes more sense - or what the effects of this are -> think it depends on whether you see the plot or cluster as the most basic unit
-C2_TreeMorp <- TreeMorp |>           
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
-            Anio = mean(Anio),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
-            AvgTreeHeight_2 = mean(AvgTreeHeight, na.rm = T),
-            AvgDbh_2 = mean(AvgDbh, na.rm = T),
-            AvgCrownDiameter_2 = mean(AvgCrownDiameter, na.rm = T),
-            AvgCrownHeight_2 = mean(AvgCrownHeight, na.rm = T),
-            AvgCrownArea_2 = mean(AvgCrownArea, na.rm = T),
-            X=mean(X),
-            Y=mean(Y)) |> 
-  relocate(Cluster_ID)
-
-View(C2_TreeMorp)
-View(C_TreeMorp)
-
-
-
-#### DATA ON CLUSTER LEVEL ----- calculated by individual entries
+#### DATA ON CLUSTER LEVEL ----- calculated by individual entries (alternatively by means of plot means)
 # need more thought going into whether to use means or medians
 # Example: for Tree Height Means are on average -20cm compared to Median
 
@@ -1083,9 +990,6 @@ C_TreeMorp |>
   geom_histogram(position = "identity", alpha = 0.3)
 
 ###### 7.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024) ----------------------------
-
-Comp_Plot_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> #still missing median values
-  relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
 
 Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
   relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, 
@@ -1159,10 +1063,98 @@ Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>%
 
 
 
+###### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------
+
+###### X7.1) Species Richness + Individual tree count ---------------------------
+#### DATA ON PLOT LEVEL
+SpecRich <- merged |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, Sitio) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            species_count = n_distinct(NombreCientifico_APG),
+            total_entries = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  relocate(Plot_ID)
+
+###### X7.2) Species Abundances ------------------------------------------------- 
+#### DATA CALCULATED PER PLOT 
+SpecAbun <- merged |> 
+  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, Sitio, NombreCientifico_APG) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            abundance=n(),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Plot_ID)
+
+###### X7.3) Shannon Index H + Pielou eveness J ---------------------------------
+
+#### STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
+## DATA ON PLOT LEVEL
+Temp.Shannon <- SpecAbun |> 
+  ungroup() |> 
+  select(Plot_ID, NombreCientifico_APG, abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+#### STEP 2: exchange NAs with Zeros 
+## DATA ON PLOT LEVEL
+PresenceAbsence <- Temp.Shannon |> 
+  replace(is.na(Temp.Shannon), 0)
+
+#### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
+## DATA ON PLOT LEVEL
+H <- diversity(PresenceAbsence[,-1])
+
+#### STEP 4: calculate Eveness J ######## TEMPORARY
+## DATA ON PLOT LEVEL
+J <- H/log(specnumber(PresenceAbsence[, -1]))
+
+#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
+Temp.HJ <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
+  rename(Plot_ID = PresenceAbsence.Plot_ID)
+
+#### STEP 6: merged data table 
+## DATA ON PLOT LEVEL
+PlotDiagnostics <- left_join(SpecRich, Temp.HJ, by= c("Plot_ID")) |> 
+  select(File, Plot_ID, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, X, Y)
 
 
+###### X7.4) Tree Morphology ----------------------------------------------------
+
+#### DATA ON PLOT LEVEL
+# currently: Means -- could also add medians
+TreeMorp <- merged |> 
+  group_by(File, Conglomerado, Sitio) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
+            AvgDbh = mean(DiametroNormal, na.rm = T),
+            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
+            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),
+            AvgCrownArea = mean(AreaCopa, na.rm = T),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Plot_ID)
+
+###### X7.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024)
+
+Comp_Plot_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "File", "Conglomerado", "Sitio", "Anio", "X", "Y")) |> #still missing median values
+  relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
 
 
+###### YY) Plotting ------------------------------------------------------------
 
 
 #correlation of number of plots per cluster with total entries per cluster - scatterplot
@@ -1250,9 +1242,6 @@ Comp_C_Diagnostics_V2 |>
   geom_point() +
   facet_grid(~n)
 
-
-# number of clusters available for each cycle per plot count 
-#---# Test: Previous code more concise
 
 
 
