@@ -943,7 +943,7 @@ J <- H/log(specnumber(PresenceAbsence[, -1]))
 ## DATA ON CLUSTER LEVEL
 J <- H/log(specnumber(C_PresenceAbsence[, -1]))
 
-#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in lign with other datasets 
+#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
 Temp.HJ <- data.frame(PresenceAbsence$Plot_ID, H, J) |> 
   rename(Plot_ID = PresenceAbsence.Plot_ID)
 
@@ -1097,7 +1097,9 @@ View(Comp_C_Diagnostics)
 
 
 
-###### 8) METADATE STUFF ----------------------------------------
+###### 8) METADATA STUFF -------------------------------------------------------
+
+###### 8.1) PLOT COUNTS FOR EACH CLUSTER -----------------------------------------
 
 # Adding the Number of Plots per Cluster ("Plots")
 PlotCounts <- merged |> 
@@ -1112,15 +1114,56 @@ PlotCounts <- merged |>
             Y = mean(Y),
             Plots = n())
 
-PlotCounts
-
 # combined dataset
 Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("File", "Conglomerado")) |> 
   select(everything(), -c("X.y", "Y.y")) |> 
   rename(X = X.x,
          Y = Y.x)
   
-View(Comp_C_Diagnostics_V2)
+###### 8.2) AVAILABILITY OF PLOTS FOR EACH CLUSTER -----------------------------------------------
+
+# function to count number of cycles with a given number of plots 
+summarise_data <- function(data, plot_number) {
+  data |> 
+    select(File, Conglomerado, Anio, Plots, X, Y) |> 
+    filter(Plots == plot_number) |> 
+    group_by(Conglomerado) |> 
+    arrange(Conglomerado) |> 
+    summarise(Conglomerado = mean(Conglomerado),
+              n = n(),
+              X1 = mean(X),
+              Y1 = mean(Y)) |> 
+    rename(n_cycles_placeholder = n)
+}
+
+# combined dataset V3
+Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>% 
+  left_join(summarise_data(. ,4), by = "Conglomerado") %>%
+  left_join(summarise_data(. ,3), by = "Conglomerado") %>% 
+  left_join(summarise_data(. ,2), by = "Conglomerado") %>%
+  left_join(summarise_data(. ,1), by = "Conglomerado") %>%
+  select(-c("X1.x", "Y1.x", "X1.y", "Y1.y", "X1.x.x", "Y1.x.x", "X1.y.y", "Y1.y.y")) |> 
+  rename(cycles_four_plots = n_cycles_placeholder.x,
+         cycles_three_plots = n_cycles_placeholder.y,
+         cycles_two_plots = n_cycles_placeholder.x.x,
+         cycles_one_plots = n_cycles_placeholder.y.y,) |> 
+  arrange(Conglomerado) |> 
+  mutate(Consistent =  case_when(cycles_four_plots == 3 ~ T, cycles_four_plots <= 2 ~ F,
+                                 cycles_three_plots == 3 ~ T,cycles_three_plots <= 2 ~ F,
+                                 cycles_two_plots == 3 ~ T, cycles_two_plots <= 2 ~ F,
+                                 cycles_one_plots == 3 ~ T, cycles_one_plots <= 2 ~ F))
+
+
+
+
+
+
+
+
+
+
+
+
 
 #correlation of number of plots per cluster with total entries per cluster - scatterplot
 Comp_C_Diagnostics_V2 |>
@@ -1209,83 +1252,17 @@ Comp_C_Diagnostics_V2 |>
 
 
 # number of clusters available for each cycle per plot count 
-#4 plots
-All4 <- Comp_C_Diagnostics_V2 |> 
-  select(File, Conglomerado, Anio, Plots, X, Y) |> 
-  filter(Plots == 4) |>                           #insert 1, 2, 3, 4
-  group_by(Conglomerado) |> 
-  arrange(Conglomerado) |> 
-  summarise(Conglomerado = mean(Conglomerado),
-            n = n(),
-            X = mean(X),
-            Y = mean(Y)) |> 
-  rename(n_cycles_four = n) 
-
-# 3 plots
-All3 <- Comp_C_Diagnostics_V2 |> 
-  select(File, Conglomerado, Anio, Plots, X, Y) |> 
-  filter(Plots == 3) |>                           #insert 1, 2, 3, 4
-  group_by(Conglomerado) |> 
-  arrange(Conglomerado) |> 
-  summarise(Conglomerado = mean(Conglomerado),
-            n = n(),
-            X = mean(X),
-            Y = mean(Y)) |> 
-  rename(n_cycles_three = n) 
+#---# Test: Previous code more concise
 
 
-# 2 plots
-All2 <- Comp_C_Diagnostics_V2 |> 
-  select(File, Conglomerado, Anio, Plots, X, Y) |> 
-  filter(Plots == 2) |>                           #insert 1, 2, 3, 4
-  group_by(Conglomerado) |> 
-  arrange(Conglomerado) |> 
-  summarise(Conglomerado = mean(Conglomerado),
-            n = n(),
-            X = mean(X),
-            Y = mean(Y)) |> 
-  rename(n_cycles_two = n) 
 
-# 1 plot
-All1 <- Comp_C_Diagnostics_V2 |> 
-  select(File, Conglomerado, Anio, Plots, X, Y) |> 
-  filter(Plots == 1) |>                           #insert 1, 2, 3, 4
-  group_by(Conglomerado) |> 
-  arrange(Conglomerado) |> 
-  summarise(Conglomerado = mean(Conglomerado),
-            n = n(),
-            X = mean(X),
-            Y = mean(Y)) |> 
-  rename(n_cycles_one = n) 
-
-
-# adding all the 
-Test <- left_join(Comp_C_Diagnostics_V2, All4, by = c("Conglomerado")) |> 
-  select(everything(), -c("X.y", "Y.y")) |> 
-  arrange(Conglomerado)
-
-
-Test2 <- left_join(Test, All3, by = c("Conglomerado")) |> 
-  select(everything(), -c("X", "Y")) |> 
-  arrange(Conglomerado)
-
-
-Test3 <- left_join(Test2, All2, by = c("Conglomerado")) |> 
-  select(everything(), -c("X", "Y")) |> 
-  arrange(Conglomerado)
-
-
-Test4 <- left_join(Test3, All1, by = c("Conglomerado")) |> 
-  select(everything(), -c("X", "Y")) |> 
-  arrange(Conglomerado)
-
-Comp_C_Diagnostics_V3 <- Test4 |> 
-  mutate(Consistent = case_when(n_cycles_four == 3 ~ T, n_cycles_four <= 2 ~ F,
-                                n_cycles_three == 3 ~ T, n_cycles_three <= 2 ~ F,
-                                n_cycles_two == 3 ~ T, n_cycles_two <= 2 ~ F,
-                                n_cycles_one == 3 ~ T, n_cycles_one <= 2 ~ F))
 
 View(Comp_C_Diagnostics_V3)
+
+
+
+
+
 
 Comp_C_Diagnostics_V3 |> 
   filter(Consistent == T) |> 
