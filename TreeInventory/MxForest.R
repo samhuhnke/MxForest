@@ -647,7 +647,23 @@ Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>%
 
 
 
-###### 5.3) PLOT C
+###### 5.3) TREE PLOT COUNT MEANS AND MEDIANS BY CLUSTERS ----------------------
+## calculate means and medians for each cluster based of total plot entries 
+PTC_C <- SpecRich |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(File),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            Plot_TreeCount_Mean = mean(total_entries),
+            Plot_TreeCount_Median = median(total_entries),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  select(File, Conglomerado, Anio, Plot_TreeCount_Mean, Plot_TreeCount_Median)
+
+Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("File", "Conglomerado", "Anio"))
+
+
 ###### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
 ###### X4.1) Species Richness + Individual tree count ---------------------------
 #### DATA ON PLOT LEVEL
