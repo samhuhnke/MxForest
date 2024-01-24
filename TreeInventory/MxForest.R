@@ -19,9 +19,6 @@
 ##########################################################################################
 
 
-start.time <- Sys.time()
-
-
 ###### 0) LOAD NECESSARY PACKAGES ----------------------------------------------------------
 
 library(data.table) #fread()
@@ -507,6 +504,8 @@ C_SpecRich <- merged |>
   relocate(Cluster_ID)
 View(C_SpecRich)
 
+#### DATA ON PLOT LEVEL - used for later calculation of
+
 ###### 4.2) SPECIES ABUNDANCES - needed for shannon index and eveness - DATA ON SPECIES LEVEL --------
 
 #### DATA CALCULATED PER CLUSTER
@@ -646,11 +645,9 @@ Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>%
                                  cycles_two_plots == 3 ~ T, cycles_two_plots <= 2 ~ F,
                                  cycles_one_plots == 3 ~ T, cycles_one_plots <= 2 ~ F))
 
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
 
 
+###### 5.3) PLOT C
 ###### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
 ###### X4.1) Species Richness + Individual tree count ---------------------------
 #### DATA ON PLOT LEVEL
@@ -976,7 +973,7 @@ Absolute.Disturbance |>
 
 
 ###### YY) Plotting ------------------------------------------------------------------------
-###### Y1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ----------------------------
+###### Y1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ----------------------------------------
 ########### A) consistent clusters ---------------------
 # Individual Species Count per Plot/Cluster
 Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich" 
@@ -1187,7 +1184,7 @@ C_SpecAbun |>                         # Enter "SpecAbun" or "C_SpecAbun"
        title = "Frequency Distribution of Species Abundances") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-###### Y3) SHANNON INDEX H + PIELOU EVENESS J ---------------------------------------------------------
+###### Y3) SHANNON INDEX H + PIELOU EVENESS J ----------------------------------------------
 ########### A) consistent clusters -----------------------
 # plots shannon-index 
 Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
@@ -1599,8 +1596,8 @@ Comp_C_Diagnostics_V2 |>
 
 
 
-###### AA) PREPARATION CODE FOR GEOSPATIAL ANALYSIS - optional -----------------
-
+###### AA) PREPARATION CODE FOR GEOSPATIAL ANALYSIS - optional -----------------------------
+########### A1) species count per cluster --------------------------------------
 ## Arb.04
 ArbSpat.04 <- Arb.04 |> 
   select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
@@ -1641,8 +1638,38 @@ ARbSpat.14 <- Arb.14 |>
 
 ArbSpat.14 <- vect(ARbSpat.14, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
 
+View(ARbSpat.14)
+
 plot(ArbSpat.14)
 #writeVector(ArbSpat.14, "treeInv_richness_14.shp")
+
+
+
+
+########### A2) Availability of clusters ---------------------------------------
+View(Comp_C_Diagnostics_V3)
+##  consistent clusters
+Plot.Spat.All <- vect(Comp_C_Diagnostics_V3 |> filter(Consistent == T) |> select(File, Conglomerado, Plots, X, Y), 
+                      geom = c("X", "Y"),
+                      crs = "+proj=longlat +daum=WGS884")
+plot(Plot.Spat.All)
+writeVector(Plot.Spat.All, "PlotAvailability_C.shp")
+
+##  inconsistent clusters
+Plot.Spat.All <- vect(Comp_C_Diagnostics_V3 |> filter(Consistent == F) |> select(File, Conglomerado, Plots, X, Y), 
+                      geom = c("X", "Y"),
+                      crs = "+proj=longlat +daum=WGS884")
+plot(Plot.Spat.All)
+writeVector(Plot.Spat.All, "PlotAvailability_F.shp")
+
+##  all clusters
+Plot.Spat.All <- vect(Comp_C_Diagnostics_V3 |> select(File, Conglomerado, Plots, X, Y), 
+                      geom = c("X", "Y"),
+                      crs = "+proj=longlat +daum=WGS884")
+plot(Plot.Spat.All)
+writeVector(Plot.Spat.All, "PlotAvailability_A.shp")
+
+
 
 ###### 9) MULTIVARIATE CHANGE DETECTION - data from python ---------------------
 
@@ -1849,6 +1876,18 @@ PTC_P |>
 
 
 
+
+
+
+
+
+
+###### 11) PLACEHOLDER - UNASIGNED ---------------------------------------------------------
+
+Comp_C_Diagnostics_V3 |> 
+  filter(cycles_four_plots == 3 | cycles_three_plots == 3 | cycles_two_plots == 3 | cycles_one_plots == 3) |> 
+  group_by(File) |> 
+  count()
 
 
 
