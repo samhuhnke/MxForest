@@ -505,6 +505,7 @@ C_SpecRich <- merged |>
             X = mean(X),
             Y = mean(Y)) |> 
   relocate(Cluster_ID)
+View(C_SpecRich)
 
 ###### 4.2) SPECIES ABUNDANCES - needed for shannon index and eveness - DATA ON SPECIES LEVEL --------
 
@@ -976,9 +977,145 @@ Absolute.Disturbance |>
 
 ###### YY) Plotting ------------------------------------------------------------------------
 ###### Y1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ----------------------------
-## Plotting 
+########### A) consistent clusters ---------------------
 # Individual Species Count per Plot/Cluster
-C_SpecRich |>                         # Use "SpecRich" or "C_SpecRich" 
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich" 
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == T) |> 
+  ggplot(aes(x = species_count, fill = File)) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
+  labs(x = "Species Count per Cluster",
+       y = "Cluster Count",
+       title = "Frequency Distribution of Species Richness") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
+
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == T) |> 
+  ggplot(aes(x = species_count, colour = File)) +
+  geom_freqpoly(binwidth = 1) +
+  labs(x = "Species Count per Cluster",
+       y = "Cluster Count",
+       title = "Frequency Distribution of Species Richness") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
+
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == T) |> 
+  ggplot(aes(x= species_count, colour = File)) +
+  stat_ecdf(geom = "step") +
+  labs(x = "Species Count per Cluster",
+       y = "") 
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == T) |> 
+  ggplot(aes(x= species_count, colour = File)) +
+  geom_density()
+
+# Individual Tree Count per Plot/Cluster
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == T) |> 
+  ggplot(aes(x= total_entries, fill = File)) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
+  labs(x = "Individual trees per cluster",
+       y = "Count") 
+
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |>  
+  filter(Consistent == T) |> 
+  ggplot(aes(x = total_entries, colour = File)) +
+  geom_freqpoly(binwidth = 1) +
+  labs(x = "Individual trees per cluster",
+       y = "Count") 
+
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == T) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  stat_ecdf(geom = "step") +
+  labs(x = "Individual trees per cluster",
+       y = "Count") 
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == T) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  geom_density()
+
+
+
+########### B) inconsistent clusters---------------------
+# Individual Species Count per Plot/Cluster
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich" 
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == F) |> 
+  ggplot(aes(x = species_count, fill = File)) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
+  labs(x = "Species Count per Cluster",
+       y = "Cluster Count",
+       title = "Frequency Distribution of Species Richness") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
+
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == F) |> 
+  ggplot(aes(x = species_count, colour = File)) +
+  geom_freqpoly(binwidth = 1) +
+  labs(x = "Species Count per Cluster",
+       y = "Cluster Count",
+       title = "Frequency Distribution of Species Richness") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
+
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == F) |> 
+  ggplot(aes(x= species_count, colour = File)) +
+  stat_ecdf(geom = "step") +
+  labs(x = "Species Count per Cluster",
+       y = "") 
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == F) |> 
+  ggplot(aes(x= species_count, colour = File)) +
+  geom_density()
+
+# Individual Tree Count per Plot/Cluster
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == F) |> 
+  ggplot(aes(x= total_entries, fill = File)) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
+  labs(x = "Individual trees per cluster",
+       y = "Count") 
+
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |>  
+  filter(Consistent == F) |> 
+  ggplot(aes(x = total_entries, colour = File)) +
+  geom_freqpoly(binwidth = 1) +
+  labs(x = "Individual trees per cluster",
+       y = "Count") 
+
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == F) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  stat_ecdf(geom = "step") +
+  labs(x = "Individual trees per cluster",
+       y = "Count") 
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  filter(Consistent == F) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  geom_density()
+
+########### C) all clusters -----------------------------
+# Individual Species Count per Plot/Cluster
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich" 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x = species_count, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
@@ -987,7 +1124,7 @@ C_SpecRich |>                         # Use "SpecRich" or "C_SpecRich"
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-C_SpecRich |>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x = species_count, colour = File)) +
   geom_freqpoly(binwidth = 1) +
@@ -996,35 +1133,44 @@ C_SpecRich |>                         # Use "SpecRich" or "C_SpecRich"
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-C_SpecRich |>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= species_count, colour = File)) +
   stat_ecdf(geom = "step") +
   labs(x = "Species Count per Cluster",
        y = "") 
 
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= species_count, colour = File)) +
+  geom_density()
+
 # Individual Tree Count per Plot/Cluster
-C_SpecRich|>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= total_entries, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
-C_SpecRich|>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |>  
   ggplot(aes(x = total_entries, colour = File)) +
   geom_freqpoly(binwidth = 1) +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
-C_SpecRich|>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= total_entries, colour = File)) +
   stat_ecdf(geom = "step") +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  geom_density()
 
 ###### Y2) SPECIES ABUNDANCES --------------------------------------------------
 
@@ -1042,50 +1188,213 @@ C_SpecAbun |>                         # Enter "SpecAbun" or "C_SpecAbun"
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
 ###### Y3) SHANNON INDEX H + PIELOU EVENESS J ---------------------------------------------------------
+########### A) consistent clusters -----------------------
 # plots shannon-index 
-ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == T) |>                       
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_freqpoly()
+
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  stat_ecdf(geom = "step")
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_density()
+
+
+
+# plots pielou eveness
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x = J, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_freqpoly()
+
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  stat_ecdf(geom = "step")
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_density()
+
+
+
+########### B) inconsistent clusters -------------------------
+# plots shannon-index 
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == F) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == F) |>                       
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_freqpoly()
+
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == F) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  stat_ecdf(geom = "step")
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == F) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_density()
+
+
+
+# plots pielou eveness
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == F) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x = J, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == F) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_freqpoly()
+
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == F) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  stat_ecdf(geom = "step")
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
+  filter(Consistent == F) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_density()
+
+
+
+
+########### C) all clusters ----------------------------------
+
+# plots shannon-index 
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
   mutate(File = as.factor(File)) |> 
   select(File, Cluster_ID, H) |>                      # Enter "Plot_ID" or "Cluster_ID" 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
   select(File, Cluster_ID, H) |>                      # Enter "Plot_ID" or "Cluster_ID" 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, colour = File)) +
   geom_freqpoly()
 
-ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
   select(File, Cluster_ID, H) |>                      # Enter "Plot_ID" or "Cluster_ID" 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, colour = File)) +
   stat_ecdf(geom = "step")
 
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, H) |>                      # Enter "Plot_ID" or "Cluster_ID" 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_density()
+
+
 
 # plots pielou eveness
-ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
   select(File, Cluster_ID, J) |>                      # Enter "Plot_ID" or "Cluster_ID" 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x = J, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
   select(File, Cluster_ID, J) |>                      # Enter "Plot_ID" or "Cluster_ID" 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= J, colour = File)) +
   geom_freqpoly()
 
-ClusterDiagnostics |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
   select(File, Cluster_ID, J) |>                      # Enter "Plot_ID" or "Cluster_ID" 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= J, colour = File)) +
   stat_ecdf(geom = "step")
+
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  select(File, Cluster_ID, J) |>                      # Enter "Plot_ID" or "Cluster_ID" 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_density()
+
 
 
 ###### Y4) TREE MORPHOLOGY -----------------------------------------------------
@@ -1353,11 +1662,6 @@ hist(Results[,7], breaks=100)
 View(Comp_C_Diagnostics_V3)
 
 
-
-
-
-
-
 ### SLIDE 6 - PDF for individual tree entries
 
 # consistent plots
@@ -1539,3 +1843,13 @@ PTC_P |>
   ggplot(aes(x = Plots, y = Avg, fill = File)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(x = "Average tree count per plot", y = "Clusters with x number of plots")
+
+
+### SLIDE 9-11 - re-adressing species count, shannon and pielou -- DONE
+
+
+
+
+
+
+
