@@ -20,6 +20,8 @@
 
 
 start.time <- Sys.time()
+
+
 ###### 0) LOAD NECESSARY PACKAGES ----------------------------------------------------------
 
 library(data.table) #fread()
@@ -664,6 +666,8 @@ SpecRich <- merged |>
             X = mean(X),
             Y = mean(Y)) |> 
   relocate(Plot_ID)
+
+View(SpecRich)
 
 ###### X4.2) Species Abundances ------------------------------------------------- 
 #### DATA CALCULATED PER PLOT 
@@ -1344,7 +1348,9 @@ hist(Results[,7], breaks=100)
 
 
 
-###### 10) PLACEHOLDER ---------------------------------------------------------
+###### 10) PLACEHOLDER - BETA --------------------------------------------------------
+
+View(Comp_C_Diagnostics_V3)
 
 
 
@@ -1352,9 +1358,184 @@ hist(Results[,7], breaks=100)
 
 
 
+### SLIDE 6 - PDF for individual tree entries
+
+# consistent plots
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  subset(Consistent == T) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  geom_density()
+
+# inconsistent plots
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  subset(Consistent == F) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  geom_density()
+
+# all plots
+Comp_C_Diagnostics_V3 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  geom_density()
 
 
 
+### SLIDE 7 - Ind. tree count per plot by plots per cluster (and by file)
+
+PTC_P <- SpecRich |> 
+  left_join(Comp_C_Diagnostics_V3 |> 
+              select(File, Conglomerado, Anio, Plots, Consistent), by = c("File", "Conglomerado", "Anio"))
 
 
+## calculate means and medians for each cluster based of total plot entries 
+PTC_C <- SpecRich |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(File),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            Plot_Average = mean(total_entries),
+            Plot_Median = median(total_entries),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  left_join(Comp_C_Diagnostics_V3 |> 
+                        select(File, Conglomerado, Anio, Plots, Consistent), by = c("File", "Conglomerado", "Anio"))
 
+
+## calculate means per plot by plots per clusters
+
+# functions to count number of cycles with a given number of plots
+#for consistent + inconsistent plots
+summarise_data2 <- function(data, plot_number, consistency) {
+  data |> 
+    ungroup() |> 
+    select(Plots, Consistent, total_entries) |> 
+    filter(Plots == plot_number & Consistent == consistency) |> 
+    summarise(Consistent = consistency,
+              Plots = plot_number,
+              Avg = mean(total_entries)
+              )
+}
+#for all plots combined
+summarise_data3 <- function(data, plot_number) {
+  data |> 
+    ungroup() |> 
+    select(Plots, total_entries) |> 
+    filter(Plots == plot_number) |> 
+    summarise(Consistent = NA,
+              Plots = plot_number,
+              Avg = mean(total_entries)
+    )
+}
+
+# for comparison between files
+summarise_data4 <- function(data, plot_number) {
+  data |> 
+    ungroup() |> 
+    select(File, Plots, total_entries) |> 
+    group_by(File) |> 
+    filter(Plots == plot_number) |> 
+    summarise(File = mean(File),
+              Consistent = NA,
+              Plots = plot_number,
+              Avg = mean(total_entries)
+    )
+}
+# value calculation
+PTC_P |> summarise_data2(1, T) |> 
+  rbind(PTC_P |> summarise_data2(1, F), 
+        PTC_P |> summarise_data3(1),
+        PTC_P |> summarise_data2(2, T), 
+        PTC_P |> summarise_data2(2, F), 
+        PTC_P |> summarise_data3(2),
+        PTC_P |> summarise_data2(3, T), 
+        PTC_P |> summarise_data2(3, F), 
+        PTC_P |> summarise_data3(3),
+        PTC_P |> summarise_data2(4, T), 
+        PTC_P |> summarise_data2(4, F),
+        PTC_P |> summarise_data3(4)) |> 
+  arrange(desc(Consistent))
+# value calculation
+PTC_P |> 
+  summarise_data4(1) |> 
+  rbind(PTC_P |> summarise_data4(2),
+        PTC_P |> summarise_data4(3),
+        PTC_P |> summarise_data4(4))
+
+# consistent plots
+#means
+PTC_3 |> 
+  mutate(File = as.factor(File),
+         Plots = as.factor(Plots)) |> 
+  subset(Consistent == T) |> 
+  ggplot(aes(x = Plot_Average, fill = Plots)) +
+  geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
+#medians
+PTC_3 |> 
+  mutate(File = as.factor(File),
+         Plots = as.factor(Plots)) |> 
+  subset(Consistent == T) |> 
+  ggplot(aes(x = Plot_Median, fill = Plots)) +
+  geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
+
+# inconsistent plots
+#means
+PTC_3 |> 
+  mutate(File = as.factor(File),
+         Plots = as.factor(Plots)) |> 
+  subset(Consistent == F) |> 
+  ggplot(aes(x = Plot_Average, fill = Plots)) +
+  geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
+#medians
+PTC_3 |> 
+  mutate(File = as.factor(File),
+         Plots = as.factor(Plots)) |> 
+  subset(Consistent == F) |> 
+  ggplot(aes(x = Plot_Median, fill = Plots)) +
+  geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
+
+# all plots
+#means
+PTC_3 |> 
+  mutate(File = as.factor(File),
+         Plots = as.factor(Plots)) |> 
+  ggplot(aes(x = Plot_Average, fill = Plots)) +
+  geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
+#medians
+PTC_3 |> 
+  mutate(File = as.factor(File),
+         Plots = as.factor(Plots)) |> 
+  subset(Consistent == F) |> 
+  ggplot(aes(x = Plot_Median, fill = Plots)) +
+  geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
+
+#overall averages of trees per plot by amount of plots per cluster - divided by consistent
+PTC_P |> summarise_data2(1, T) |> 
+  rbind(PTC_P |> summarise_data2(1, F), 
+        PTC_P |> summarise_data3(1),
+        PTC_P |> summarise_data2(2, T), 
+        PTC_P |> summarise_data2(2, F), 
+        PTC_P |> summarise_data3(2),
+        PTC_P |> summarise_data2(3, T), 
+        PTC_P |> summarise_data2(3, F), 
+        PTC_P |> summarise_data3(3),
+        PTC_P |> summarise_data2(4, T), 
+        PTC_P |> summarise_data2(4, F),
+        PTC_P |> summarise_data3(4)) |> 
+  arrange(desc(Consistent)) |> 
+  ggplot(aes(x = Plots, y = Avg, fill = Consistent)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Average tree count per plot", y = "Clusters with x number of plots")
+
+# overall averages of trees per plot by amount of plots per cluster - divided by file
+PTC_P |> 
+  summarise_data4(1) |> 
+  rbind(PTC_P |> summarise_data4(2),
+        PTC_P |> summarise_data4(3),
+        PTC_P |> summarise_data4(4)) |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = Plots, y = Avg, fill = File)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Average tree count per plot", y = "Clusters with x number of plots")
