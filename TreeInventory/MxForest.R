@@ -504,7 +504,21 @@ C_SpecRich <- merged |>
   relocate(Cluster_ID)
 View(C_SpecRich)
 
-#### DATA ON PLOT LEVEL - used for later calculation of
+#### DATA ON PLOT LEVEL - used for later calculation in 5.3)
+SpecRich <- merged |> 
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, Sitio) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            species_count = n_distinct(NombreCientifico_APG),
+            total_entries = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  relocate(Plot_ID)
+
 
 ###### 4.2) SPECIES ABUNDANCES - needed for shannon index and eveness - DATA ON SPECIES LEVEL --------
 
@@ -1702,54 +1716,12 @@ hist(Results[,7], breaks=100)
 
 ###### 10) PLACEHOLDER - BETA --------------------------------------------------------
 
-View(Comp_C_Diagnostics_V3)
+View(Comp_C_Diagnostics_V4)
 
-
-### SLIDE 6 - PDF for individual tree entries
-
-# consistent plots
-Comp_C_Diagnostics_V3 |> 
-  mutate(File = as.factor(File)) |> 
-  subset(Consistent == T) |> 
-  ggplot(aes(x= total_entries, colour = File)) +
-  geom_density()
-
-# inconsistent plots
-Comp_C_Diagnostics_V3 |> 
-  mutate(File = as.factor(File)) |> 
-  subset(Consistent == F) |> 
-  ggplot(aes(x= total_entries, colour = File)) +
-  geom_density()
-
-# all plots
-Comp_C_Diagnostics_V3 |> 
-  mutate(File = as.factor(File)) |> 
-  ggplot(aes(x= total_entries, colour = File)) +
-  geom_density()
-
-
-
-### SLIDE 7 - Ind. tree count per plot by plots per cluster (and by file)
-
+########### SLIDE 7 - Ind. tree count per plot by plots per cluster (and by file) ---------------------
 PTC_P <- SpecRich |> 
   left_join(Comp_C_Diagnostics_V3 |> 
               select(File, Conglomerado, Anio, Plots, Consistent), by = c("File", "Conglomerado", "Anio"))
-
-
-## calculate means and medians for each cluster based of total plot entries 
-PTC_C <- SpecRich |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(File),
-            Conglomerado = mean(Conglomerado),
-            Anio = mean(Anio),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
-            Plot_Average = mean(total_entries),
-            Plot_Median = median(total_entries),
-            X = mean(X),
-            Y = mean(Y)) |> 
-  left_join(Comp_C_Diagnostics_V3 |> 
-                        select(File, Conglomerado, Anio, Plots, Consistent), by = c("File", "Conglomerado", "Anio"))
-
 
 ## calculate means per plot by plots per clusters
 
@@ -1886,16 +1858,6 @@ PTC_P |>
   ggplot(aes(x = Plots, y = Avg, fill = File)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(x = "Average tree count per plot", y = "Clusters with x number of plots")
-
-
-### SLIDE 9-11 - re-adressing species count, shannon and pielou -- DONE
-
-
-
-
-
-
-
 
 
 ###### 11) PLACEHOLDER - UNASIGNED ---------------------------------------------------------
