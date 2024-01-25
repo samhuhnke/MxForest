@@ -483,7 +483,8 @@ M.14 <- Arb.14 |>
 #merge
 merged <- rbind(M.04, M.09, M.14) |> 
   mutate(Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_")) |> 
-  select(Plot_ID, File, Conglomerado, Sitio, Anio, everything())
+  mutate(Cluster_ID = paste(File, Conglomerado, Anio, sep = "_")) |> 
+  select(Cluster_ID, Plot_ID, File, Conglomerado, Sitio, Anio, everything())
 
 
 
@@ -657,7 +658,12 @@ Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>%
   mutate(Consistent =  case_when(cycles_four_plots == 3 ~ T, cycles_four_plots <= 2 ~ F,
                                  cycles_three_plots == 3 ~ T,cycles_three_plots <= 2 ~ F,
                                  cycles_two_plots == 3 ~ T, cycles_two_plots <= 2 ~ F,
-                                 cycles_one_plots == 3 ~ T, cycles_one_plots <= 2 ~ F))
+                                 cycles_one_plots == 3 ~ T, cycles_one_plots <= 2 ~ F)) |> 
+  mutate(cycles_four_plots = ifelse(is.na(cycles_four_plots), 0, cycles_four_plots),
+         cycles_three_plots = ifelse(is.na(cycles_three_plots), 0, cycles_three_plots),
+         cycles_two_plots = ifelse(is.na(cycles_two_plots), 0, cycles_two_plots),
+         cycles_one_plots = ifelse(is.na(cycles_one_plots), 0, cycles_one_plots),
+         Cycles = (cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots))
 
 
 
@@ -677,6 +683,10 @@ PTC_C <- SpecRich |>
 
 Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("File", "Conglomerado", "Anio"))
 
+###### 5.4) ESTADO FILTER -----------------------------------------------------
+
+Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cluster_ID, Estado),
+                                   by = "Cluster_ID")
 
 ###### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
 ###### X4.1) Species Richness + Individual tree count ---------------------------
@@ -1700,6 +1710,20 @@ plot(Plot.Spat.All)
 writeVector(Plot.Spat.All, "PlotAvailability_A.shp")
 
 
+## available clusters by file
+# all files available
+Plot.Spat.3 <- vect(Comp_C_Diagnostics_V5 |> filter(Cycles == 3)  |> select(File, Conglomerado, Estado, Plots, Cycles, Consistent, X, Y),
+                    geom = c("X", "Y"),
+                    crs = "+proj=longlat +daum=WGS884")
+
+writeVector(Plot.Spat.3, "PlotAvailability_3.shp")
+
+# cycle overview
+Plot.Spat.C <- vect(Comp_C_Diagnostics_V5 |> select(File, Conglomerado, Estado, Plots, Cycles, Consistent, X, Y),
+                    geom = c("X", "Y"),
+                    crs = "+proj=longlat +daum=WGS884")
+
+writeVector(Plot.Spat.C, "PlotAvailability_C.shp")
 
 ###### 9) MULTIVARIATE CHANGE DETECTION - data from python ---------------------
 
@@ -1885,20 +1909,13 @@ Comp_C_Diagnostics_V4 |>
 
 
 # how many clusters are available across all 3 cycles with variying amounts of plots
+View(Comp_C_Diagnostics_V4)
 
-Test <- Comp_C_Diagnostics_V4 |> 
-  mutate(cycles_four_plots = ifelse(is.na(cycles_four_plots), 0, cycles_four_plots),
-         cycles_three_plots = ifelse(is.na(cycles_three_plots), 0, cycles_three_plots),
-         cycles_two_plots = ifelse(is.na(cycles_two_plots), 0, cycles_two_plots),
-         cycles_one_plots = ifelse(is.na(cycles_one_plots), 0, cycles_one_plots),
-         Cycles = (cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots))
-
-View(Test)
-
-  
-  
-  
-  mutate(Cycles = case_when((cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots == 3)))
+Comp_C_Diagnostics_V4 |> 
+  filter(Cycles != 3) |> 
+ # filter(Plots == 4) |> 
+  #filter(Consistent == F) |> 
+  count() 
 
 
 
