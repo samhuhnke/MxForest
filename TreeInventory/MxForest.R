@@ -1868,5 +1868,40 @@ Comp_C_Diagnostics_V3 |>
   count()
 
 
+# how many clusters across all 3 datasets have 3, 2, and 1 plots
+
+Comp_C_Diagnostics_V4 |>
+  ungroup() |> 
+  group_by(Plots) |> 
+  filter(Consistent == F) |> 
+  distinct(Conglomerado) |> 
+  count()  
+
+
+# is there clusters with zero entries?
+
+Comp_C_Diagnostics_V4 |> 
+  filter(total_entries == 1)
+
+
+# how many clusters are available across all 3 cycles with variying amounts of plots
+
+Test <- Comp_C_Diagnostics_V4 |> 
+  mutate(cycles_four_plots = ifelse(is.na(cycles_four_plots), 0, cycles_four_plots),
+         cycles_three_plots = ifelse(is.na(cycles_three_plots), 0, cycles_three_plots),
+         cycles_two_plots = ifelse(is.na(cycles_two_plots), 0, cycles_two_plots),
+         cycles_one_plots = ifelse(is.na(cycles_one_plots), 0, cycles_one_plots),
+         Cycles = (cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots))
+
+View(Test)
+
+  
+  
+  
+  mutate(Cycles = case_when((cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots == 3)))
+
+
+
+
 
 
