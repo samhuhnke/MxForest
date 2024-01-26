@@ -681,9 +681,9 @@ PTC_C <- SpecRich |>
 
 Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("File", "Conglomerado", "Anio"))
 
-###### 5.4) ESTADO FILTER -----------------------------------------------------
+###### 5.4) ESTADO + TIPO EGETACION FILTER -----------------------------------------------------
 
-Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cluster_ID, Estado),
+Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct(),
                                    by = "Cluster_ID")
 
 #################### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
@@ -1494,11 +1494,24 @@ Comp_C_Diagnostics_V2 |>
   labs(x= "Individual Trees per Cluster")
 
 #frequency distribution of total entries per cluster by number of plots per cluster - histogram
-Comp_C_Diagnostics_V2 |> 
+Comp_C_Diagnostics_V5 |> 
   mutate(Plots = as.factor(Plots)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
   ggplot(aes(x= total_entries, fill = Plots)) +
   geom_histogram(alpha = 0.3, binwidth = 1) +
   labs(x= "Individual Trees per Cluster")
+
+Comp_C_Diagnostics_V5 |> 
+  mutate(Plots = as.factor(Plots),
+         File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+ # filter(Consistent == T) |> 
+  ggplot(aes(x= total_entries, color = File)) +
+  geom_density() +
+  labs(x= "Individual Trees per Cluster")
+
+
 
 #frequency distribution of total entries per cluster by number of plots per cluster - histogram
 Comp_C_Diagnostics_V2 |> 
@@ -1591,18 +1604,6 @@ CycleAvailability <- Comp_C_Diagnostics_V2 |>
 CycleAvailability |> 
   filter(cycles == 1)
 
-
-# most up to date dataset
-Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, CycleAvailability, by = c("Conglomerado")) |> 
-  select(everything(), -c("X", "Y")) |> 
-  rename(X = X.x, Y = Y.x) |> 
-  arrange(Conglomerado)
-
-View(Comp_C_Diagnostics_V4)
-
-
-
-
 #plot
 Comp_C_Diagnostics_V2 |> 
   select(File, Conglomerado, Anio, Plots, X, Y) |> 
@@ -1618,32 +1619,6 @@ Comp_C_Diagnostics_V2 |>
   ggplot(aes(x = X, y = Y)) + 
   geom_point()
   
-
-UnevenPlots_V2
-
-#merge into one big dataset 
-Comp_C_Diagnostics_V3 <- left_join(Comp_C_Diagnostics_V2, UnevenPlots, by = c("Conglomerado")) |> 
-  select(everything(), -c("X.y", "Y.y")) |> 
-  rename(X = X.x, Y = Y.x)
-
-View(Comp_C_Diagnostics_V3)
-
-
-
-
-merged |> 
-  select(Conglomerado) |> 
-  distinct() |> 
-  count()
-
-Comp_C_Diagnostics_V2 |> 
-  filter(Plots <= 3) |> 
-  mutate(Plots = as.factor(Plots)) |> 
-  select(Cluster_ID, File, Conglomerado, Anio, Plots, X, Y) |> 
-  ggplot(aes(x = X, y = Y, color = Plots)) +
-  geom_point()
-
-
 
 ################### AA) PREPARATION CODE FOR GEOSPATIAL ANALYSIS - optional -----------------------------
 ###### A1) species count per cluster --------------------------------------
@@ -2035,6 +2010,7 @@ Comp_C_Diagnostics_V5 |>
 
 
 # BETA Tests ------------------------------------------------------------------
+
 
 
 
