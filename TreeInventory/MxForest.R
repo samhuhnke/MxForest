@@ -17,9 +17,7 @@
 # EDA: addition to previous line - should also be seen in correlation with Shannon == 0 
 
 ##########################################################################################
-
-
-###### 0) LOAD NECESSARY PACKAGES ----------------------------------------------------------
+#################### 0) LOAD NECESSARY PACKAGES ----------------------------------------------------------
 
 library(data.table) #fread()
 library(readxl)     #read_xlsx()
@@ -29,7 +27,7 @@ library(ggridges)   #geom_density_ridges()
 library(terra)      #geo_spatial coordinates
 library(vegan)      #for shannon-index and pielou-eveness
 
-###### 1) LOAD RAW DATA ------------------------------------------------------------
+#################### 1) LOAD RAW DATA ------------------------------------------------------------
 
 ## 2004 - 2007 -> changing "NULL" character values to NA
 Raw.04 <- fread(here("data", "arbolado", "INFyS_Arbolado_2004_2007.csv"), na.strings = "NULL")
@@ -41,11 +39,11 @@ Raw.09 <- fread(here("data", "arbolado", "INFyS_Arbolado_2009_2014.csv"), na.str
 Raw.14 <- readxl::read_xlsx(here("data", "arbolado", "INFYS_Arbolado_2015_2020.xlsx"), sheet= 1, na = c("NULL", "999991", "999993"))
 
 
-###### 2) DATA CLEANING ------------------------------------------------------------
+#################### 2) DATA CLEANING ------------------------------------------------------------
 
 ## Arb.04
 Arb.04 <- Raw.04 |>  
-# normalizing names
+  # normalizing names
   rename(cgl_sit_reg = cgl_sit_arb,
          CveVeg_S5 = Cve_veg_SV,
          TipoVeg_S5 = Tipo_veg_SV,
@@ -60,70 +58,70 @@ Arb.04 <- Raw.04 |>
          VigorEtapa = VigEtapa,
          LongitudAnillos10 = Long10Anillos,
          NumeroAnillos25 = NumAnillos25
-         ) |> 
-# Correction of categoric and specific entry mistakes
+  ) |> 
+  # Correction of categoric and specific entry mistakes
   mutate(
-        # "Estado" Correction - initially 33 -> 32
-          Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
-                            TRUE ~ Estado),
-        # "Registro" Correction - initially all values NA -> pull data from string cgl_sit_reg
-          Registro = str_extract(cgl_sit_reg, "(?<=_)[^_]+$") |>
-           as.integer(),
-        # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
-          CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
-        # "TipoVeg_S5" Correction - changing names based on CveVeg_S5 data to fit Arb.14
-          TipoVeg_S5 = case_when(
-            str_detect(CveVeg_S5, "VSA") ~ paste("VEGETACION SECUNDARIA ARBOREA DE ", TipoVeg_S5, sep = ""),
-            str_detect(CveVeg_S5, "VSa") ~ paste("VEGETACION SECUNDARIA ARBUSTIVA DE ", TipoVeg_S5, sep = ""),
-            str_detect(CveVeg_S5, "VSh") ~ paste("VEGETACION SECUNDARIA HERBACEA DE ", TipoVeg_S5, sep = ""),
-            str_detect(CveVeg_S5, "RAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "RAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "RA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
-            str_detect(CveVeg_S5, "RP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "RS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
-            str_detect(CveVeg_S5, "TP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
-            TRUE ~ TipoVeg_S5),
-        # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
-          VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
-                                 VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
-                                 VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
-                                 VigorEtapa == "Arbol viejo o supermaduro" ~ "Árbol viejo o súper-maduro",
-                                 is.na(VigorEtapa) ~ "No capturado",
-                                 TRUE ~ VigorEtapa),
-        # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
-          Edad = ifelse(!is.na(Edad),
-                        ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
-                               ceiling(as.numeric(Edad)),
-                               floor(as.numeric(Edad))),
-                        NA),
-        # "Condicion" Correction - values names -> new value names
-          Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
-                                Condicion == "Vivo" ~ "Arbol vivo",
-                                TRUE ~ Condicion),
-        # Added File number 
-          File = "1"
-        ) |>
-# setting initial column order +
+    # "Estado" Correction - initially 33 -> 32
+    Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
+                       TRUE ~ Estado),
+    # "Registro" Correction - initially all values NA -> pull data from string cgl_sit_reg
+    Registro = str_extract(cgl_sit_reg, "(?<=_)[^_]+$") |>
+      as.integer(),
+    # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
+    CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
+    # "TipoVeg_S5" Correction - changing names based on CveVeg_S5 data to fit Arb.14
+    TipoVeg_S5 = case_when(
+      str_detect(CveVeg_S5, "VSA") ~ paste("VEGETACION SECUNDARIA ARBOREA DE ", TipoVeg_S5, sep = ""),
+      str_detect(CveVeg_S5, "VSa") ~ paste("VEGETACION SECUNDARIA ARBUSTIVA DE ", TipoVeg_S5, sep = ""),
+      str_detect(CveVeg_S5, "VSh") ~ paste("VEGETACION SECUNDARIA HERBACEA DE ", TipoVeg_S5, sep = ""),
+      str_detect(CveVeg_S5, "RAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "RAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "RA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+      str_detect(CveVeg_S5, "RP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "RS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+      str_detect(CveVeg_S5, "TP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+      TRUE ~ TipoVeg_S5),
+    # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
+    VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
+                           VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
+                           VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
+                           VigorEtapa == "Arbol viejo o supermaduro" ~ "Árbol viejo o súper-maduro",
+                           is.na(VigorEtapa) ~ "No capturado",
+                           TRUE ~ VigorEtapa),
+    # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
+    Edad = ifelse(!is.na(Edad),
+                  ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
+                         ceiling(as.numeric(Edad)),
+                         floor(as.numeric(Edad))),
+                  NA),
+    # "Condicion" Correction - values names -> new value names
+    Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
+                          Condicion == "Vivo" ~ "Arbol vivo",
+                          TRUE ~ Condicion),
+    # Added File number 
+    File = "1"
+  ) |>
+  # setting initial column order +
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything()
-         ) |>
-# sorting for comparison
+  ) |>
+  # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
 
 ## Arb.09 
 Arb.09 <- Raw.09 |> 
-# nomralizing names
+  # nomralizing names
   rename(cgl_sit_reg = cgl_sit_arb,
          CveVeg_S5 = Cve_veg_SV,
          TipoVeg_S5 = Tipo_veg_SV,
@@ -138,200 +136,200 @@ Arb.09 <- Raw.09 |>
          VigorEtapa = VigEtapa,
          LongitudAnillos10 = Long10Anillos,
          NumeroAnillos25 = NumAnillos25
-         ) |> 
-# Correction of categoric and specific entry mistakes 
+  ) |> 
+  # Correction of categoric and specific entry mistakes 
   mutate(
-        # "Estado" Correction - initially 38 -> 32 
-          Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
-                             Estado == "Mexico" ~ "México",
-                             Estado == "Michoacan de Ocampo" ~ "Michoacán de Ocampo",
-                             Estado == "Nuevo Leon" ~ "Nuevo León",
-                             Estado == "Queretaro de Arteaga" ~ "Querétaro",
-                             Estado == "San Luis Potosi" ~ "San Luis Potosí",
-                             Estado == "Yucatan" ~ "Yucatán",
-                             TRUE ~ Estado),
-        # "Registro" Correction + "cgl_sit_arb" Correction - obviously wrong entries -> replaced with NAs
-          Registro = case_when(Registro == 316 ~ NA,
-                               TRUE ~ Registro),
-          Registro = ifelse(cgl_sit_reg == "21314_4_147", NA, Registro),
-        # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
-          CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
-        # "TipoVeg_S5" Correction - changing names based on CveVeg_S5 data to fit Arb.14
-          TipoVeg_S5 = case_when(
-            str_detect(CveVeg_S5, "VSA") ~ paste("VEGETACION SECUNDARIA ARBOREA DE ", TipoVeg_S5, sep = ""),
-            str_detect(CveVeg_S5, "VSa") ~ paste("VEGETACION SECUNDARIA ARBUSTIVA DE ", TipoVeg_S5, sep = ""),
-            str_detect(CveVeg_S5, "VSh") ~ paste("VEGETACION SECUNDARIA HERBACEA DE ", TipoVeg_S5, sep = ""),
-            str_detect(CveVeg_S5, "RAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "RAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "RSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "RA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
-            str_detect(CveVeg_S5, "RP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "RS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
-            str_detect(CveVeg_S5, "TP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "HAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
-            str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
-            TRUE ~ TipoVeg_S5), 
-        # "FormaFuste" Correction - "NA" + class names -> NA + new names (differ from Arb.14)
-          FormaFuste = str_replace(FormaFuste, "mas", "más"),
-          FormaFuste = case_when(FormaFuste == "Arbol cruvo con dos o más fustes" ~ "Arbol curvo con dos o más fustes",
-                                 FormaFuste == "NA" ~ NA,
-                                 TRUE ~ FormaFuste),
-        # "TipoTocon" Correction - class names -> new names (in line with Arb.14)
-          TipoTocon = case_when(TipoTocon == "Tocon descompuesto (evidencia de tocon)" ~ "Tocón descompuesto (evidencia de tocón)",
-                                TipoTocon == "Tocon madera seca (madera dura sin evidencias de descomposicion)" ~ "Tocón madera seca (madera dura sin evidencias de descomposición)",
-                                TipoTocon == "Tocon madera seca (madera en proceso de descomposicion pero aun dificil de desprenderse del suelo)" ~ "Tocón madera seca (madera en proceso de descomposición pero aún difícil de desprenderse del suelo)",
-                                TipoTocon == "Tocon madera verde (arbol recien cortado)" ~ "Tocón madera verde (árbol recién cortado)",
-                                TipoTocon == "Tocon seco (madera muy descompuesta y de facil extraccion del sustrato)" ~ "Tocón seco (madera muy descompuesta y de fácil extracción del sustrato)",
-                                TRUE ~ TipoTocon),
-        # "PosicionCopa" Correction - "no aplica" -> NA
-          PosicionCopa = case_when(PosicionCopa == "No aplica" ~ NA,
-                                   TRUE ~ PosicionCopa),
-        # "ExposicionCopa" Correction - class names -> new names (in line with Arb.14)
-          ExposicionCopa = str_replace(ExposicionCopa, "arbol", "árbol"),
-          ExposicionCopa = str_replace(ExposicionCopa, "la luz", "luz"),
-          ExposicionCopa = str_replace(ExposicionCopa, " solo en un cuarto", " en un solo cuarto"),
-          ExposicionCopa = str_replace(ExposicionCopa, " y en un cuarto ", " y un cuarto "),
-          ExposicionCopa = case_when(ExposicionCopa == "Arboles que no reciben luz porque se encuentran sombreados por otros árboles  parras  trepadoras u otra vegetacion  arboles que no tienen copa por definicion " ~ 
-                                       "Árboles que no reciben luz porque están a la sombra de otra vegetación",
-                                     ExposicionCopa == "No aplica" ~ NA,
-                                     TRUE ~ ExposicionCopa),
-        # "DensidadCopa" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
-          DensidadCopa = case_when(DensidadCopa == "" ~ NA,
-                                   DensidadCopa == -9999 ~ NA,
-                                   DensidadCopa == "n/a" ~ NA,
-                                   DensidadCopa == "00" ~ "Sin parámetro",
-                                   DensidadCopa == "05" ~ "1 - 5", DensidadCopa == "10" ~ "6 - 10",
-                                   DensidadCopa == "15" ~ "11 - 15", DensidadCopa == "20" ~ "16 - 20",
-                                   DensidadCopa == "25" ~ "21 - 25", DensidadCopa == "30" ~ "26 - 30",
-                                   DensidadCopa == "35" ~ "31 - 35", DensidadCopa == "40" ~ "36 - 40",
-                                   DensidadCopa == "45" ~ "41 - 45", DensidadCopa == "50" ~ "46 - 50",
-                                   DensidadCopa == "55" ~ "51 - 55", DensidadCopa == "60" ~ "56 - 60",
-                                   DensidadCopa == "65" ~ "61 - 65", DensidadCopa == "70" ~ "66 - 70",
-                                   DensidadCopa == "75" ~ "71 - 75", DensidadCopa == "80" ~ "76 - 80",
-                                   DensidadCopa == "85" ~ "81 - 85", DensidadCopa == "90" ~ "86 - 90",
-                                   DensidadCopa == "95" ~ "91 - 95", DensidadCopa == "100" ~ "96 - 100",
-                                   TRUE ~ DensidadCopa),
-        # "TransparenciaCopa" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
-          TransparenciaCopa = case_when(TransparenciaCopa == "" ~ NA,
-                                        TransparenciaCopa == -9999 ~ NA,
-                                        TransparenciaCopa == "n/a" ~ NA,
-                                        TransparenciaCopa == "00" ~ "Sin parámetro",
-                                        TransparenciaCopa == "05" ~ "1 - 5", TransparenciaCopa == "10" ~ "6 - 10",
-                                        TransparenciaCopa == "15" ~ "11 - 15", TransparenciaCopa == "20" ~ "16 - 20",
-                                        TransparenciaCopa == "25" ~ "21 - 25", TransparenciaCopa == "30" ~ "26 - 30",
-                                        TransparenciaCopa == "35" ~ "31 - 35", TransparenciaCopa == "40" ~ "36 - 40",
-                                        TransparenciaCopa == "45" ~ "41 - 45", TransparenciaCopa == "50" ~ "46 - 50",
-                                        TransparenciaCopa == "55" ~ "51 - 55", TransparenciaCopa == "60" ~ "56 - 60",
-                                        TransparenciaCopa == "65" ~ "61 - 65", TransparenciaCopa == "70" ~ "66 - 70",
-                                        TransparenciaCopa == "75" ~ "71 - 75", TransparenciaCopa == "80" ~ "76 - 80",
-                                        TransparenciaCopa == "85" ~ "81 - 85", TransparenciaCopa == "90" ~ "86 - 90",
-                                        TransparenciaCopa == "95" ~ "91 - 95", TransparenciaCopa == "100" ~ "96 - 100",
-                                        TRUE ~ TransparenciaCopa),
-        # "MuerteRegressiva" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
-          MuerteRegresiva = case_when(MuerteRegresiva == "" ~ NA,
-                                      MuerteRegresiva == -9999 ~ NA,
-                                      MuerteRegresiva == "n/a" ~ NA,
-                                      MuerteRegresiva == "00" ~ "Sin parámetro",
-                                      MuerteRegresiva == "05" ~ "1 - 5", MuerteRegresiva == "10" ~ "6 - 10",
-                                      MuerteRegresiva == "15" ~ "11 - 15", MuerteRegresiva == "20" ~ "16 - 20",
-                                      MuerteRegresiva == "25" ~ "21 - 25", MuerteRegresiva == "30" ~ "26 - 30",
-                                      MuerteRegresiva == "35" ~ "31 - 35", MuerteRegresiva == "40" ~ "36 - 40",
-                                      MuerteRegresiva == "45" ~ "41 - 45", MuerteRegresiva == "50" ~ "46 - 50",
-                                      MuerteRegresiva == "55" ~ "51 - 55", MuerteRegresiva == "60" ~ "56 - 60",
-                                      MuerteRegresiva == "65" ~ "61 - 65", MuerteRegresiva == "70" ~ "66 - 70",
-                                      MuerteRegresiva == "75" ~ "71 - 75", MuerteRegresiva == "80" ~ "76 - 80",
-                                      MuerteRegresiva == "85" ~ "81 - 85", MuerteRegresiva == "90" ~ "86 - 90",
-                                      MuerteRegresiva == "95" ~ "91 - 95", MuerteRegresiva == "100" ~ "96 - 100",
-                                      TRUE ~ MuerteRegresiva),
-        # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
-          VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
-                                 VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
-                                 VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
-                                 VigorEtapa == "Arbol viejo o supermaduro" ~ "Árbol viejo o súper-maduro",
-                                 is.na(VigorEtapa) ~ "No capturado",
-                                 TRUE ~ VigorEtapa),
-        # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
-          Edad = ifelse(!is.na(Edad),
-                        ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
-                               ceiling(as.numeric(Edad)),
-                               floor(as.numeric(Edad))
-                              ),
-                        NA),
-          Edad = case_when(Edad == 999 ~ NA,
-                           TRUE ~ Edad),
-        # "Condicion" Correction - values names -> new value names (in line with Arb.14)
-          Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
-                                Condicion == "Vivo" ~ "Arbol vivo",
-                                TRUE ~ Condicion),
-        # "Danio1" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
-          Danio1 = str_replace(Danio1, "abioticos", "abióticos"),
-          Danio1 = str_replace(Danio1, "raiz/tocon", "raíz/tocón"),
-          Danio1 = str_replace(Danio1, "pifitas", "pífitas"), 
-          Danio1 = str_replace(Danio1, "parasitas", "parásitas"),
-          Danio1 = str_replace(Danio1, "Sequia", "Sequía"),
-          Danio1 = case_when(Danio1 == "Otros" ~ "No definido",
-                             Danio1 == "Insectos" ~ "Insectos en general",
-                             Danio1 == "No aplica" ~ NA,
-                             Danio1 == "No definido" ~ NA,
-                             TRUE ~ Danio1),
-        # "Severidad1" Correction - "" + -9999 + "n/a" + "05" + character -> NA + numeric
-          Severidad1 = case_when(Severidad1 == "" ~ NA,
-                                 Severidad1 == -9999 ~ NA,
-                                 Severidad1 == "n/a" ~ NA,
-                                 Severidad1 == "05" ~ 5,
-                                 TRUE ~ as.numeric(Severidad1)),
-        # "Danio2" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
-          Danio2 = str_replace(Danio2, "abioticos", "abióticos"),
-          Danio2 = str_replace(Danio2, "raiz/tocon", "raíz/tocón"),
-          Danio2 = str_replace(Danio2, "pifitas", "pífitas"), 
-          Danio2 = str_replace(Danio2, "parasitas", "parásitas"),
-          Danio2 = str_replace(Danio2, "Sequia", "Sequía"),
-          Danio2 = case_when(Danio2 == "Otros" ~ "No definido",
-                             Danio2 == "Insectos" ~ "Insectos en general",
-                             Danio2 == "No aplica" ~ NA,
-                             TRUE ~ Danio2),
-        # "Severidad2" Correction - "" + -9999 + "n/a" + "05" + character -> NA + numeric
-          Severidad2 = case_when(Severidad2 == "" ~ NA,
-                                 Severidad2 == -9999 ~ NA,
-                                 Severidad2 == "n/a" ~ NA,
-                                 Severidad2 == "05" ~ 5,
-                                 TRUE ~ as.numeric(Severidad2)),
-        # "NumeroTallos" Correction - 999 & 9999 -> NA
-          NumeroTallos = case_when(NumeroTallos == 999 ~ NA,
-                                   NumeroTallos == 9999 ~ NA,
-                                   TRUE ~ NumeroTallos),
-        # "LongitudAnillos10" Correction - 999 -> NA
-          LongitudAnillos10 = case_when(LongitudAnillos10 == 999 ~ NA,
-                                        TRUE ~ LongitudAnillos10),
-        # "NumeroAnillos25" Correction - 
-          NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
-                                      TRUE ~ NumeroAnillos25),
-        # "NombreCientifico_APG" Correction - "ZZ_Desconocido" -> NA
-          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ_Desconocido" ~ "ZZ Desconocido",
-                                           TRUE ~ NombreCientifico_APG),
-        # Added File number 
-          File = "2"
-         ) |> 
-# setting initial column order + attaching everything so far not considered to the end
+    # "Estado" Correction - initially 38 -> 32 
+    Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
+                       Estado == "Mexico" ~ "México",
+                       Estado == "Michoacan de Ocampo" ~ "Michoacán de Ocampo",
+                       Estado == "Nuevo Leon" ~ "Nuevo León",
+                       Estado == "Queretaro de Arteaga" ~ "Querétaro",
+                       Estado == "San Luis Potosi" ~ "San Luis Potosí",
+                       Estado == "Yucatan" ~ "Yucatán",
+                       TRUE ~ Estado),
+    # "Registro" Correction + "cgl_sit_arb" Correction - obviously wrong entries -> replaced with NAs
+    Registro = case_when(Registro == 316 ~ NA,
+                         TRUE ~ Registro),
+    Registro = ifelse(cgl_sit_reg == "21314_4_147", NA, Registro),
+    # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
+    CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
+    # "TipoVeg_S5" Correction - changing names based on CveVeg_S5 data to fit Arb.14
+    TipoVeg_S5 = case_when(
+      str_detect(CveVeg_S5, "VSA") ~ paste("VEGETACION SECUNDARIA ARBOREA DE ", TipoVeg_S5, sep = ""),
+      str_detect(CveVeg_S5, "VSa") ~ paste("VEGETACION SECUNDARIA ARBUSTIVA DE ", TipoVeg_S5, sep = ""),
+      str_detect(CveVeg_S5, "VSh") ~ paste("VEGETACION SECUNDARIA HERBACEA DE ", TipoVeg_S5, sep = ""),
+      str_detect(CveVeg_S5, "RAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "RAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "RSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "RA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+      str_detect(CveVeg_S5, "RP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "RS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TAP") ~ paste(TipoVeg_S5, " ANUAL Y PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TSP") ~ paste(TipoVeg_S5, " SEMIPERMANENTE Y PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+      str_detect(CveVeg_S5, "TP") ~ paste(TipoVeg_S5, " PERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "HAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
+      str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
+      TRUE ~ TipoVeg_S5), 
+    # "FormaFuste" Correction - "NA" + class names -> NA + new names (differ from Arb.14)
+    FormaFuste = str_replace(FormaFuste, "mas", "más"),
+    FormaFuste = case_when(FormaFuste == "Arbol cruvo con dos o más fustes" ~ "Arbol curvo con dos o más fustes",
+                           FormaFuste == "NA" ~ NA,
+                           TRUE ~ FormaFuste),
+    # "TipoTocon" Correction - class names -> new names (in line with Arb.14)
+    TipoTocon = case_when(TipoTocon == "Tocon descompuesto (evidencia de tocon)" ~ "Tocón descompuesto (evidencia de tocón)",
+                          TipoTocon == "Tocon madera seca (madera dura sin evidencias de descomposicion)" ~ "Tocón madera seca (madera dura sin evidencias de descomposición)",
+                          TipoTocon == "Tocon madera seca (madera en proceso de descomposicion pero aun dificil de desprenderse del suelo)" ~ "Tocón madera seca (madera en proceso de descomposición pero aún difícil de desprenderse del suelo)",
+                          TipoTocon == "Tocon madera verde (arbol recien cortado)" ~ "Tocón madera verde (árbol recién cortado)",
+                          TipoTocon == "Tocon seco (madera muy descompuesta y de facil extraccion del sustrato)" ~ "Tocón seco (madera muy descompuesta y de fácil extracción del sustrato)",
+                          TRUE ~ TipoTocon),
+    # "PosicionCopa" Correction - "no aplica" -> NA
+    PosicionCopa = case_when(PosicionCopa == "No aplica" ~ NA,
+                             TRUE ~ PosicionCopa),
+    # "ExposicionCopa" Correction - class names -> new names (in line with Arb.14)
+    ExposicionCopa = str_replace(ExposicionCopa, "arbol", "árbol"),
+    ExposicionCopa = str_replace(ExposicionCopa, "la luz", "luz"),
+    ExposicionCopa = str_replace(ExposicionCopa, " solo en un cuarto", " en un solo cuarto"),
+    ExposicionCopa = str_replace(ExposicionCopa, " y en un cuarto ", " y un cuarto "),
+    ExposicionCopa = case_when(ExposicionCopa == "Arboles que no reciben luz porque se encuentran sombreados por otros árboles  parras  trepadoras u otra vegetacion  arboles que no tienen copa por definicion " ~ 
+                                 "Árboles que no reciben luz porque están a la sombra de otra vegetación",
+                               ExposicionCopa == "No aplica" ~ NA,
+                               TRUE ~ ExposicionCopa),
+    # "DensidadCopa" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+    DensidadCopa = case_when(DensidadCopa == "" ~ NA,
+                             DensidadCopa == -9999 ~ NA,
+                             DensidadCopa == "n/a" ~ NA,
+                             DensidadCopa == "00" ~ "Sin parámetro",
+                             DensidadCopa == "05" ~ "1 - 5", DensidadCopa == "10" ~ "6 - 10",
+                             DensidadCopa == "15" ~ "11 - 15", DensidadCopa == "20" ~ "16 - 20",
+                             DensidadCopa == "25" ~ "21 - 25", DensidadCopa == "30" ~ "26 - 30",
+                             DensidadCopa == "35" ~ "31 - 35", DensidadCopa == "40" ~ "36 - 40",
+                             DensidadCopa == "45" ~ "41 - 45", DensidadCopa == "50" ~ "46 - 50",
+                             DensidadCopa == "55" ~ "51 - 55", DensidadCopa == "60" ~ "56 - 60",
+                             DensidadCopa == "65" ~ "61 - 65", DensidadCopa == "70" ~ "66 - 70",
+                             DensidadCopa == "75" ~ "71 - 75", DensidadCopa == "80" ~ "76 - 80",
+                             DensidadCopa == "85" ~ "81 - 85", DensidadCopa == "90" ~ "86 - 90",
+                             DensidadCopa == "95" ~ "91 - 95", DensidadCopa == "100" ~ "96 - 100",
+                             TRUE ~ DensidadCopa),
+    # "TransparenciaCopa" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+    TransparenciaCopa = case_when(TransparenciaCopa == "" ~ NA,
+                                  TransparenciaCopa == -9999 ~ NA,
+                                  TransparenciaCopa == "n/a" ~ NA,
+                                  TransparenciaCopa == "00" ~ "Sin parámetro",
+                                  TransparenciaCopa == "05" ~ "1 - 5", TransparenciaCopa == "10" ~ "6 - 10",
+                                  TransparenciaCopa == "15" ~ "11 - 15", TransparenciaCopa == "20" ~ "16 - 20",
+                                  TransparenciaCopa == "25" ~ "21 - 25", TransparenciaCopa == "30" ~ "26 - 30",
+                                  TransparenciaCopa == "35" ~ "31 - 35", TransparenciaCopa == "40" ~ "36 - 40",
+                                  TransparenciaCopa == "45" ~ "41 - 45", TransparenciaCopa == "50" ~ "46 - 50",
+                                  TransparenciaCopa == "55" ~ "51 - 55", TransparenciaCopa == "60" ~ "56 - 60",
+                                  TransparenciaCopa == "65" ~ "61 - 65", TransparenciaCopa == "70" ~ "66 - 70",
+                                  TransparenciaCopa == "75" ~ "71 - 75", TransparenciaCopa == "80" ~ "76 - 80",
+                                  TransparenciaCopa == "85" ~ "81 - 85", TransparenciaCopa == "90" ~ "86 - 90",
+                                  TransparenciaCopa == "95" ~ "91 - 95", TransparenciaCopa == "100" ~ "96 - 100",
+                                  TRUE ~ TransparenciaCopa),
+    # "MuerteRegressiva" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+    MuerteRegresiva = case_when(MuerteRegresiva == "" ~ NA,
+                                MuerteRegresiva == -9999 ~ NA,
+                                MuerteRegresiva == "n/a" ~ NA,
+                                MuerteRegresiva == "00" ~ "Sin parámetro",
+                                MuerteRegresiva == "05" ~ "1 - 5", MuerteRegresiva == "10" ~ "6 - 10",
+                                MuerteRegresiva == "15" ~ "11 - 15", MuerteRegresiva == "20" ~ "16 - 20",
+                                MuerteRegresiva == "25" ~ "21 - 25", MuerteRegresiva == "30" ~ "26 - 30",
+                                MuerteRegresiva == "35" ~ "31 - 35", MuerteRegresiva == "40" ~ "36 - 40",
+                                MuerteRegresiva == "45" ~ "41 - 45", MuerteRegresiva == "50" ~ "46 - 50",
+                                MuerteRegresiva == "55" ~ "51 - 55", MuerteRegresiva == "60" ~ "56 - 60",
+                                MuerteRegresiva == "65" ~ "61 - 65", MuerteRegresiva == "70" ~ "66 - 70",
+                                MuerteRegresiva == "75" ~ "71 - 75", MuerteRegresiva == "80" ~ "76 - 80",
+                                MuerteRegresiva == "85" ~ "81 - 85", MuerteRegresiva == "90" ~ "86 - 90",
+                                MuerteRegresiva == "95" ~ "91 - 95", MuerteRegresiva == "100" ~ "96 - 100",
+                                TRUE ~ MuerteRegresiva),
+    # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
+    VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
+                           VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
+                           VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
+                           VigorEtapa == "Arbol viejo o supermaduro" ~ "Árbol viejo o súper-maduro",
+                           is.na(VigorEtapa) ~ "No capturado",
+                           TRUE ~ VigorEtapa),
+    # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
+    Edad = ifelse(!is.na(Edad),
+                  ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
+                         ceiling(as.numeric(Edad)),
+                         floor(as.numeric(Edad))
+                  ),
+                  NA),
+    Edad = case_when(Edad == 999 ~ NA,
+                     TRUE ~ Edad),
+    # "Condicion" Correction - values names -> new value names (in line with Arb.14)
+    Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
+                          Condicion == "Vivo" ~ "Arbol vivo",
+                          TRUE ~ Condicion),
+    # "Danio1" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
+    Danio1 = str_replace(Danio1, "abioticos", "abióticos"),
+    Danio1 = str_replace(Danio1, "raiz/tocon", "raíz/tocón"),
+    Danio1 = str_replace(Danio1, "pifitas", "pífitas"), 
+    Danio1 = str_replace(Danio1, "parasitas", "parásitas"),
+    Danio1 = str_replace(Danio1, "Sequia", "Sequía"),
+    Danio1 = case_when(Danio1 == "Otros" ~ "No definido",
+                       Danio1 == "Insectos" ~ "Insectos en general",
+                       Danio1 == "No aplica" ~ NA,
+                       Danio1 == "No definido" ~ NA,
+                       TRUE ~ Danio1),
+    # "Severidad1" Correction - "" + -9999 + "n/a" + "05" + character -> NA + numeric
+    Severidad1 = case_when(Severidad1 == "" ~ NA,
+                           Severidad1 == -9999 ~ NA,
+                           Severidad1 == "n/a" ~ NA,
+                           Severidad1 == "05" ~ 5,
+                           TRUE ~ as.numeric(Severidad1)),
+    # "Danio2" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
+    Danio2 = str_replace(Danio2, "abioticos", "abióticos"),
+    Danio2 = str_replace(Danio2, "raiz/tocon", "raíz/tocón"),
+    Danio2 = str_replace(Danio2, "pifitas", "pífitas"), 
+    Danio2 = str_replace(Danio2, "parasitas", "parásitas"),
+    Danio2 = str_replace(Danio2, "Sequia", "Sequía"),
+    Danio2 = case_when(Danio2 == "Otros" ~ "No definido",
+                       Danio2 == "Insectos" ~ "Insectos en general",
+                       Danio2 == "No aplica" ~ NA,
+                       TRUE ~ Danio2),
+    # "Severidad2" Correction - "" + -9999 + "n/a" + "05" + character -> NA + numeric
+    Severidad2 = case_when(Severidad2 == "" ~ NA,
+                           Severidad2 == -9999 ~ NA,
+                           Severidad2 == "n/a" ~ NA,
+                           Severidad2 == "05" ~ 5,
+                           TRUE ~ as.numeric(Severidad2)),
+    # "NumeroTallos" Correction - 999 & 9999 -> NA
+    NumeroTallos = case_when(NumeroTallos == 999 ~ NA,
+                             NumeroTallos == 9999 ~ NA,
+                             TRUE ~ NumeroTallos),
+    # "LongitudAnillos10" Correction - 999 -> NA
+    LongitudAnillos10 = case_when(LongitudAnillos10 == 999 ~ NA,
+                                  TRUE ~ LongitudAnillos10),
+    # "NumeroAnillos25" Correction - 
+    NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
+                                TRUE ~ NumeroAnillos25),
+    # "NombreCientifico_APG" Correction - "ZZ_Desconocido" -> NA
+    NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ_Desconocido" ~ "ZZ Desconocido",
+                                     TRUE ~ NombreCientifico_APG),
+    # Added File number 
+    File = "2"
+  ) |> 
+  # setting initial column order + attaching everything so far not considered to the end
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything() 
-         ) |> 
-# sorting for comparison
+  ) |> 
+  # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro) 
 
 
 ## Arb.14 
 Arb.14 <- Raw.14 |> 
-# nomralizing names
+  # nomralizing names
   rename(Anio = Anio_C3,
          Estado = Estado_C3,
          Conglomerado = IdConglomerado,
@@ -375,79 +373,79 @@ Arb.14 <- Raw.14 |>
          Especie_APG = Especie_APG_C3,
          X = X_C3,
          Y = Y_C3
-         ) |> 
-# mutate() |> ### einfügen von cgl_sit_reg   <----- HIER MUSS NOCH WAS REIN
-# Correction of categoric and specific entry mistakes 
+  ) |> 
+  # mutate() |> ### einfügen von cgl_sit_reg   <----- HIER MUSS NOCH WAS REIN
+  # Correction of categoric and specific entry mistakes 
   mutate(
-        # "FormaBiologica" Correction - "NULL" -> NA 
-          FormaBiologica = case_when(FormaBiologica == "Indeterminada" ~ NA,
-                                     TRUE ~ FormaBiologica),
-        # "PosicionCopa" Correction - "No aplicacion" + "No aplica" + "No capturado" -> NA
-          PosicionCopa = case_when(PosicionCopa == "No aplicacion" ~ NA, 
-                                   PosicionCopa == "No aplica" ~ NA,
-                                   PosicionCopa == "No capturado" ~ NA,
-                                   TRUE ~ PosicionCopa),
-        # "ExposicionCopa" Correction - "No capturado" + "No aplica" + class names -> NA + new names
-          ExposicionCopa = str_replace(ExposicionCopa, "SI", "Sí"),
-          ExposicionCopa = case_when(ExposicionCopa == "No capturado" ~ NA,
-                                     ExposicionCopa == "No aplica" ~ NA,
-                                     ExposicionCopa == "Árboles que no reciben luz porque se encuentran sombreados por otros árboles" ~ 
-                                       "Árboles que no reciben luz porque están a la sombra de otra vegetación",
-                                     TRUE ~ ExposicionCopa),
-        # "DensidadCopa" Correction - "No capturado" -> NA
-          DensidadCopa = case_when(DensidadCopa == "No capturado" ~ NA,
-                                   TRUE ~ DensidadCopa),
-        # "TransparenciaCopa" Correction - "No capturado" -> NA
-          TransparenciaCopa = case_when(TransparenciaCopa == "No capturado" ~ NA,
-                                        TRUE ~ TransparenciaCopa),
-        # "MuerteRegresiva" Correction - "No capturado" -> NA -> still 3 entry mistakes with 42309, 44682, 44840
-          MuerteRegresiva = case_when(MuerteRegresiva == "No capturado" ~ NA,
-                                      MuerteRegresiva == "00" ~ "Sin parámetro",
-                                      MuerteRegresiva == "1-5" ~ "1 - 5", MuerteRegresiva == "6-10" ~ "6 - 10",
-                                      MuerteRegresiva == "11-15" ~ "11 - 15", MuerteRegresiva == "16-20" ~ "16 - 20",
-                                      MuerteRegresiva == "21-25" ~ "21 - 25", MuerteRegresiva == "26-30" ~ "26 - 30",
-                                      MuerteRegresiva == "31-35" ~ "31 - 35", MuerteRegresiva == "36-40" ~ "36 - 40",
-                                      MuerteRegresiva == "41-45" ~ "41 - 45", MuerteRegresiva == "46-50" ~ "46 - 50",
-                                      MuerteRegresiva == "51-55" ~ "51 - 55", MuerteRegresiva == "56-60" ~ "56 - 60",
-                                      MuerteRegresiva == "61-65" ~ "61 - 65", MuerteRegresiva == "66-70" ~ "66 - 70",
-                                      MuerteRegresiva == "71-75" ~ "71 - 75", MuerteRegresiva == "76-80" ~ "76 - 80",
-                                      MuerteRegresiva == "81-85" ~ "81 - 85", MuerteRegresiva == "86-90" ~ "86 - 90",
-                                      MuerteRegresiva == "91-95" ~ "91 - 95", MuerteRegresiva == "96-100" ~ "96 - 100",
-                                      TRUE ~ MuerteRegresiva),
-        # "Danio1" Correction - "No definido" -> NA
-        Danio1 = case_when(Danio1 == "No definido" ~ NA,
-                           TRUE ~ Danio1),
-        # "Severidad1" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
-          Severidad1 = case_when(Severidad1 == "No capturado" ~ NA,
-                                 Severidad1 == "No aplica" ~ NA,
-                                 TRUE ~ as.numeric(Severidad1)),
-        # "Danio2" Correction - "No capturado" -> NA
-          Danio2 = case_when(Danio2 == "No capturado" ~ NA,
-                             TRUE ~ Danio2),
-        # "Severidad2" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
-          Severidad2 = case_when(Severidad2 == "No capturado" ~ NA,
-                                 Severidad2 == "No aplica" ~ NA,
-                                 TRUE ~ as.numeric(Severidad2)),
-        # "NombreCientifico" Correction - "ZZ Genero Desconocido" -> NA
-          NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ "ZZ Desconocido",
-                                           TRUE ~ NombreCientifico_APG),
-        # Added File number 
-          File = "3"
-         ) |> 
-# setting initial column order + attaching everything so far not considered to the end
+    # "FormaBiologica" Correction - "NULL" -> NA 
+    FormaBiologica = case_when(FormaBiologica == "Indeterminada" ~ NA,
+                               TRUE ~ FormaBiologica),
+    # "PosicionCopa" Correction - "No aplicacion" + "No aplica" + "No capturado" -> NA
+    PosicionCopa = case_when(PosicionCopa == "No aplicacion" ~ NA, 
+                             PosicionCopa == "No aplica" ~ NA,
+                             PosicionCopa == "No capturado" ~ NA,
+                             TRUE ~ PosicionCopa),
+    # "ExposicionCopa" Correction - "No capturado" + "No aplica" + class names -> NA + new names
+    ExposicionCopa = str_replace(ExposicionCopa, "SI", "Sí"),
+    ExposicionCopa = case_when(ExposicionCopa == "No capturado" ~ NA,
+                               ExposicionCopa == "No aplica" ~ NA,
+                               ExposicionCopa == "Árboles que no reciben luz porque se encuentran sombreados por otros árboles" ~ 
+                                 "Árboles que no reciben luz porque están a la sombra de otra vegetación",
+                               TRUE ~ ExposicionCopa),
+    # "DensidadCopa" Correction - "No capturado" -> NA
+    DensidadCopa = case_when(DensidadCopa == "No capturado" ~ NA,
+                             TRUE ~ DensidadCopa),
+    # "TransparenciaCopa" Correction - "No capturado" -> NA
+    TransparenciaCopa = case_when(TransparenciaCopa == "No capturado" ~ NA,
+                                  TRUE ~ TransparenciaCopa),
+    # "MuerteRegresiva" Correction - "No capturado" -> NA -> still 3 entry mistakes with 42309, 44682, 44840
+    MuerteRegresiva = case_when(MuerteRegresiva == "No capturado" ~ NA,
+                                MuerteRegresiva == "00" ~ "Sin parámetro",
+                                MuerteRegresiva == "1-5" ~ "1 - 5", MuerteRegresiva == "6-10" ~ "6 - 10",
+                                MuerteRegresiva == "11-15" ~ "11 - 15", MuerteRegresiva == "16-20" ~ "16 - 20",
+                                MuerteRegresiva == "21-25" ~ "21 - 25", MuerteRegresiva == "26-30" ~ "26 - 30",
+                                MuerteRegresiva == "31-35" ~ "31 - 35", MuerteRegresiva == "36-40" ~ "36 - 40",
+                                MuerteRegresiva == "41-45" ~ "41 - 45", MuerteRegresiva == "46-50" ~ "46 - 50",
+                                MuerteRegresiva == "51-55" ~ "51 - 55", MuerteRegresiva == "56-60" ~ "56 - 60",
+                                MuerteRegresiva == "61-65" ~ "61 - 65", MuerteRegresiva == "66-70" ~ "66 - 70",
+                                MuerteRegresiva == "71-75" ~ "71 - 75", MuerteRegresiva == "76-80" ~ "76 - 80",
+                                MuerteRegresiva == "81-85" ~ "81 - 85", MuerteRegresiva == "86-90" ~ "86 - 90",
+                                MuerteRegresiva == "91-95" ~ "91 - 95", MuerteRegresiva == "96-100" ~ "96 - 100",
+                                TRUE ~ MuerteRegresiva),
+    # "Danio1" Correction - "No definido" -> NA
+    Danio1 = case_when(Danio1 == "No definido" ~ NA,
+                       TRUE ~ Danio1),
+    # "Severidad1" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
+    Severidad1 = case_when(Severidad1 == "No capturado" ~ NA,
+                           Severidad1 == "No aplica" ~ NA,
+                           TRUE ~ as.numeric(Severidad1)),
+    # "Danio2" Correction - "No capturado" -> NA
+    Danio2 = case_when(Danio2 == "No capturado" ~ NA,
+                       TRUE ~ Danio2),
+    # "Severidad2" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
+    Severidad2 = case_when(Severidad2 == "No capturado" ~ NA,
+                           Severidad2 == "No aplica" ~ NA,
+                           TRUE ~ as.numeric(Severidad2)),
+    # "NombreCientifico" Correction - "ZZ Genero Desconocido" -> NA
+    NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ "ZZ Desconocido",
+                                     TRUE ~ NombreCientifico_APG),
+    # Added File number 
+    File = "3"
+  ) |> 
+  # setting initial column order + attaching everything so far not considered to the end
   select(File, Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
          NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal, AlturaFusteLimpio, AlturaComercial,
          DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa, PosicionCopa, ExposicionCopa, DensidadCopa,
          TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion, Danio1, Severidad1, Danio2, Severidad2, NumeroTallos,
          LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything()
-         ) |> 
-# sorting for comparison
+  ) |> 
+  # sorting for comparison
   arrange(Estado, Conglomerado, Sitio, Registro)
 
 
 
-###### 3) MERGE FILES FOR OVERLAPPING VARIABLES ------------------------------------------------------
+#################### 3) MERGE FILES FOR OVERLAPPING VARIABLES ------------------------------------------------------
 
 #Arb.04
 M.04 <- Arb.04 |>
@@ -488,7 +486,7 @@ merged <- rbind(M.04, M.09, M.14) |>
 
 
 
-###### 4) EDA PREPARATION ------------------------------------------------------------------
+#################### 4) EDA PREPARATION ------------------------------------------------------------------
 ###### 4.1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ---------------------------
 #### DATA ON CLUSTER LEVEL
 C_SpecRich <- merged |> 
@@ -605,7 +603,7 @@ Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_I
 
 # write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
 
-###### 5) METADATA STUFF -------------------------------------------------------------------
+#################### 5) METADATA STUFF -------------------------------------------------------------------
 ###### 5.1) PLOT COUNTS FOR EACH CLUSTER -----------------------------------------
 
 # Adding the Number of Plots per Cluster ("Plots")
@@ -626,7 +624,7 @@ Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("File",
   select(everything(), -c("X.y", "Y.y")) |> 
   rename(X = X.x,
          Y = Y.x)
-  
+
 ###### 5.2) AVAILABILITY OF PLOTS FOR EACH CLUSTER -----------------------------------------------
 
 # function to count number of cycles with a given number of plots 
@@ -688,7 +686,7 @@ Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("File", 
 Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cluster_ID, Estado),
                                    by = "Cluster_ID")
 
-###### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
+#################### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
 ###### X4.1) Species Richness + Individual tree count ---------------------------
 #### DATA ON PLOT LEVEL
 SpecRich <- merged |> 
@@ -705,7 +703,6 @@ SpecRich <- merged |>
             Y = mean(Y)) |> 
   relocate(Plot_ID)
 
-View(SpecRich)
 
 ###### X4.2) Species Abundances ------------------------------------------------- 
 #### DATA CALCULATED PER PLOT 
@@ -785,7 +782,7 @@ Comp_Plot_Diagnostics <- left_join(PlotDiagnostics, TreeMorp, by= c("Plot_ID", "
   relocate(Plot_ID, File, Conglomerado, Sitio, Anio, species_count, total_entries, H, J, AvgTreeHeight, AvgDbh, AvgCrownDiameter, AvgCrownDiameter, AvgCrownHeight, AvgCrownArea, X, Y)
 
 
-###### ZZ) Archive Stuff -------------------------------------------------------------------
+#################### ZZ) Archive Stuff -------------------------------------------------------------------
 ###### Z1) METADATA ANALYSIS I -------------------------------------------------
 
 # Raw.04
@@ -1012,13 +1009,13 @@ Absolute.Disturbance |>
 
 
 
-###### YY) Plotting ------------------------------------------------------------------------
+#################### YY) Plotting ------------------------------------------------------------------------
 ###### Y1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ----------------------------------------
-########### A) consistent clusters ---------------------
-# Individual Species Count per Plot/Cluster
-Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich" 
-  mutate(File = as.factor(File)) |> 
-  filter(Consistent == T) |> 
+#### A) Constant clusters ---------------------
+##### SPECIES COUNTS PER CLUSTER
+Comp_C_Diagnostics_V5 |>                         # Use "SpecRich" or "C_SpecRich" 
+  mutate(File = as.factor(File)) |>
+  filter(Cycles == 3) |> 
   ggplot(aes(x = species_count, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
   labs(x = "Species Count per Cluster",
@@ -1028,7 +1025,7 @@ Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich
 
 Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   ggplot(aes(x = species_count, colour = File)) +
   geom_freqpoly(binwidth = 1) +
   labs(x = "Species Count per Cluster",
@@ -1036,58 +1033,42 @@ Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
-  mutate(File = as.factor(File)) |> 
-  filter(Consistent == T) |> 
-  ggplot(aes(x= species_count, colour = File)) +
-  stat_ecdf(geom = "step") +
-  labs(x = "Species Count per Cluster",
-       y = "") 
-
 Comp_C_Diagnostics_V3 |> 
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   ggplot(aes(x= species_count, colour = File)) +
   geom_density()
 
-# Individual Tree Count per Plot/Cluster
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+##### TREE COUNTS PER CLUSTER
+Comp_C_Diagnostics_V5|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   ggplot(aes(x= total_entries, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V5|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |>  
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   ggplot(aes(x = total_entries, colour = File)) +
   geom_freqpoly(binwidth = 1) +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == T) |> 
-  ggplot(aes(x= total_entries, colour = File)) +
-  stat_ecdf(geom = "step") +
-  labs(x = "Individual trees per cluster",
-       y = "Count") 
-
-Comp_C_Diagnostics_V3 |> 
-  mutate(File = as.factor(File)) |> 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   ggplot(aes(x= total_entries, colour = File)) +
   geom_density()
 
 
 
-########### B) inconsistent clusters---------------------
-# Individual Species Count per Plot/Cluster
-Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich" 
+#### B) Sporadic clusters---------------------
+##### SPECIES COUNTS PER CLUSTER
+Comp_C_Diagnostics_V5 |>                         # Use "SpecRich" or "C_SpecRich" 
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |> 
   ggplot(aes(x = species_count, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
   labs(x = "Species Count per Cluster",
@@ -1095,9 +1076,9 @@ Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V5 |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |> 
   ggplot(aes(x = species_count, colour = File)) +
   geom_freqpoly(binwidth = 1) +
   labs(x = "Species Count per Cluster",
@@ -1105,54 +1086,40 @@ Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
-  mutate(File = as.factor(File)) |> 
-  filter(Consistent == F) |> 
-  ggplot(aes(x= species_count, colour = File)) +
-  stat_ecdf(geom = "step") +
-  labs(x = "Species Count per Cluster",
-       y = "") 
 
-Comp_C_Diagnostics_V3 |> 
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |>  
   ggplot(aes(x= species_count, colour = File)) +
   geom_density()
 
-# Individual Tree Count per Plot/Cluster
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+##### TREE COUNTS PER CLUSTER
+Comp_C_Diagnostics_V5|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |> 
   ggplot(aes(x= total_entries, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V5|>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |>  
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |>  
   ggplot(aes(x = total_entries, colour = File)) +
   geom_freqpoly(binwidth = 1) +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
-  mutate(File = as.factor(File)) |> 
-  filter(Consistent == F) |> 
-  ggplot(aes(x= total_entries, colour = File)) +
-  stat_ecdf(geom = "step") +
-  labs(x = "Individual trees per cluster",
-       y = "Count") 
 
-Comp_C_Diagnostics_V3 |> 
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |>  
   ggplot(aes(x= total_entries, colour = File)) +
   geom_density()
 
-########### C) all clusters -----------------------------
-# Individual Species Count per Plot/Cluster
-Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich" 
+#### C) all clusters -----------------------------
+##### SPECIES COUNTS PER CLUSTER
+Comp_C_Diagnostics_V5 |>                         # Use "SpecRich" or "C_SpecRich" 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x = species_count, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
@@ -1161,7 +1128,7 @@ Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V5 |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x = species_count, colour = File)) +
   geom_freqpoly(binwidth = 1) +
@@ -1170,41 +1137,27 @@ Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich
        title = "Frequency Distribution of Species Richness") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-Comp_C_Diagnostics_V3 |>                         # Use "SpecRich" or "C_SpecRich"  
-  mutate(File = as.factor(File)) |> 
-  ggplot(aes(x= species_count, colour = File)) +
-  stat_ecdf(geom = "step") +
-  labs(x = "Species Count per Cluster",
-       y = "") 
-
-Comp_C_Diagnostics_V3 |> 
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= species_count, colour = File)) +
   geom_density()
 
-# Individual Tree Count per Plot/Cluster
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+##### TREE COUNTS PER CLUSTER
+Comp_C_Diagnostics_V5 |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= total_entries, fill = File)) +
   geom_histogram(binwidth = 1, position = "identity", alpha = 0.3) +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
+Comp_C_Diagnostics_V5 |>                         # Use "SpecRich" or "C_SpecRich"  
   mutate(File = as.factor(File)) |>  
   ggplot(aes(x = total_entries, colour = File)) +
   geom_freqpoly(binwidth = 1) +
   labs(x = "Individual trees per cluster",
        y = "Count") 
 
-Comp_C_Diagnostics_V3|>                         # Use "SpecRich" or "C_SpecRich"  
-  mutate(File = as.factor(File)) |> 
-  ggplot(aes(x= total_entries, colour = File)) +
-  stat_ecdf(geom = "step") +
-  labs(x = "Individual trees per cluster",
-       y = "Count") 
-
-Comp_C_Diagnostics_V3 |> 
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x= total_entries, colour = File)) +
   geom_density()
@@ -1225,144 +1178,96 @@ C_SpecAbun |>                         # Enter "SpecAbun" or "C_SpecAbun"
   theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
 ###### Y3) SHANNON INDEX H + PIELOU EVENESS J ----------------------------------------------
-########### A) consistent clusters -----------------------
-# plots shannon-index 
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
+#### A) constant clusters -----------------------
+#### SHANNON INDEX
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == T) |>                       
+  filter(Cycles == 3) |>                      
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, colour = File)) +
   geom_freqpoly()
 
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == T) |> 
-  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
-  ggplot(aes(x= H, colour = File)) +
-  stat_ecdf(geom = "step")
-
-Comp_C_Diagnostics_V3 |> 
-  mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, colour = File)) +
   geom_density()
 
 
-
-# plots pielou eveness
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+#### PIELOU EVENESS
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x = J, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= J, colour = File)) +
   geom_freqpoly()
 
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == T) |> 
-  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
-  ggplot(aes(x= J, colour = File)) +
-  stat_ecdf(geom = "step")
-
-Comp_C_Diagnostics_V3 |> 
-  mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == T) |> 
+  filter(Cycles == 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= J, colour = File)) +
   geom_density()
 
 
 
-########### B) inconsistent clusters -------------------------
-# plots shannon-index 
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
+#### B) sporadic clusters -------------------------
+#### SHANNON INDEX
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == F) |>                       
+  filter(Cycles != 3) |>                      
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, colour = File)) +
   geom_freqpoly()
 
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == F) |> 
-  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
-  ggplot(aes(x= H, colour = File)) +
-  stat_ecdf(geom = "step")
-
-Comp_C_Diagnostics_V3 |> 
-  mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, H, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= H, colour = File)) +
   geom_density()
 
 
-
-# plots pielou eveness
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+#### PIELOU EVENESS
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x = J, fill = File)) +
   geom_histogram(position = "identity", alpha = 0.3)
 
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= J, colour = File)) +
   geom_freqpoly()
 
-Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == F) |> 
-  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
-  ggplot(aes(x= J, colour = File)) +
-  stat_ecdf(geom = "step")
-
-Comp_C_Diagnostics_V3 |> 
-  mutate(File = as.factor(File)) |> 
-  select(File, Cluster_ID, J, Consistent) |>          # Enter "Plot_ID" or "Cluster_ID" 
-  filter(Consistent == F) |> 
+  filter(Cycles != 3) |> 
   group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
   ggplot(aes(x= J, colour = File)) +
   geom_density()
@@ -1370,7 +1275,7 @@ Comp_C_Diagnostics_V3 |>
 
 
 
-########### C) all clusters ----------------------------------
+#### C) all clusters ----------------------------------
 
 # plots shannon-index 
 Comp_C_Diagnostics_V3 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
@@ -1432,6 +1337,118 @@ Comp_C_Diagnostics_V3 |>
   ggplot(aes(x= J, colour = File)) +
   geom_density()
 
+
+
+#### D) consistent cluster ------------------------------------------------
+#### SHANNON INDEX
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |>  
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_freqpoly()
+
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_density()
+
+
+#### PIELOU EVENESS
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x = J, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_freqpoly()
+
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_density()
+
+
+#### D) consistent + 4 plots cluster ------------------------------------------------
+#### SHANNON INDEX
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics" 
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  filter(Plots == 4) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |>  
+  filter(Consistent == T) |> 
+  filter(Plots == 4) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_freqpoly()
+
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  filter(Plots == 4) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= H, colour = File)) +
+  geom_density()
+
+
+#### PIELOU EVENESS
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  filter(Plots == 4) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x = J, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+Comp_C_Diagnostics_V5 |>                                 # Enter "PlotDiagnostics" or "ClusterDiagnostics"  
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  filter(Plots == 4) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_freqpoly()
+
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  filter(Cycles == 3) |> 
+  filter(Consistent == T) |> 
+  filter(Plots == 4) |> 
+  group_by(Cluster_ID) |>                             # Enter "Plot_ID" or "Cluster_ID" 
+  ggplot(aes(x= J, colour = File)) +
+  geom_density()
 
 
 ###### Y4) TREE MORPHOLOGY -----------------------------------------------------
@@ -1516,19 +1533,13 @@ Comp_C_Diagnostics_V2 |>
   geom_point(alpha = 0.2)
   
 
-Comp_C_Diagnostics_V2 |> 
-  select(Cluster_ID, File, Conglomerado, Anio, Plots, X, Y) |> 
-  group_by(Conglomerado) |> 
-  arrange(Conglomerado) |> 
-  #count()
-  summarise(Conglomerado = mean(Conglomerado),
-            n = n(),
-            X = mean(X), 
-            Y = mean(Y)) |>
-  mutate(n = as.factor(n)) |> 
-  ggplot(aes(x= X, y= Y, color = n)) +
+# Clusters by their availability across 1, 2, or 3 cycles
+Comp_C_Diagnostics_V5 |> 
+  select(Cluster_ID, File, Conglomerado, Plots, Cycles, X, Y) |> 
+  mutate(Cycles = as.factor(Cycles)) |> 
+  ggplot(aes(x= X, y= Y, color = Cycles)) +
   geom_point() +
-  facet_grid(~n)
+  facet_grid(~Cycles)
 
 
 View(Comp_C_Diagnostics_V3)
@@ -1590,9 +1601,7 @@ Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, CycleAvailability, by 
 View(Comp_C_Diagnostics_V4)
 
 
-  
-  
-  
+
 
 #plot
 Comp_C_Diagnostics_V2 |> 
@@ -1636,8 +1645,8 @@ Comp_C_Diagnostics_V2 |>
 
 
 
-###### AA) PREPARATION CODE FOR GEOSPATIAL ANALYSIS - optional -----------------------------
-########### A1) species count per cluster --------------------------------------
+################### AA) PREPARATION CODE FOR GEOSPATIAL ANALYSIS - optional -----------------------------
+###### A1) species count per cluster --------------------------------------
 ## Arb.04
 ArbSpat.04 <- Arb.04 |> 
   select(Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
@@ -1686,7 +1695,7 @@ plot(ArbSpat.14)
 
 
 
-########### A2) Availability of clusters ---------------------------------------
+###### A2) Availability of clusters ---------------------------------------
 View(Comp_C_Diagnostics_V3)
 ##  consistent clusters
 Plot.Spat.All <- vect(Comp_C_Diagnostics_V3 |> filter(Consistent == T) |> select(File, Conglomerado, Plots, X, Y), 
@@ -1719,13 +1728,32 @@ Plot.Spat.3 <- vect(Comp_C_Diagnostics_V5 |> filter(Cycles == 3)  |> select(File
 writeVector(Plot.Spat.3, "PlotAvailability_3.shp")
 
 # cycle overview
-Plot.Spat.C <- vect(Comp_C_Diagnostics_V5 |> select(File, Conglomerado, Estado, Plots, Cycles, Consistent, X, Y),
+Plot.Sporadic <- vect(Comp_C_Diagnostics_V5 |> filter(Cycles != 3),
+                      geom = c("X", "Y"),
+                      crs = "+proj=longlat +daum=WGS884")
+
+writeVector(Plot.Sporadic, "Sporadic_Plots.shp")
+
+Plot.Constant <- vect(Comp_C_Diagnostics_V5 |> filter(Cycles == 3),
                     geom = c("X", "Y"),
                     crs = "+proj=longlat +daum=WGS884")
 
-writeVector(Plot.Spat.C, "PlotAvailability_C.shp")
+writeVector(Plot.Constant, "Constant_Plots.shp")
 
-###### 9) MULTIVARIATE CHANGE DETECTION - data from python ---------------------
+Plot.Constant.Consistent <- vect(Comp_C_Diagnostics_V5 |> filter(Cycles == 3) |> filter(Consistent == T),
+                                 geom = c("X", "Y"),
+                                 crs = "+proj=longlat +daum=WGS884")
+
+writeVector(Plot.Constant.Consistent, "Constant_Consistent_Plots.shp")
+
+Plot.Spat <- vect(Comp_C_Diagnostics_V5,
+                  geom = c("X", "Y"),
+                  crs = "+proj=longlat +daum=WGS884")
+
+writeVector(Plot.Spat, "Spatial_Diagnostics.shp")
+
+
+################### 9) MULTIVARIATE CHANGE DETECTION - data from python ---------------------
 
 setwd("C:/Users/samhu/Desktop/Projects/MxForest")
 
@@ -1738,18 +1766,16 @@ hist(Results[,7], breaks=100)
 
 
 
-###### 10) PLACEHOLDER - BETA --------------------------------------------------------
+################### 10) PLACEHOLDER - BETA --------------------------------------------------------
 
 View(Comp_C_Diagnostics_V4)
 
 ########### SLIDE 7 - Ind. tree count per plot by plots per cluster (and by file) ---------------------
 PTC_P <- SpecRich |> 
-  left_join(Comp_C_Diagnostics_V3 |> 
-              select(File, Conglomerado, Anio, Plots, Consistent), by = c("File", "Conglomerado", "Anio"))
+  left_join(Comp_C_Diagnostics_V5 |> 
+              select(File, Conglomerado, Anio, Plots, Consistent, Cycles), by = c("File", "Conglomerado", "Anio"))
 
-## calculate means per plot by plots per clusters
-
-# functions to count number of cycles with a given number of plots
+###### SLIDE 7 - FUNCTIONS ------------------------------------------------------------------------
 #for consistent + inconsistent plots
 summarise_data2 <- function(data, plot_number, consistency) {
   data |> 
@@ -1772,7 +1798,6 @@ summarise_data3 <- function(data, plot_number) {
               Avg = mean(total_entries)
     )
 }
-
 # for comparison between files
 summarise_data4 <- function(data, plot_number) {
   data |> 
@@ -1786,7 +1811,9 @@ summarise_data4 <- function(data, plot_number) {
               Avg = mean(total_entries)
     )
 }
-# value calculation
+
+###### SLIDE 7 - VALUE CALCULATIONS  -------------------------------------------------------------------
+##### BETA 
 PTC_P |> summarise_data2(1, T) |> 
   rbind(PTC_P |> summarise_data2(1, F), 
         PTC_P |> summarise_data3(1),
@@ -1800,32 +1827,63 @@ PTC_P |> summarise_data2(1, T) |>
         PTC_P |> summarise_data2(4, F),
         PTC_P |> summarise_data3(4)) |> 
   arrange(desc(Consistent))
-# value calculation
-PTC_P |> 
-  summarise_data4(1) |> 
-  rbind(PTC_P |> summarise_data4(2),
-        PTC_P |> summarise_data4(3),
-        PTC_P |> summarise_data4(4))
 
-# consistent plots
+# value calculation - constant clusters (cycles == 3) 
+PTC_P |> filter(Cycles == 3) |>  summarise_data2(1, T) |> 
+  rbind(PTC_P |> filter(Cycles == 3) |> summarise_data2(1, F), 
+        PTC_P |> filter(Cycles == 3) |> summarise_data3(1),
+        PTC_P |> filter(Cycles == 3) |> summarise_data2(2, T), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(2, F), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data3(2),
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(3, T), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(3, F), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data3(3),
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(4, T), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(4, F),
+        PTC_P |> filter(Cycles == 3)|> summarise_data3(4)) |> 
+  arrange(desc(Consistent))
+
+# SLIDE 7 - value calculation - constant clusters (cycles == 3) -----------------------------------------------------
+PTC_P |> filter(Cycles == 3) |> 
+  summarise_data4(1) |> 
+  rbind(PTC_P |> filter(Cycles == 3) |>  summarise_data4(2),
+        PTC_P |> filter(Cycles == 3) |>  summarise_data4(3),
+        PTC_P |> filter(Cycles == 3) |>  summarise_data4(4))
+
+# SLIDE 7 - value calculation plot - constant clusters (cycles == 3) --------------------------------------------------------
+PTC_P |> 
+  filter(Cycles != 3) |> 
+  summarise_data4(1) |> 
+  rbind(PTC_P |> filter(Cycles != 3) |> summarise_data4(2),
+        PTC_P |> filter(Cycles != 3) |> summarise_data4(3),
+        PTC_P |> filter(Cycles != 3) |> summarise_data4(4)) |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = Plots, y = Avg, fill = File)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = round(Avg, 2)), colour = "white", size = 2.5,
+            vjust = 1.5, position = position_dodge(.9)) +
+  labs(y = "Average tree count per plot", x = "Clusters with x number of plots")
+
+
+# SLIDE 7 - random plots ------------------------
 #means
-PTC_3 |> 
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File),
          Plots = as.factor(Plots)) |> 
   subset(Consistent == T) |> 
-  ggplot(aes(x = Plot_Average, fill = Plots)) +
+  ggplot(aes(x = Plot_TreeCount_Mean, fill = Plots)) +
   geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
 #medians
-PTC_3 |> 
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File),
          Plots = as.factor(Plots)) |> 
   subset(Consistent == T) |> 
-  ggplot(aes(x = Plot_Median, fill = Plots)) +
+  ggplot(aes(x = Plot_TreeCount_Median, fill = Plots)) +
   geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
 
 # inconsistent plots
 #means
-PTC_3 |> 
+Comp_C_Diagnostics_V5 |> 
   mutate(File = as.factor(File),
          Plots = as.factor(Plots)) |> 
   subset(Consistent == F) |> 
@@ -1854,7 +1912,9 @@ PTC_3 |>
   ggplot(aes(x = Plot_Median, fill = Plots)) +
   geom_histogram(alpha = 0.3, position = "identity", binwidth = 1) 
 
-#overall averages of trees per plot by amount of plots per cluster - divided by consistent
+
+
+# overall averages of trees per plot by amount of plots per cluster - all plots ----------------
 PTC_P |> summarise_data2(1, T) |> 
   rbind(PTC_P |> summarise_data2(1, F), 
         PTC_P |> summarise_data3(1),
@@ -1870,29 +1930,61 @@ PTC_P |> summarise_data2(1, T) |>
   arrange(desc(Consistent)) |> 
   ggplot(aes(x = Plots, y = Avg, fill = Consistent)) +
   geom_bar(stat = "identity", position = "dodge") +
-  labs(x = "Average tree count per plot", y = "Clusters with x number of plots")
+  geom_text(aes(label = round(Avg, 2)), colour = "white", size = 2.5,
+            vjust = 1.5, position = position_dodge(.9)) +
+  labs(y = "Average tree count per plot", x = "Clusters with x number of plots")
 
-# overall averages of trees per plot by amount of plots per cluster - divided by file
+# averages of trees per plot by amount of plots per cluster - constant plots -------------------
+PTC_P |> filter(Cycles == 3) |>  summarise_data2(1, T) |> 
+  rbind(PTC_P |> filter(Cycles == 3) |> summarise_data2(1, F), 
+        PTC_P |> filter(Cycles == 3) |> summarise_data3(1),
+        PTC_P |> filter(Cycles == 3) |> summarise_data2(2, T), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(2, F), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data3(2),
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(3, T), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(3, F), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data3(3),
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(4, T), 
+        PTC_P |> filter(Cycles == 3)|> summarise_data2(4, F),
+        PTC_P |> filter(Cycles == 3)|> summarise_data3(4)) |> 
+  arrange(desc(Consistent)) |> 
+  ggplot(aes(x = Plots, y = Avg, fill = Consistent)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = round(Avg, 2)), colour = "white", size = 2.5,
+            vjust = 1.5, position = position_dodge(.9)) +
+  labs(y = "Average tree count per plot", x = "Clusters with x number of plots")
+
+# overall averages of trees per plot by amount of plots per cluster - divided by file -----------------------
 PTC_P |> 
+  filter(Cycles == 3) |> 
   summarise_data4(1) |> 
-  rbind(PTC_P |> summarise_data4(2),
-        PTC_P |> summarise_data4(3),
-        PTC_P |> summarise_data4(4)) |> 
+  rbind(PTC_P |> filter(Cycles == 3) |> summarise_data4(2),
+        PTC_P |> filter(Cycles == 3) |> summarise_data4(3),
+        PTC_P |> filter(Cycles == 3) |> summarise_data4(4)) |> 
   mutate(File = as.factor(File)) |> 
   ggplot(aes(x = Plots, y = Avg, fill = File)) +
   geom_bar(stat = "identity", position = "dodge") +
-  labs(x = "Average tree count per plot", y = "Clusters with x number of plots")
+  geom_text(aes(label = round(Avg, 2)), colour = "white", size = 2.5,
+                vjust = 1.5, position = position_dodge(.9)) +
+  labs(y = "Average tree count per plot", x = "Clusters with x number of plots")
+
+
+PTC_P |> 
+  summarise_data4(4)
+
+PTC_P
+
+Comp_C_Diagnostics_V5 |> 
+  filter(Consistent == T) |> 
+  mutate(File = as.factor(File),
+         Plots = as.factor(Plots),
+         Avg = mean(total_entries)) |> 
+  ggplot(aes(x = Plots, y = Avg, fill = File)) +
+  geom_bar(stat = "identity", position = "dodge")
 
 
 ###### 11) PLACEHOLDER - UNASIGNED ---------------------------------------------------------
-
-Comp_C_Diagnostics_V3 |> 
-  filter(cycles_four_plots == 3 | cycles_three_plots == 3 | cycles_two_plots == 3 | cycles_one_plots == 3) |> 
-  group_by(File) |> 
-  count()
-
-
-# how many clusters across all 3 datasets have 3, 2, and 1 plots
+# how many clusters across all 3 datasets have 3, 2, and 1 plots -----------------------
 
 Comp_C_Diagnostics_V4 |>
   ungroup() |> 
@@ -1902,22 +1994,47 @@ Comp_C_Diagnostics_V4 |>
   count()  
 
 
-# is there clusters with zero entries?
+# is there clusters with zero entries? -------------------------
 
 Comp_C_Diagnostics_V4 |> 
   filter(total_entries == 1)
 
-
-# how many clusters are available across all 3 cycles with variying amounts of plots
-View(Comp_C_Diagnostics_V4)
+# how many clusters are available across all 3 cycles with variying amounts of plots ---------------
+View(Comp_C_Diagnostics_V5)
 
 Comp_C_Diagnostics_V4 |> 
-  filter(Cycles != 3) |> 
+  ungroup() |> 
+  group_by(X, Y) |> 
+  distinct() |> 
+  #filter(Cycles != 3) |> 
  # filter(Plots == 4) |> 
   #filter(Consistent == F) |> 
-  count() 
+  count() |> 
+  ungroup() |> 
+  distinct() |> 
+  count()
+
+Comp_C_Diagnostics_V5 |> 
+  filter(Cycles == 2) |> 
+  filter(cycles_four_plots == 2) |> 
+  #filter(Plots == 4) |> 
+  count()
 
 
+
+
+
+# unique sporadic clusters ------------------------------------------------------------
+Comp_C_Diagnostics_V5 |> 
+  ungroup() |> 
+  select(Conglomerado, Cycles) |> 
+  filter(Cycles != 3) |>
+  distinct() |> 
+  count()
+
+
+
+# BETA Tests ------------------------------------------------------------------
 
 
 
