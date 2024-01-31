@@ -1735,22 +1735,37 @@ writeVector(Plot.Spat, "Spatial_Diagnostics.shp")
 
 
 ###### A3) Changes in Species Richness (Consistent + 4 Plots) - BETA --------------------------------------
-CP4 <- Comp_C_Diagnostics_V5 |> filter(Consistent == T) |> filter(Plots == 4) |>  filter(File == 1) |> ungroup() |> mutate(One = species_count) |> 
+SR_CP4 <- Comp_C_Diagnostics_V5 |> filter(Consistent == T) |> filter(Plots == 4) |>  filter(File == 1) |> ungroup() |> mutate(One = species_count) |> 
   select(Conglomerado, One, X, Y) |>
   left_join(
-    left_join(Comp_C_Diagnostics_V5 |> filter(Consistent == T) |> filter(Plots == 4) |> filter(File == 2) |> ungroup() |> mutate(Two = species_count) |>
+    left_join(
+      left_join(Comp_C_Diagnostics_V5 |> filter(Consistent == T) |> filter(Plots == 4) |> filter(File == 2) |> ungroup() |> mutate(Two = species_count) |>
                 select(Conglomerado, Two, X, Y),
               Comp_C_Diagnostics_V5 |> filter(Consistent == T) |> filter(Plots == 4) |> filter(File == 3) |> ungroup() |> mutate(Three = species_count) |>
                 select(Conglomerado, Three, X, Y),
               by = c("Conglomerado")),
-    by = c("Conglomerado")) |> 
+        EcoRegions <- Raw.14 |> 
+          select(IdConglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
+          rename(Conglomerado = IdConglomerado) |> 
+          left_join(Comp_C_Diagnostics_V5 |> 
+                      filter(File == 3) |> 
+                      ungroup() |> 
+                      select(Conglomerado, Consistent, Plots),
+                    by = "Conglomerado") |> 
+          filter(Consistent == T & Plots == 4) |> 
+          distinct() |> 
+          select(Conglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
+        by = "Conglomerado"),
+    by = "Conglomerado") |> 
   mutate(OneTwo = Two - One,
          TwoThree = Three - Two,
          OneThree = Three - One) |> 
   select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
   relocate(X, Y)
 
-writeVector(vect(CP4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Consistent4_SpecRich.shp")
+View(SR_CP4)
+
+writeVector(vect(SR_CP4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Consistent4_SpecRich.shp")
 
 ################### 9) MULTIVARIATE CHANGE DETECTION - data from python ---------------------
 
@@ -2035,3 +2050,111 @@ Comp_C_Diagnostics_V5 |>
 
 # BETA Tests ------------------------------------------------------------------
 
+
+#### PILOT: ONLY FOR Consistent == T and Plots == 4
+CP4 <- Comp_C_Diagnostics_V5 |> 
+  filter(Consistent == T & Plots == 4) |> 
+  left_join(EcoRegions <- Raw.14 |> 
+              select(IdConglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
+              rename(Conglomerado = IdConglomerado) |> 
+              left_join(Comp_C_Diagnostics_V5 |> 
+                          filter(File == 3) |> 
+                          ungroup() |> 
+                          select(Conglomerado, Consistent, Plots),
+                        by = "Conglomerado") |> 
+              filter(Consistent == T & Plots == 4) |> 
+              distinct(),
+            by = "Conglomerado")
+
+
+CP4 |> 
+  group_by(File, DESECON3_C3) |> 
+  mutate(H_Area = mean(H)) |> 
+  select(H_Area) |> 
+  distinct()
+
+CP4.2 <- CP4 |> 
+  left_join(CP4 |> 
+              group_by(File, DESECON3_C3) |> 
+              mutate(H_Area = mean(H)) |> 
+              select(H_Area) |> 
+              distinct(),
+            by = c("File", "DESECON3_C3"))
+
+View(CP4.2)
+
+writeVector(vect(CP4.2, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "ChangeDESECON3.shp")
+
+
+AreaChangeD3_CP4 <- CP4.2 |> filter(File == 1) |> ungroup() |>  mutate(H_Area_1 = H_Area) |> 
+  select(Conglomerado, H_Area_1, DESECON3_C3, X, Y) |>
+  left_join(
+    left_join(CP4.2 |> filter(File == 2) |> ungroup() |> mutate(H_Area_2 = H_Area) |> 
+                select(Conglomerado, H_Area_2, DESECON3_C3, X, Y),
+              CP4.2 |> filter(File == 3) |> ungroup() |> mutate(H_Area_3 = H_Area) |> 
+                select(Conglomerado, H_Area_3,DESECON3_C3, X, Y),
+              by = c("Conglomerado", "DESECON3_C3")),
+    by = c("Conglomerado", "DESECON3_C3")) |> 
+  select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
+  relocate(DESECON3_C3, X, Y) |> 
+  mutate(A1A2 = H_Area_2 - H_Area_1,
+         A2A3 = H_Area_3 - H_Area_2,
+         A1A3 = H_Area_3 - H_Area_1)
+
+View(AreaChangeD3_CP4)
+
+writeVector(vect(AreaChangeD3_CP4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "ChangesDESECON3.shp")
+
+  
+### PILOT 2: GROUPED BY ECOREGION (CONSTANT PLOTS)
+# database
+Eco <- Comp_C_Diagnostics_V5 |> 
+  filter(Cycles == 3) |>
+  left_join(EcoRegions <- Raw.14 |> 
+              select(IdConglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
+              distinct() |> 
+              rename(Conglomerado = IdConglomerado),
+            by = "Conglomerado")
+  
+View(Eco)
+
+# calculation of means per Ecoregion
+Eco4 <- Eco |> 
+  group_by(File, DESECON4_C3) |> 
+  mutate(H_Area_Mean = mean(H),
+         H_Area_Median = median(H)) |> 
+  select(Conglomerado, H_Area_Mean, H_Area_Median, X, Y) |> 
+  distinct()
+
+Eco4
+
+# Calculate Changes
+Eco4_Changes <- Eco4 |> filter(File == 1) |> ungroup() |> 
+  mutate(H1_Area_Mean = H_Area_Mean,H1_Area_Median = H_Area_Median) |> 
+  select(Conglomerado, H1_Area_Mean, H1_Area_Median, DESECON4_C3, X, Y) |>
+  left_join(
+    left_join(Eco4 |> filter(File == 2) |> ungroup() |> 
+                        mutate(H2_Area_Mean = H_Area_Mean, H2_Area_Median = H_Area_Median) |> 
+                        select(Conglomerado, H2_Area_Mean, H2_Area_Median, DESECON4_C3, X, Y),
+              Eco4 |> filter(File == 3) |> ungroup() |> 
+                mutate(H3_Area_Mean = H_Area_Mean, H3_Area_Median = H_Area_Median) |> 
+                select(Conglomerado, H3_Area_Mean, H3_Area_Median, DESECON4_C3, X, Y),
+              by = c("Conglomerado", "DESECON4_C3")),
+    by = c("Conglomerado","DESECON4_C3")) |> 
+  select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
+  relocate(DESECON4_C3, X, Y) |> 
+  mutate(Mean12 = H2_Area_Mean - H1_Area_Mean,
+         Mean23 = H3_Area_Mean - H1_Area_Mean,
+         Mean13 = H3_Area_Mean - H1_Area_Mean,
+         Median12 = H2_Area_Median - H1_Area_Median,
+         Median23 = H3_Area_Median - H2_Area_Median,
+         Median13 = H3_Area_Median - H1_Area_Median)
+
+View(Eco4_Changes)
+
+writeVector(vect(Eco4_Changes, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "ChangesDESECON4_Const.shp")
+
+
+
+ 
+  
