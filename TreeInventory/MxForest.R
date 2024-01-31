@@ -16,6 +16,8 @@
 # EDA: How many of the clusters contain all 4 plots? Is there a correlation between low individual clusters and missing plots?
 # EDA: addition to previous line - should also be seen in correlation with Shannon == 0 
 
+start.time <- Sys.time()
+
 ##########################################################################################
 #################### 0) LOAD NECESSARY PACKAGES ----------------------------------------------------------
 
@@ -501,7 +503,6 @@ C_SpecRich <- merged |>
             X = mean(X),
             Y = mean(Y)) |> 
   relocate(Cluster_ID)
-View(C_SpecRich)
 
 #### DATA ON PLOT LEVEL - used for later calculation in 5.3)
 SpecRich <- merged |> 
@@ -685,6 +686,11 @@ Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("File", 
 
 Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct(),
                                    by = "Cluster_ID")
+
+########## END -------------------------------------------------------------------------------------------
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 
 #################### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
 ###### X4.1) Species Richness + Individual tree count ---------------------------
@@ -1728,6 +1734,24 @@ Plot.Spat <- vect(Comp_C_Diagnostics_V5,
 writeVector(Plot.Spat, "Spatial_Diagnostics.shp")
 
 
+###### A3) Changes in Species Richness (Consistent + 4 Plots) - BETA --------------------------------------
+CP4 <- Comp_C_Diagnostics_V5 |> filter(Consistent == T) |> filter(Plots == 4) |>  filter(File == 1) |> ungroup() |> mutate(One = species_count) |> 
+  select(Conglomerado, One, X, Y) |>
+  left_join(
+    left_join(Comp_C_Diagnostics_V5 |> filter(Consistent == T) |> filter(Plots == 4) |> filter(File == 2) |> ungroup() |> mutate(Two = species_count) |>
+                select(Conglomerado, Two, X, Y),
+              Comp_C_Diagnostics_V5 |> filter(Consistent == T) |> filter(Plots == 4) |> filter(File == 3) |> ungroup() |> mutate(Three = species_count) |>
+                select(Conglomerado, Three, X, Y),
+              by = c("Conglomerado")),
+    by = c("Conglomerado")) |> 
+  mutate(OneTwo = Two - One,
+         TwoThree = Three - Two,
+         OneThree = Three - One) |> 
+  select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
+  relocate(X, Y)
+
+writeVector(vect(CP4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Consistent4_SpecRich.shp")
+
 ################### 9) MULTIVARIATE CHANGE DETECTION - data from python ---------------------
 
 setwd("C:/Users/samhu/Desktop/Projects/MxForest")
@@ -2010,8 +2034,4 @@ Comp_C_Diagnostics_V5 |>
 
 
 # BETA Tests ------------------------------------------------------------------
-
-
-
-
 
