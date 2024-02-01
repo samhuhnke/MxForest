@@ -1615,6 +1615,13 @@ C_TreeMorp |>
 
 
 
+###### Y5) ECOREGIONS PLOTS ----------------------------------------------------------------
+#### A) constant clusters --------------------------------
+# A.1) placeholder ---------------------------------------
+
+# A.2) placeholder ---------------------------------------
+
+
 ###### YX) EVERYTHING ELSE POSSIBLY PLOTABLE -----------------------------------------------------
 
 #correlation of number of plots per cluster with total entries per cluster - scatterplot
@@ -2265,62 +2272,4 @@ AreaChangeD3_CP4 <- CP4.2 |> filter(File == 1) |> ungroup() |>  mutate(H_Area_1 
 View(AreaChangeD3_CP4)
 
 writeVector(vect(AreaChangeD3_CP4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "ChangesDESECON3.shp")
-
-  
-### PILOT 2: GROUPED BY ECOREGION (CONSTANT PLOTS)
-# database
-Eco <- Comp_C_Diagnostics_V5 |> 
-  filter(Cycles == 3) |>
-  left_join(EcoRegions <- Raw.14 |> 
-              select(IdConglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
-              distinct() |> 
-              rename(Conglomerado = IdConglomerado),
-            by = "Conglomerado")
-  
-View(Eco)
-
-# calculation of means per Ecoregion
-Eco4 <- Eco |> 
-  group_by(File, DESECON4_C3) |> 
-  mutate(H_Area_Mean = mean(H),
-         H_Area_Median = median(H)) |> 
-  select(Conglomerado, H_Area_Mean, H_Area_Median, X, Y) |> 
-  distinct()
-
-Eco4
-
-# Calculate Changes
-Eco4_Changes <- Eco4 |> filter(File == 1) |> ungroup() |> 
-  mutate(H1_Area_Mean = H_Area_Mean,H1_Area_Median = H_Area_Median) |> 
-  select(Conglomerado, H1_Area_Mean, H1_Area_Median, DESECON4_C3, X, Y) |>
-  left_join(
-    left_join(Eco4 |> filter(File == 2) |> ungroup() |> 
-                        mutate(H2_Area_Mean = H_Area_Mean, H2_Area_Median = H_Area_Median) |> 
-                        select(Conglomerado, H2_Area_Mean, H2_Area_Median, DESECON4_C3, X, Y),
-              Eco4 |> filter(File == 3) |> ungroup() |> 
-                mutate(H3_Area_Mean = H_Area_Mean, H3_Area_Median = H_Area_Median) |> 
-                select(Conglomerado, H3_Area_Mean, H3_Area_Median, DESECON4_C3, X, Y),
-              by = c("Conglomerado", "DESECON4_C3")),
-    by = c("Conglomerado","DESECON4_C3")) |> 
-  select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
-  relocate(DESECON4_C3, X, Y) |> 
-  mutate(Mean12 = H2_Area_Mean - H1_Area_Mean,
-         Mean23 = H3_Area_Mean - H1_Area_Mean,
-         Mean13 = H3_Area_Mean - H1_Area_Mean,
-         Median12 = H2_Area_Median - H1_Area_Median,
-         Median23 = H3_Area_Median - H2_Area_Median,
-         Median13 = H3_Area_Median - H1_Area_Median)
-
-View(Eco4_Changes)
-
-writeVector(vect(Eco4_Changes, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "ChangesDESECON4_Const.shp")
-
-##### C3_Eco4_Diagnostics Testing --------------------------------------------------
-writeVector(vect(C3_Eco4_Diagnostics, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco4_Testing.shp")
-
-
-
-View(C3_Eco4_Diagnostics)
-
- 
   
