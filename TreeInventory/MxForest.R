@@ -504,6 +504,8 @@ C_SpecRich <- merged |>
             Y = mean(Y)) |> 
   relocate(Cluster_ID)
 
+View(C_SpecRich)
+
 #### DATA ON PLOT LEVEL - used for later calculation in 5.3)
 SpecRich <- merged |> 
   select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
@@ -686,9 +688,7 @@ Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Clust
                                    by = "Cluster_ID")
 
 ########## END -------------------------------------------------------------------------------------------
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
+
 
 #################### BB) EVERYTHING ON ECOREGIONS 4 LEVEL (CONSTANT PLOTS) -------------------------------
 
@@ -698,7 +698,6 @@ EcoRegions <- Raw.14 |>
   distinct() |> 
   rename(Conglomerado = IdConglomerado)
 
-View(EcoRegions)
 
 ###### B3) ADD ECOREGIONS 4 + ECO4_ID ----------------------------------------------------
 merged_Eco <- merged |> 
@@ -725,8 +724,6 @@ Eco4_SpecRich <- merged_Eco |>
             X = mean(X, na.rm = T),
             Y = mean(Y, na.rm = T)) |> 
   relocate(Eco4_ID)
-
-View(Eco4_SpecRich)
 
 ###### B4.2) Species Abundances  ---------------------------------------------------------
 Eco4_SpecAbun <- merged_Eco |> 
@@ -779,20 +776,61 @@ Eco4Diagnostics <- left_join(Eco4_SpecRich, Eco4_Temp.HJ, by= c("Eco4_ID")) |>
 # CURRENTLY EMPTY
 
 
-###### B4.6) Reintroduce Clusters --------------------------------------------------------
+###### B4.6) Reintroduce Clusters and DESECON4 --------------------------------------------------------
 C3_Eco4_Diagnostics <- Comp_C_Diagnostics_V5 |> filter(Cycles == 3) |>
   left_join(merged_Eco |> 
-              select(Eco4_ID, Cluster_ID) |> 
+              select(Eco4_ID, Cluster_ID, DESECON4_C3) |> 
               distinct(),
             by = "Cluster_ID") |> 
   left_join(Eco4Diagnostics |> 
               ungroup() |> 
               select(Eco4_ID, Eco4_species_count, Eco4_total_entries, Eco4_H, Eco4_J),
             by = "Eco4_ID") |> 
-    relocate(Eco4_ID)
+    relocate(Eco4_ID, DESECON4_C3)
+
+View(C3_Eco4_Diagnostics)
+View(merged_Eco)
+
+###### B4.7) Calculating Changes through cycles + geospatial preparation ---------------------------------
+C3_Eco4_Changes <- C3_Eco4_Diagnostics |> filter(File == 1) |> ungroup() |> 
+  mutate(Eco4_H1 = Eco4_H, Eco4_J1 = Eco4_J, Eco4_SC1 = Eco4_species_count, Eco4_TE1 = Eco4_total_entries) |> 
+  select(Conglomerado, Eco4_SC1, Eco4_TE1, Eco4_H1, Eco4_J1, DESECON4_C3, X, Y) |>
+  left_join(
+    left_join(C3_Eco4_Diagnostics |> filter(File == 2) |> ungroup() |> 
+                mutate(Eco4_H2 = Eco4_H, Eco4_J2 = Eco4_J, Eco4_SC2 = Eco4_species_count, Eco4_TE2 = Eco4_total_entries) |> 
+                select(Conglomerado, Eco4_SC2, Eco4_TE2, Eco4_H2, Eco4_J2, DESECON4_C3, X, Y),
+              C3_Eco4_Diagnostics |> filter(File == 3) |> ungroup() |> 
+                mutate(Eco4_H3 = Eco4_H, Eco4_J3 = Eco4_J, Eco4_SC3 = Eco4_species_count, Eco4_TE3 = Eco4_total_entries) |> 
+                select(Conglomerado, Eco4_SC3, Eco4_TE3, Eco4_H3, Eco4_J3, DESECON4_C3, X, Y),
+              by = c("Conglomerado", "DESECON4_C3")),
+    by = c("Conglomerado","DESECON4_C3")) |> 
+  select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
+  relocate(X, Y, DESECON4_C3) |> 
+  mutate(Eco4_SC12 = Eco4_SC2 - Eco4_SC1,
+         Eco4_SC23 = Eco4_SC3 - Eco4_SC2,
+         Eco4_SC13 = Eco4_SC3 - Eco4_SC1,
+         Eco4_TE12 = Eco4_TE2 - Eco4_TE1,
+         Eco4_TE23 = Eco4_TE3 - Eco4_TE2,
+         Eco4_TE13 = Eco4_TE3 - Eco4_TE1,
+         Eco4_H12 = Eco4_H2 - Eco4_H1,
+         Eco4_H23 = Eco4_H3 - Eco4_H2,
+         Eco4_H13 = Eco4_H3 - Eco4_H1,
+         Eco4_J12 = Eco4_J2 - Eco4_J1,
+         Eco4_J23 = Eco4_J3 - Eco4_J2,
+         Eco4_J13 = Eco4_J3 - Eco4_J1,) |> 
+  select(X, Y, DESECON4_C3, Conglomerado, 
+         Eco4_SC12, Eco4_SC23, Eco4_SC13, 
+         Eco4_TE12, Eco4_TE23, Eco4_TE13,
+         Eco4_H12, Eco4_H23, Eco4_H13,
+         Eco4_J12, Eco4_J23, Eco4_J13)
+
+#writeVector(vect(C3_Eco4_Changes, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco4_Testing.shp")
+
 
 ########### END ------------------------------------------------------------------------------------------
-
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 
 
 #################### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
