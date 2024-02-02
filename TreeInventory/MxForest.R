@@ -3007,12 +3007,26 @@ NewBase <- JoinedBase |>
          X = (X1 + X2+ X3)/DIV,
          Y = (Y1 + Y2+ Y3)/DIV) |> 
   select(Cluster_ID, Conglomerado1, Conglomerado2, Conglomerado3, X, Y) |> 
-  mutate(DIFF12 = )
+  mutate(DIFF12 = Conglomerado2 - Conglomerado1,
+         DIFF12 = case_when(DIFF12 > 0 ~ 1,
+                            DIFF12 < 0 ~ -1,
+                            TRUE ~ DIFF12),
+         DIFF13 = Conglomerado3 - Conglomerado1,
+         DIFF13 = case_when(DIFF13 > 0 ~ 1,
+                            DIFF13 < 0 ~ -1,
+                            TRUE ~ DIFF13),
+         DIFF23 = Conglomerado3 - Conglomerado2,
+         DIFF23 = case_when(DIFF23 > 0 ~ 1,
+                            DIFF23 < 0 ~ -1,
+                            TRUE ~ DIFF23))
 
 
+  
+NewBase |> 
+  ungroup() |> 
+  filter(DIFF12 == 0 & DIFF13 != 0 &  DIFF23 > 0)
   
 NewBase
-  
 JoinedBase
 
 Test2 <- rbind(Sec.04 |> 
