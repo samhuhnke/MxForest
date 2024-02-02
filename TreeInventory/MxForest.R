@@ -2875,4 +2875,181 @@ Comp_C_Diagnostics_V5_2 |>
 
 
 
+#################### CLUSTER METADATA DATASET (SECCIONES) -------------------------------------------------------
+#################### 1) LOAD RAW DATA ------------------------------------------------------------
+## 2004 - 2007
+Sec.04 <- readxl::read_xlsx(here("data", "secciones", "INFyS_Secciones_2004_2007_7VCcv7Y.xlsx"), sheet= 1, na = c(""))
+## 2004 - 2007
+Sec.09 <- readxl::read_xlsx(here("data", "secciones", "INFyS_Secciones_2009_2014_w18bSF1.xlsx"), sheet= 1, na = c(""))
+## 2004 - 2007
+Sec.14 <- readxl::read_xlsx(here("data", "secciones", "INFyS_Secciones_2015-2020_fRBymGR.xlsx"), sheet= 1, na = c(""))
+
+Sec.09 <- Sec.09 |> 
+  mutate(X = as.numeric(X),
+         Y = as.numeric(Y))
+
+
+################### 2) PLACEHOLDER -----------------------------------
+
+#empty
+
+################### 2) PLACEHOLDER -----------------------------------
+View(Sec.04)
+
+Sec.04 |> 
+  filter(Muestreado == "Si") |> 
+  count()
+
+Sec.04 |> 
+  filter(Muestreado == "Si" & Cubierta_Vegetal == "Si") |> 
+  count()
+
+Sec.04 |> 
+  filter(Sitios_x_cgl == 1 & Muestreado == "Si" & Cubierta_Vegetal == "Si") |> 
+  count()
+
+View(Sec.09)
+
+Sec.09 |> 
+  filter(Muestreado == 1) |> 
+  count()
+
+Sec.09 |> 
+  filter(Cubierta_Vegetal == "Si") |> 
+  count()
+
+Sec.09 |> 
+  filter(Muestreado == 1 & Cubierta_Vegetal == "Si" & !is.na()) |> 
+  count()
+
+
+View(Sec.14)
+
+Sec.14 |> 
+  count()
+
+Sec.14 |> 
+  filter(Muestreado_C3 == 1) |> 
+  count()
+
+Sec.14 |> 
+  filter(con_cobertura_1m2_C3 == 1) |> 
+  count()
+
+################### 3) CLUSTER COMPARISON -----------------------------------
+Sec.04 |> 
+  select(Conglomerado, X, Y)
+
+Sec.09 |> 
+  select(Conglomerado, X, Y)
+
+# STEP 1: Create Clusterbase
+ClusterBase <- rbind(Sec.04 |> 
+                 select(Conglomerado),
+               Sec.09 |> 
+                 select(Conglomerado),
+               Sec.14 |> 
+                 mutate(Conglomerado = IDConglomerado) |> 
+                 select(Conglomerado)) |> 
+  distinct() |> 
+  mutate(Cluster_ID = Conglomerado) |> 
+  select(Cluster_ID)
+
+ClusterBase |> count()
+View(ClusterBase)
+
+
+# STEP 2: JOIN CLUSTER_ID + X & Y FROM EACH FILE
+#File 1
+Test2 <- ClusterBase |> 
+  left_join(Sec.04 |> 
+              mutate(Cluster_ID = Conglomerado,
+                     Conglomerado1 = Conglomerado,
+                     X1 = X,
+                     Y1 = Y) |> 
+              select(Cluster_ID, Conglomerado1, X1, Y1),
+            by = "Cluster_ID")
+
+#File 2
+Test2 <- Test2 |> 
+  left_join(Sec.09 |> 
+              mutate(Cluster_ID = Conglomerado,
+                     Conglomerado2 = Conglomerado,
+                     X2 = X,
+                     Y2 = Y) |> 
+              select(Cluster_ID, Conglomerado2, X2, Y2),
+            by = "Cluster_ID")
+
+#File 3
+JoinedBase <- Test2 |> 
+  left_join(Sec.14 |> 
+              mutate(Cluster_ID = IDConglomerado,
+                     Conglomerado3 = IDConglomerado,
+                     X3 = X_C3,
+                     Y3 = Y_C3) |> 
+              select(Cluster_ID, Conglomerado3, X3, Y3),
+            by = "Cluster_ID")
+
+# STEP 3: AVERAGE X and Y
+
+NewBase <- JoinedBase |> 
+  group_by(Cluster_ID) |>
+  replace(is.na(JoinedBase), 0) |> 
+  mutate(DIV = case_when(X1 != 0 & X2 != 0 & X3 != 0 ~ 3,
+                         X1 != 0 & X2 != 0 & X3 == 0 ~ 2,
+                         X1 != 0 & X2 == 0 & X3 != 0 ~ 2,
+                         X1 == 0 & X2 != 0 & X3 != 0 ~ 2,
+                         X1 != 0 & X2 == 0 & X3 == 0 ~ 1,
+                         X1 == 0 & X2 != 0 & X3 == 0 ~ 1,
+                         X1 == 0 & X2 == 0 & X3 != 0 ~ 1,
+                         X1 == 0 & X2 == 0 & X3 != 0 ~ NA
+                         ),
+         X = (X1 + X2+ X3)/DIV,
+         Y = (Y1 + Y2+ Y3)/DIV) |> 
+  select(Cluster_ID, Conglomerado1, Conglomerado2, Conglomerado3, X, Y) |> 
+  mutate(DIFF12 = )
+
+
+  
+NewBase
+  
+JoinedBase
+
+Test2 <- rbind(Sec.04 |> 
+                 select(Conglomerado, X, Y),
+               Sec.09 |> 
+                 select(Conglomerado, X, Y),
+               Sec.14 |> 
+                 mutate(Conglomerado = IDConglomerado,
+                        X = X_C3,
+                        Y = Y_C3) |> 
+                 select(Conglomerado, X, Y)) |> 
+  distinct() |> 
+  arrange(Conglomerado) 
+
+
+ClusterBase |> count()
+Test2 |> count()
+
+Test2 |> 
+  filter(is.na(Conglomerado)) |> 
+  count()
+
+View(Test2) 
+
+Sec.04 |> 
+  filter(is.na(X)) |> 
+  count()
+
+Sec.09 |> 
+  count()
+
+
+
+################### 4) GEOSPATIAL PREPARATION -----------------------------------
+writeVector(vect(Sec.04, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Clusters04.shp")
+writeVector(vect(Sec.09, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Clusters09.shp")
+writeVector(vect(Sec.14, geom = c("X_C3", "Y_C3"), crs = "+proj=longlat +datum=WGS84"), "Clusters14.shp")
+
+################### 2) PLACEHOLDER -----------------------------------
 
