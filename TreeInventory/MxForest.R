@@ -504,8 +504,6 @@ C_SpecRich <- merged |>
             Y = mean(Y)) |> 
   relocate(Cluster_ID)
 
-View(C_SpecRich)
-
 #### DATA ON PLOT LEVEL - used for later calculation in 5.3)
 SpecRich <- merged |> 
   select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
@@ -690,8 +688,408 @@ Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Clust
 ########## END -------------------------------------------------------------------------------------------
 
 
-#################### BB) EVERYTHING ON ECOREGIONS 4 LEVEL (CONSTANT PLOTS) -------------------------------
+#################### A) EVERYTHING WITH A FILTER FOR TREES ONLY -------------------------------
+#################### 4) EDA PREPARATION ------------------------------------------------------------------
+###### 4.1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ---------------------------
+#### DATA ON CLUSTER LEVEL
+C_SpecRich_2 <- merged |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |>
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            species_count = n_distinct(NombreCientifico_APG),
+            total_entries = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  relocate(Cluster_ID)
 
+#### DATA ON PLOT LEVEL - used for later calculation in 5.3)
+SpecRich_2 <- merged |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |>
+  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, Sitio) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Sitio = mean(Sitio),
+            Anio = mean(Anio),
+            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            species_count = n_distinct(NombreCientifico_APG),
+            total_entries = n(),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  relocate(Plot_ID)
+
+
+###### 4.2) SPECIES ABUNDANCES - needed for shannon index and eveness - DATA ON SPECIES LEVEL --------
+
+#### DATA CALCULATED PER CLUSTER
+C_SpecAbun_2 <- merged |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |>
+  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Conglomerado, NombreCientifico_APG) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            abundance=n(),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Cluster_ID)
+
+
+###### 4.3) SHANNON INDEX H + PIELOU EVENESS J - uses temporary created dataframes! -------------
+
+#### STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
+## DATA ON CLUSTER LEVEL
+C_Temp.Shannon_2 <- C_SpecAbun_2 |> 
+  ungroup() |> 
+  select(Cluster_ID, NombreCientifico_APG, abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+#### STEP 2: exchange NAs with Zeros 
+## DATA ON CLUSTER LEVEL
+C_PresenceAbsence_2 <- C_Temp.Shannon_2 |> 
+  replace(is.na(C_Temp.Shannon_2), 0)
+
+#### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
+## DATA ON CLUSTER LEVEL
+H_2 <- diversity(C_PresenceAbsence_2[,-1])
+
+#### STEP 4: calculate Eveness J ######## TEMPORARY
+## DATA ON CLUSTER LEVEL
+J_2 <- H_2/log(specnumber(C_PresenceAbsence_2[, -1]))
+
+#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
+C_Temp.HJ_2 <- data.frame(C_PresenceAbsence_2$Cluster_ID, H_2, J_2) |> 
+  rename(Cluster_ID = C_PresenceAbsence_2.Cluster_ID)
+
+#### STEP 6: merged data table 
+## DATA ON CLUSTER LEVEL
+ClusterDiagnostics_2 <- left_join(C_SpecRich_2, C_Temp.HJ_2, by= c("Cluster_ID")) |> 
+  select(File, Cluster_ID, Conglomerado, Anio, species_count, total_entries, H_2, J_2, X, Y)
+
+
+###### 4.4) TREE MORPHOLOGY -----------------------------------------------
+
+#### DATA ON CLUSTER LEVEL ----- calculated by individual entries (alternatively by means of plot means)
+# need more thought going into whether to use means or medians
+# Example: for Tree Height Means are on average -20cm compared to Median
+
+C_TreeMorp_2 <- merged |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |>
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.integer(File)),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            AvgTreeHeight = mean(AlturaTotal, na.rm = T),
+            Med_AvgTreeHeight = median(AlturaTotal, na.rm = T),
+            AvgDbh = mean(DiametroNormal, na.rm = T),
+            Med_AvgDbh = median(DiametroNormal, na.rm = T),
+            AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
+            Med_AvgCrownDiameter = median(DiametroCopa, na.rm = T),
+            AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),          # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
+            Med_AvgCrownHeight = median(AlturaTotal - AlturaFusteLimpio, na.rm = T),    # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
+            AvgCrownArea = mean(AreaCopa, na.rm = T),
+            Med_AvgCrownArea = median(AreaCopa, na.rm = T),
+            X=mean(X),
+            Y=mean(Y)) |> 
+  relocate(Cluster_ID)
+
+###### 4.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024) ----------------------------
+
+Comp_C_Diagnostics_2 <- left_join(ClusterDiagnostics_2, C_TreeMorp_2, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
+  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H_2, J_2, 
+           AvgTreeHeight, Med_AvgTreeHeight, AvgDbh, Med_AvgDbh, AvgCrownDiameter, Med_AvgCrownDiameter, AvgCrownHeight, Med_AvgCrownHeight, AvgCrownArea, Med_AvgCrownArea, X, Y)
+
+# write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
+
+
+#################### 5) METADATA STUFF -------------------------------------------------------------------
+###### 5.1) PLOT COUNTS FOR EACH CLUSTER -----------------------------------------
+
+# Adding the Number of Plots per Cluster ("Plots")
+PlotCounts_2 <- merged |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |>
+  group_by(File, Conglomerado, Sitio, X, Y) |> 
+  count() |>
+  ungroup() |> 
+  select(File, Conglomerado, Sitio, X, Y) |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(as.numeric(File)),
+            Conglomerado = mean(Conglomerado),
+            X = mean(X),
+            Y = mean(Y),
+            Plots = n())
+
+# combined dataset
+Comp_C_Diagnostics_V2_2 <- left_join(Comp_C_Diagnostics_2, PlotCounts_2, by= c("File", "Conglomerado")) |> 
+  select(everything(), -c("X.y", "Y.y")) |> 
+  rename(X = X.x,
+         Y = Y.x)
+
+###### 5.2) AVAILABILITY OF PLOTS FOR EACH CLUSTER -----------------------------------------------
+
+# function to count number of cycles with a given number of plots 
+summarise_data <- function(data, plot_number) {
+  data |> 
+    select(File, Conglomerado, Anio, Plots, X, Y) |> 
+    filter(Plots == plot_number) |> 
+    group_by(Conglomerado) |> 
+    arrange(Conglomerado) |> 
+    summarise(Conglomerado = mean(Conglomerado),
+              n = n(),
+              X1 = mean(X),
+              Y1 = mean(Y)) |> 
+    rename(n_cycles_placeholder = n)
+}
+
+# combined dataset V3
+Comp_C_Diagnostics_V3_2 <- Comp_C_Diagnostics_V2_2 %>% 
+  left_join(summarise_data(. ,4), by = "Conglomerado") %>%
+  left_join(summarise_data(. ,3), by = "Conglomerado") %>% 
+  left_join(summarise_data(. ,2), by = "Conglomerado") %>%
+  left_join(summarise_data(. ,1), by = "Conglomerado") %>%
+  select(-c("X1.x", "Y1.x", "X1.y", "Y1.y", "X1.x.x", "Y1.x.x", "X1.y.y", "Y1.y.y")) |> 
+  rename(cycles_four_plots = n_cycles_placeholder.x,
+         cycles_three_plots = n_cycles_placeholder.y,
+         cycles_two_plots = n_cycles_placeholder.x.x,
+         cycles_one_plots = n_cycles_placeholder.y.y,) |> 
+  arrange(Conglomerado) |> 
+  mutate(Consistent =  case_when(cycles_four_plots == 3 ~ T, cycles_four_plots <= 2 ~ F,
+                                 cycles_three_plots == 3 ~ T,cycles_three_plots <= 2 ~ F,
+                                 cycles_two_plots == 3 ~ T, cycles_two_plots <= 2 ~ F,
+                                 cycles_one_plots == 3 ~ T, cycles_one_plots <= 2 ~ F)) |> 
+  mutate(cycles_four_plots = ifelse(is.na(cycles_four_plots), 0, cycles_four_plots),
+         cycles_three_plots = ifelse(is.na(cycles_three_plots), 0, cycles_three_plots),
+         cycles_two_plots = ifelse(is.na(cycles_two_plots), 0, cycles_two_plots),
+         cycles_one_plots = ifelse(is.na(cycles_one_plots), 0, cycles_one_plots),
+         Cycles = (cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots))
+
+
+
+###### 5.3) TREE PLOT COUNT MEANS AND MEDIANS BY CLUSTERS ----------------------
+## calculate means and medians for each cluster based of total plot entries 
+PTC_C_2 <- SpecRich_2 |> 
+  group_by(File, Conglomerado) |> 
+  summarise(File = mean(File),
+            Conglomerado = mean(Conglomerado),
+            Anio = mean(Anio),
+            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
+            Plot_TreeCount_Mean = mean(total_entries),
+            Plot_TreeCount_Median = median(total_entries),
+            X = mean(X),
+            Y = mean(Y)) |> 
+  select(File, Conglomerado, Anio, Plot_TreeCount_Mean, Plot_TreeCount_Median)
+
+Comp_C_Diagnostics_V4_2 <- left_join(Comp_C_Diagnostics_V3_2, PTC_C, by = c("File", "Conglomerado", "Anio"))
+
+###### 5.4) ESTADO + TIPO EGETACION FILTER -----------------------------------------------------
+
+Comp_C_Diagnostics_V5_2 <- left_join(Comp_C_Diagnostics_V4_2, merged |> 
+                                       filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |>
+                                       select(Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct(),
+                                   by = "Cluster_ID")
+
+###### 4.6) Reintroduce Clusters and DESECON4 --------------------------------------------------------
+C3_Eco4_Diagnostics_2 <- Comp_C_Diagnostics_V5_2 |> filter(Cycles == 3) |>
+  left_join(merged_Eco |> 
+              select(Eco4_ID, Cluster_ID, DESECON4_C3) |> 
+              distinct(),
+            by = "Cluster_ID") |> 
+  left_join(Eco4Diagnostics |> 
+              ungroup() |> 
+              select(Eco4_ID, Eco4_species_count, Eco4_total_entries, Eco4_H, Eco4_J),
+            by = "Eco4_ID") |> 
+  relocate(Eco4_ID, DESECON4_C3)
+
+View(C3_Eco4_Diagnostics)
+View(merged_Eco)
+
+###### 4.7) Calculating Changes through cycles + geospatial preparation ---------------------------------
+C3_Eco4_Changes <- C3_Eco4_Diagnostics |> filter(File == 1) |> ungroup() |> 
+  mutate(Eco4_H1 = Eco4_H, Eco4_J1 = Eco4_J, Eco4_SC1 = Eco4_species_count, Eco4_TE1 = Eco4_total_entries) |> 
+  select(Conglomerado, Eco4_SC1, Eco4_TE1, Eco4_H1, Eco4_J1, DESECON4_C3, X, Y) |>
+  left_join(
+    left_join(C3_Eco4_Diagnostics |> filter(File == 2) |> ungroup() |> 
+                mutate(Eco4_H2 = Eco4_H, Eco4_J2 = Eco4_J, Eco4_SC2 = Eco4_species_count, Eco4_TE2 = Eco4_total_entries) |> 
+                select(Conglomerado, Eco4_SC2, Eco4_TE2, Eco4_H2, Eco4_J2, DESECON4_C3, X, Y),
+              C3_Eco4_Diagnostics |> filter(File == 3) |> ungroup() |> 
+                mutate(Eco4_H3 = Eco4_H, Eco4_J3 = Eco4_J, Eco4_SC3 = Eco4_species_count, Eco4_TE3 = Eco4_total_entries) |> 
+                select(Conglomerado, Eco4_SC3, Eco4_TE3, Eco4_H3, Eco4_J3, DESECON4_C3, X, Y),
+              by = c("Conglomerado", "DESECON4_C3")),
+    by = c("Conglomerado","DESECON4_C3")) |> 
+  select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
+  relocate(X, Y, DESECON4_C3) |> 
+  mutate(Eco4_SC12 = Eco4_SC2 - Eco4_SC1,
+         Eco4_SC23 = Eco4_SC3 - Eco4_SC2,
+         Eco4_SC13 = Eco4_SC3 - Eco4_SC1,
+         Eco4_TE12 = Eco4_TE2 - Eco4_TE1,
+         Eco4_TE23 = Eco4_TE3 - Eco4_TE2,
+         Eco4_TE13 = Eco4_TE3 - Eco4_TE1,
+         Eco4_H12 = Eco4_H2 - Eco4_H1,
+         Eco4_H23 = Eco4_H3 - Eco4_H2,
+         Eco4_H13 = Eco4_H3 - Eco4_H1,
+         Eco4_J12 = Eco4_J2 - Eco4_J1,
+         Eco4_J23 = Eco4_J3 - Eco4_J2,
+         Eco4_J13 = Eco4_J3 - Eco4_J1,) |> 
+  select(X, Y, DESECON4_C3, Conglomerado, 
+         Eco4_SC12, Eco4_SC23, Eco4_SC13, 
+         Eco4_TE12, Eco4_TE23, Eco4_TE13,
+         Eco4_H12, Eco4_H23, Eco4_H13,
+         Eco4_J12, Eco4_J23, Eco4_J13)
+
+#writeVector(vect(C3_Eco4_Changes, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco4_Testing.shp")
+
+
+
+########## END -------------------------------------------------------------------------------------------
+
+
+#################### AA) FILTER FOR TREES ONLY + EVERYTHING ON ECOREGIONS 4 LEVEL (CONSTANT PLOTS) -------------------------------
+###### B2) CREATE ECOREGIONS DATASET (BASED ON FILE 3 DATA) ------------------------------
+EcoRegions_2 <- Arb.14 |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |>
+  select(Conglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
+  distinct() 
+
+
+###### B3) ADD ECOREGIONS 4 + ECO4_ID ----------------------------------------------------
+merged_Eco_2 <- merged |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |>
+  left_join(EcoRegions <- Arb.14 |> 
+              select(Conglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
+              distinct(),
+            by = "Conglomerado") |> 
+  mutate(Eco1_ID = paste(File, DESECON1_C3, sep = "_"),
+         Eco2_ID = paste(File, DESECON2_C3, sep = "_"),
+         Eco3_ID = paste(File, DESECON3_C3, sep = "_"),
+         Eco4_ID = paste(File, DESECON4_C3, sep = "_")) |> 
+  relocate(Eco4_ID)
+
+
+###### B4.1) Species Richness + Individual Tree Count ------------------------------------
+Eco4_SpecRich_2 <- merged_Eco_2 |> 
+  select(Eco4_ID, File, Conglomerado, DESECON4_C3, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Eco4_ID) |> 
+  filter(DESECON4_C3 != is.na(DESECON4_C3)) |> 
+  summarise(File = mean(as.integer(File)),
+            Eco4_species_count = n_distinct(NombreCientifico_APG),
+            Eco4_total_entries = n(),
+            X = mean(X, na.rm = T),
+            Y = mean(Y, na.rm = T)) |> 
+  relocate(Eco4_ID)
+
+###### B4.2) Species Abundances  ---------------------------------------------------------
+Eco4_SpecAbun_2 <- merged_Eco_2 |> 
+  select(Eco4_ID, File, Conglomerado, DESECON4_C3, NombreCientifico_APG, X, Y) |> 
+  group_by(File, Eco4_ID, NombreCientifico_APG) |> 
+  filter(DESECON4_C3 != is.na(DESECON4_C3)) |> 
+  summarise(File = mean(as.integer(File)),
+            Eco4_abundance = n(),
+            X = mean(X, na.rm = T),
+            Y = mean(Y, na.rm = T)) |> 
+  relocate(Eco4_ID)
+
+###### B4.3) Shannon Index H + Pielou eveness J ------------------------------------------
+
+#### STEP 1: presence-absence dataset for species per plot - contains NAs -> changed in next step to "0" for further calculations #### TEMPORARY
+## DATA ON CLUSTER LEVEL
+Eco4_Temp.Shannon_2 <- Eco4_SpecAbun_2 |> 
+  ungroup() |> 
+  select(Eco4_ID, NombreCientifico_APG, Eco4_abundance) |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = Eco4_abundance)
+
+#### STEP 2: exchange NAs with Zeros 
+## DATA ON CLUSTER LEVEL
+Eco4_PresenceAbsence_2 <- Eco4_Temp.Shannon_2 |> 
+  replace(is.na(Eco4_Temp.Shannon_2), 0)
+
+#### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
+## DATA ON CLUSTER LEVEL
+Eco4_H <- diversity(Eco4_PresenceAbsence_2[,-1])
+
+#### STEP 4: calculate Eveness J ######## TEMPORARY
+## DATA ON CLUSTER LEVEL
+Eco4_J <- Eco4_H/log(specnumber(Eco4_PresenceAbsence_2[, -1]))
+
+#### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
+Eco4_Temp.HJ_2 <- data.frame(Eco4_PresenceAbsence_2$Eco4_ID, Eco4_H, Eco4_J) |> 
+  rename(Eco4_ID = Eco4_PresenceAbsence_2.Eco4_ID)
+
+#### STEP 6: merged data table 
+## DATA ON CLUSTER LEVEL
+Eco4Diagnostics_2 <- left_join(Eco4_SpecRich_2, Eco4_Temp.HJ_2, by= c("Eco4_ID")) |> 
+  select(File, Eco4_ID, Eco4_species_count, Eco4_total_entries, Eco4_H, Eco4_J, X, Y)
+
+###### B4.4) Tree Morphology -------------------------------------------------------------
+
+# CURRENTLY EMPTY
+
+###### B4.5) Complete Diagnostics Dataset (excluding Biomass) ----------------------------
+
+# CURRENTLY EMPTY
+
+
+###### B4.6) Reintroduce Clusters and DESECON4 --------------------------------------------------------
+C3_Eco4_Diagnostics_2 <- Comp_C_Diagnostics_V5_2 |> filter(Cycles == 3) |>
+  left_join(merged_Eco_2 |> 
+              select(Eco4_ID, Cluster_ID, DESECON4_C3) |> 
+              distinct(),
+            by = "Cluster_ID") |> 
+  left_join(Eco4Diagnostics_2 |> 
+              ungroup() |> 
+              select(Eco4_ID, Eco4_species_count, Eco4_total_entries, Eco4_H, Eco4_J),
+            by = "Eco4_ID") |> 
+  relocate(Eco4_ID, DESECON4_C3)
+
+View(C3_Eco4_Diagnostics_2)
+View(merged_Eco_2)
+
+###### B4.7) Calculating Changes through cycles + geospatial preparation ---------------------------------
+C3_Eco4_Changes_2 <- C3_Eco4_Diagnostics_2 |> filter(File == 1) |> ungroup() |> 
+  mutate(Eco4_H1 = Eco4_H, Eco4_J1 = Eco4_J, Eco4_SC1 = Eco4_species_count, Eco4_TE1 = Eco4_total_entries) |> 
+  select(Conglomerado, Eco4_SC1, Eco4_TE1, Eco4_H1, Eco4_J1, DESECON4_C3, X, Y) |>
+  left_join(
+    left_join(C3_Eco4_Diagnostics_2 |> filter(File == 2) |> ungroup() |> 
+                mutate(Eco4_H2 = Eco4_H, Eco4_J2 = Eco4_J, Eco4_SC2 = Eco4_species_count, Eco4_TE2 = Eco4_total_entries) |> 
+                select(Conglomerado, Eco4_SC2, Eco4_TE2, Eco4_H2, Eco4_J2, DESECON4_C3, X, Y),
+              C3_Eco4_Diagnostics_2 |> filter(File == 3) |> ungroup() |> 
+                mutate(Eco4_H3 = Eco4_H, Eco4_J3 = Eco4_J, Eco4_SC3 = Eco4_species_count, Eco4_TE3 = Eco4_total_entries) |> 
+                select(Conglomerado, Eco4_SC3, Eco4_TE3, Eco4_H3, Eco4_J3, DESECON4_C3, X, Y),
+              by = c("Conglomerado", "DESECON4_C3")),
+    by = c("Conglomerado","DESECON4_C3")) |> 
+  select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
+  relocate(X, Y, DESECON4_C3) |> 
+  mutate(Eco4_SC12 = Eco4_SC2 - Eco4_SC1,
+         Eco4_SC23 = Eco4_SC3 - Eco4_SC2,
+         Eco4_SC13 = Eco4_SC3 - Eco4_SC1,
+         Eco4_TE12 = Eco4_TE2 - Eco4_TE1,
+         Eco4_TE23 = Eco4_TE3 - Eco4_TE2,
+         Eco4_TE13 = Eco4_TE3 - Eco4_TE1,
+         Eco4_H12 = Eco4_H2 - Eco4_H1,
+         Eco4_H23 = Eco4_H3 - Eco4_H2,
+         Eco4_H13 = Eco4_H3 - Eco4_H1,
+         Eco4_J12 = Eco4_J2 - Eco4_J1,
+         Eco4_J23 = Eco4_J3 - Eco4_J2,
+         Eco4_J13 = Eco4_J3 - Eco4_J1,) |> 
+  select(X, Y, DESECON4_C3, Conglomerado, 
+         Eco4_SC12, Eco4_SC23, Eco4_SC13, 
+         Eco4_TE12, Eco4_TE23, Eco4_TE13,
+         Eco4_H12, Eco4_H23, Eco4_H13,
+         Eco4_J12, Eco4_J23, Eco4_J13)
+
+#writeVector(vect(C3_Eco4_Changes_2, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco4_Testing_2.shp")
+
+
+########### END ------------------------------------------------------------------------------------------
+
+
+
+#################### BB) EVERYTHING ON ECOREGIONS 4 LEVEL (CONSTANT PLOTS) -------------------------------
 ###### B2) CREATE ECOREGIONS DATASET (BASED ON FILE 3 DATA) ------------------------------
 EcoRegions <- Raw.14 |> 
   select(IdConglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
@@ -700,7 +1098,7 @@ EcoRegions <- Raw.14 |>
 
 
 ###### B3) ADD ECOREGIONS 4 + ECO4_ID ----------------------------------------------------
-merged_Eco <- merged |> 
+merged_Eco_2 <- merged |> 
   left_join(EcoRegions <- Raw.14 |> 
               select(IdConglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
               distinct() |> 
@@ -832,6 +1230,7 @@ end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
+View(Comp_C_Diagnostics_V5)
 
 #################### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
 ###### X4.1) Species Richness + Individual tree count ---------------------------
@@ -1617,9 +2016,96 @@ C_TreeMorp |>
 
 ###### Y5) ECOREGIONS PLOTS ----------------------------------------------------------------
 #### A) constant clusters --------------------------------
-# A.1) placeholder ---------------------------------------
+# A.1) SPECIES RICHNESS  + INDIVIDUAL TREE COUNT ----------------------------------
+# SPECIES COUNTS PER ECOREGION
+C3_Eco4_Diagnostics |>                         # Use "SpecRich" or "C_SpecRich" 
+  mutate(File = as.factor(File)) |>
+  ggplot(aes(x = Eco4_species_count, fill = File)) +
+  geom_histogram(binwidth = 10, position = "identity", alpha = 0.3) +
+  labs(x = "Species Count per Ecoregion",
+       y = "Ecoregion Count",
+       title = "Frequency Distribution of Species Richness") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
 
-# A.2) placeholder ---------------------------------------
+C3_Eco4_Diagnostics |>                         # Use "SpecRich" or "C_SpecRich" 
+  mutate(File = as.factor(File)) |>
+  ggplot(aes(x = Eco4_species_count, color = File)) +
+  geom_freqpoly(binwidth = 10, position = "identity", alpha = 0.3) +
+  labs(x = "Species Count per Ecoregion",
+       y = "Ecoregion Count",
+       title = "Frequency Distribution of Species Richness") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
+
+C3_Eco4_Diagnostics |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= Eco4_species_count, colour = File)) +
+  geom_density()
+
+# TREE COUNTS PER ECOREGION
+C3_Eco4_Diagnostics|>                         # Use "SpecRich" or "C_SpecRich"  
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= Eco4_total_entries, fill = File)) +
+  geom_histogram(binwidth = 5000, position = "identity", alpha = 0.3) +
+  labs(x = "Individual trees per cluster",
+       y = "Count") 
+
+C3_Eco4_Diagnostics |>                         # Use "SpecRich" or "C_SpecRich" 
+  mutate(File = as.factor(File)) |>
+  ggplot(aes(x = Eco4_total_entries, color = File)) +
+  geom_freqpoly(binwidth = 5000, position = "identity", alpha = 0.3) +
+  labs(x = "Tree Count per Ecoregion",
+       y = "Ecoregion Count",
+       title = "Frequency Distribution of Species Richness") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 2))
+
+C3_Eco4_Diagnostics |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= Eco4_total_entries, colour = File)) +
+  geom_density()
+
+
+# A.2) SHANNON INDEX H + PIELOU EVENESS J ---------------------------------------
+
+# SHANNON
+C3_Eco4_Diagnostics |>                                 
+  mutate(File = as.factor(File)) |> 
+  group_by(Eco4_ID) |>                              
+  ggplot(aes(x= Eco4_H, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+C3_Eco4_Diagnostics |>                                  
+  mutate(File = as.factor(File)) |> 
+  group_by(Eco4_ID) |>                             
+  ggplot(aes(x= Eco4_H, color = File)) +
+  geom_freqpoly(position = "identity", alpha = 0.3)
+
+C3_Eco4_Diagnostics |>                                 
+  mutate(File = as.factor(File)) |> 
+  group_by(Eco4_ID) |>                             
+  ggplot(aes(x= Eco4_H, color = File)) +
+  geom_density()
+
+# EVENESS
+C3_Eco4_Diagnostics |>                                 
+  mutate(File = as.factor(File)) |> 
+  group_by(Eco4_ID) |>                              
+  ggplot(aes(x= Eco4_J, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+C3_Eco4_Diagnostics |>                                  
+  mutate(File = as.factor(File)) |> 
+  group_by(Eco4_ID) |>                             
+  ggplot(aes(x= Eco4_J, color = File)) +
+  geom_freqpoly(position = "identity", alpha = 0.3)
+
+C3_Eco4_Diagnostics |>                                 
+  mutate(File = as.factor(File)) |> 
+  group_by(Eco4_ID) |>                             
+  ggplot(aes(x= Eco4_J, color = File)) +
+  geom_density()
+
+
+# A.3) placeholder ---------------------------------------
 
 
 ###### YX) EVERYTHING ELSE POSSIBLY PLOTABLE -----------------------------------------------------
@@ -1930,7 +2416,6 @@ writeVector(vect(SR_CP4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
 ########### END ------------------------------------------------------------------------------------------
 
 
-
 ################### 9) MULTIVARIATE CHANGE DETECTION - data from python ---------------------
 
 setwd("C:/Users/samhu/Desktop/Projects/MxForest")
@@ -2219,7 +2704,7 @@ Comp_C_Diagnostics_V5 |>
 # BETA Tests ------------------------------------------------------------------
 
 
-#### PILOT: ONLY FOR Consistent == T and Plots == 4
+#### PILOT: ONLY FOR Consistent == T and Plots == 4 
 CP4 <- Comp_C_Diagnostics_V5 |> 
   filter(Consistent == T & Plots == 4) |> 
   left_join(EcoRegions <- Raw.14 |> 
@@ -2273,3 +2758,121 @@ View(AreaChangeD3_CP4)
 
 writeVector(vect(AreaChangeD3_CP4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "ChangesDESECON3.shp")
   
+
+
+# Biomass beta testing -----------------------------------------------------------------------------------
+#1 Available biomass estimations for File 3 --------------------
+View(Raw.14)
+
+Raw.14 |> 
+  select(AlturaTotal_C3 ,DiametroNormal_C3, biomasa_kg_C3, carbono_kg_C3)
+
+############ CUT -----------------------------------------------------------------------------------------
+
+
+# OH MY GOD PLS - BETA TESTS --------------------------------------------------------
+# How does filtering out everything that's not considered a tree change the dataset? ---------------------------
+merged |> 
+  group_by(File) |> 
+  count()
+
+merged |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arborescente" | FormaBiologica == "Arbusto" | FormaBiologica == "Palma") |> 
+  group_by(Conglomerado) |> 
+  count() |> 
+  ungroup() |> 
+  count()
+
+
+ClusterDiagnostics_2 |> 
+  select(species_count) |> 
+  group_by(File) |> 
+  summarise(Total = sum(species_count))
+
+ClusterDiagnostics |> 
+  select(species_count) |> 
+  group_by(File) |> 
+  summarise(Total = sum(species_count))
+
+# how does it affect total entries density probability curves?
+Comp_C_Diagnostics_V5_2 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x= total_entries, colour = File)) +
+  geom_density()
+
+# how does it change dbh avg?
+View(Comp_C_Diagnostics_V5)
+
+## AVG DBH - NO FILTER
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = AvgDbh, fill = File)) +
+  geom_histogram(position = "identity", alpha = 0.3)
+
+## AVG DBH - TREE FILTER
+Comp_C_Diagnostics_V5_2 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = AvgDbh, color = File)) +
+  geom_density(position = "identity")
+
+
+
+## AVG TREEHEIGHT - NO FILTER
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = AvgTreeHeight, color = File)) +
+  geom_density(position = "identity", alpha = 0.3)
+
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = File, y = AvgTreeHeight)) +
+  geom_boxplot(position = "identity", alpha = 0.3)
+
+## AVG TREEHEIGHT - TREE FILTER
+Comp_C_Diagnostics_V5_2 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = AvgTreeHeight, color = File)) +
+  geom_density(position = "identity")
+
+Comp_C_Diagnostics_V5_2 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = File, y = AvgTreeHeight)) +
+  geom_boxplot(position = "identity", alpha = 0.3)
+
+
+## AVG CROWNAREA - NO FILTER
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = AvgCrownDiameter, color = File)) +
+  geom_density(position = "identity", alpha = 0.3)
+
+Comp_C_Diagnostics_V5 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = File, y = AvgCrownDiameter)) +
+  geom_boxplot(position = "identity", alpha = 0.3)
+
+## AVG TREEHEIGHT - TREE FILTER
+Comp_C_Diagnostics_V5_2 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = AvgCrownDiameter, color = File)) +
+  geom_density(position = "identity")
+
+Comp_C_Diagnostics_V5_2 |> 
+  mutate(File = as.factor(File)) |> 
+  ggplot(aes(x = File, y = AvgCrownDiameter)) +
+  geom_boxplot(position = "identity", alpha = 0.3)
+
+
+# where do I lose clusters? -------------------------------------------------------------------
+writeVector(vect(ClusterDiagnostics_2, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "WhereDoILoseClusters.shp")
+
+# how does the filter change my plot availability? -----------------------------------------------
+Comp_C_Diagnostics_V5_2 |> 
+  filter(Cycles  == 3 & Consistent == T) |> 
+  count()
+
+
+
+
+
+
