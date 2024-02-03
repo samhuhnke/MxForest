@@ -894,59 +894,11 @@ Comp_C_Diagnostics_V5_2 <- left_join(Comp_C_Diagnostics_V4_2, merged |>
                                        select(Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct(),
                                    by = "Cluster_ID")
 
-###### 4.6) Reintroduce Clusters and DESECON4 --------------------------------------------------------
-C3_Eco4_Diagnostics_2 <- Comp_C_Diagnostics_V5_2 |> filter(Cycles == 3) |>
-  left_join(merged_Eco |> 
-              select(Eco4_ID, Cluster_ID, DESECON4_C3) |> 
-              distinct(),
-            by = "Cluster_ID") |> 
-  left_join(Eco4Diagnostics |> 
-              ungroup() |> 
-              select(Eco4_ID, Eco4_species_count, Eco4_total_entries, Eco4_H, Eco4_J),
-            by = "Eco4_ID") |> 
-  relocate(Eco4_ID, DESECON4_C3)
-
-View(C3_Eco4_Diagnostics)
-View(merged_Eco)
-
-###### 4.7) Calculating Changes through cycles + geospatial preparation ---------------------------------
-C3_Eco4_Changes <- C3_Eco4_Diagnostics |> filter(File == 1) |> ungroup() |> 
-  mutate(Eco4_H1 = Eco4_H, Eco4_J1 = Eco4_J, Eco4_SC1 = Eco4_species_count, Eco4_TE1 = Eco4_total_entries) |> 
-  select(Conglomerado, Eco4_SC1, Eco4_TE1, Eco4_H1, Eco4_J1, DESECON4_C3, X, Y) |>
-  left_join(
-    left_join(C3_Eco4_Diagnostics |> filter(File == 2) |> ungroup() |> 
-                mutate(Eco4_H2 = Eco4_H, Eco4_J2 = Eco4_J, Eco4_SC2 = Eco4_species_count, Eco4_TE2 = Eco4_total_entries) |> 
-                select(Conglomerado, Eco4_SC2, Eco4_TE2, Eco4_H2, Eco4_J2, DESECON4_C3, X, Y),
-              C3_Eco4_Diagnostics |> filter(File == 3) |> ungroup() |> 
-                mutate(Eco4_H3 = Eco4_H, Eco4_J3 = Eco4_J, Eco4_SC3 = Eco4_species_count, Eco4_TE3 = Eco4_total_entries) |> 
-                select(Conglomerado, Eco4_SC3, Eco4_TE3, Eco4_H3, Eco4_J3, DESECON4_C3, X, Y),
-              by = c("Conglomerado", "DESECON4_C3")),
-    by = c("Conglomerado","DESECON4_C3")) |> 
-  select(-c("X.x", "Y.x", "X.y", "Y.y")) |> 
-  relocate(X, Y, DESECON4_C3) |> 
-  mutate(Eco4_SC12 = Eco4_SC2 - Eco4_SC1,
-         Eco4_SC23 = Eco4_SC3 - Eco4_SC2,
-         Eco4_SC13 = Eco4_SC3 - Eco4_SC1,
-         Eco4_TE12 = Eco4_TE2 - Eco4_TE1,
-         Eco4_TE23 = Eco4_TE3 - Eco4_TE2,
-         Eco4_TE13 = Eco4_TE3 - Eco4_TE1,
-         Eco4_H12 = Eco4_H2 - Eco4_H1,
-         Eco4_H23 = Eco4_H3 - Eco4_H2,
-         Eco4_H13 = Eco4_H3 - Eco4_H1,
-         Eco4_J12 = Eco4_J2 - Eco4_J1,
-         Eco4_J23 = Eco4_J3 - Eco4_J2,
-         Eco4_J13 = Eco4_J3 - Eco4_J1,) |> 
-  select(X, Y, DESECON4_C3, Conglomerado, 
-         Eco4_SC12, Eco4_SC23, Eco4_SC13, 
-         Eco4_TE12, Eco4_TE23, Eco4_TE13,
-         Eco4_H12, Eco4_H23, Eco4_H13,
-         Eco4_J12, Eco4_J23, Eco4_J13)
-
-#writeVector(vect(C3_Eco4_Changes, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco4_Testing.shp")
-
-
-
 ########## END -------------------------------------------------------------------------------------------
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 
 
 #################### AA) FILTER FOR TREES ONLY + EVERYTHING ON ECOREGIONS 4 LEVEL (CONSTANT PLOTS) -------------------------------
@@ -1087,6 +1039,9 @@ C3_Eco4_Changes_2 <- C3_Eco4_Diagnostics_2 |> filter(File == 1) |> ungroup() |>
 
 ########### END ------------------------------------------------------------------------------------------
 
+Comp_C_Diagnostics_V5 |> 
+  filter(Cycles == 3) |> 
+  count()
 
 
 #################### BB) EVERYTHING ON ECOREGIONS 4 LEVEL (CONSTANT PLOTS) -------------------------------
@@ -1097,8 +1052,9 @@ EcoRegions <- Raw.14 |>
   rename(Conglomerado = IdConglomerado)
 
 
+
 ###### B3) ADD ECOREGIONS 4 + ECO4_ID ----------------------------------------------------
-merged_Eco_2 <- merged |> 
+merged_Eco <- merged |> 
   left_join(EcoRegions <- Raw.14 |> 
               select(IdConglomerado, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3) |> 
               distinct() |> 
@@ -1109,6 +1065,7 @@ merged_Eco_2 <- merged |>
          Eco3_ID = paste(File, DESECON3_C3, sep = "_"),
          Eco4_ID = paste(File, DESECON4_C3, sep = "_")) |> 
   relocate(Eco4_ID)
+
 
 
 ###### B4.1) Species Richness + Individual Tree Count ------------------------------------
@@ -1226,11 +1183,7 @@ C3_Eco4_Changes <- C3_Eco4_Diagnostics |> filter(File == 1) |> ungroup() |>
 
 
 ########### END ------------------------------------------------------------------------------------------
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
 
-View(Comp_C_Diagnostics_V5)
 
 #################### XX) EVERYTHING ON PLOT LEVEL --------------------------------------------------------
 ###### X4.1) Species Richness + Individual tree count ---------------------------
@@ -2889,11 +2842,265 @@ Sec.09 <- Sec.09 |>
          Y = as.numeric(Y))
 
 
-################### 2) PLACEHOLDER -----------------------------------
+################### 2) CLUSTER COMPARISON PREPARATION --------------------------------------
+# STEP 1: Create Clusterbase
+ClusterBase <- rbind(Sec.04 |> 
+                       select(Conglomerado),
+                     Sec.09 |> 
+                       select(Conglomerado),
+                     Sec.14 |> 
+                       mutate(Conglomerado = IDConglomerado) |> 
+                       select(Conglomerado)) |> 
+  distinct() |> 
+  mutate(Cluster_ID = Conglomerado) |> 
+  select(Cluster_ID)
 
-#empty
+# STEP 2: JOIN CLUSTER_ID + X & Y FROM EACH FILE
+#File 1
+Temp <- ClusterBase |> 
+  left_join(Sec.04 |> 
+              mutate(Cluster_ID = Conglomerado,
+                     Conglomerado1 = Conglomerado,
+                     X1 = X,
+                     Y1 = Y) |> 
+              select(Cluster_ID, Conglomerado1, X1, Y1),
+            by = "Cluster_ID")
+#File 2
+Temp <- Temp |> 
+  left_join(Sec.09 |> 
+              mutate(Cluster_ID = Conglomerado,
+                     Conglomerado2 = Conglomerado,
+                     X2 = X,
+                     Y2 = Y) |> 
+              select(Cluster_ID, Conglomerado2, X2, Y2),
+            by = "Cluster_ID")
+#File 3
+MetaBase <- Temp |> 
+  left_join(Sec.14 |> 
+              mutate(Cluster_ID = IDConglomerado,
+                     Conglomerado3 = IDConglomerado,
+                     X3 = X_C3,
+                     Y3 = Y_C3) |> 
+              select(Cluster_ID, Conglomerado3, X3, Y3),
+            by = "Cluster_ID")
 
-################### 2) PLACEHOLDER -----------------------------------
+# STEP 3: AVERAGE X and Y
+NewBase <- MetaBase |> 
+  group_by(Cluster_ID) |>
+  replace(is.na(MetaBase), 0) |> 
+  mutate(DIV = case_when(X1 != 0 & X2 != 0 & X3 != 0 ~ 3,
+                         X1 != 0 & X2 != 0 & X3 == 0 ~ 2,
+                         X1 != 0 & X2 == 0 & X3 != 0 ~ 2,
+                         X1 == 0 & X2 != 0 & X3 != 0 ~ 2,
+                         X1 != 0 & X2 == 0 & X3 == 0 ~ 1,
+                         X1 == 0 & X2 != 0 & X3 == 0 ~ 1,
+                         X1 == 0 & X2 == 0 & X3 != 0 ~ 1,
+                         X1 == 0 & X2 == 0 & X3 == 0 ~ NA
+  ),
+  X = (X1 + X2+ X3)/DIV,
+  Y = (Y1 + Y2+ Y3)/DIV) |> 
+  select(Cluster_ID, Conglomerado1, Conglomerado2, Conglomerado3, X, Y) |> 
+  mutate(DIFF12 = Conglomerado2 - Conglomerado1,
+         DIFF12 = case_when(DIFF12 > 0 ~ 1,
+                            DIFF12 < 0 ~ -1,
+                            TRUE ~ DIFF12),
+         DIFF13 = Conglomerado3 - Conglomerado1,
+         DIFF13 = case_when(DIFF13 > 0 ~ 1,
+                            DIFF13 < 0 ~ -1,
+                            TRUE ~ DIFF13),
+         DIFF23 = Conglomerado3 - Conglomerado2,
+         DIFF23 = case_when(DIFF23 > 0 ~ 1,
+                            DIFF23 < 0 ~ -1,
+                            TRUE ~ DIFF23),
+         Cycle1 = case_when(Conglomerado1 != 0 ~ 1,
+                            TRUE ~ 0),
+         Cycle2 = case_when(Conglomerado2 != 0 ~ 1,
+                            TRUE ~ 0),
+         Cycle3 = case_when(Conglomerado3 != 0 ~ 1,
+                            TRUE ~ 0),)
+
+#STEP 4: RE-INTRODUCE WHETHER IT WAS SAMPLED
+NewBase2 <- NewBase |> 
+  left_join(Sec.04 |> 
+              select(Conglomerado, Muestreado) |> 
+              mutate(Cluster_ID = Conglomerado,
+                     Muestreado1 = Muestreado) |> 
+              select(Cluster_ID, Muestreado1),
+            by = "Cluster_ID"
+  ) |> 
+  left_join(Sec.09 |> 
+              select(Conglomerado, Muestreado) |> 
+              mutate(Cluster_ID = Conglomerado,
+                     Muestreado2 = Muestreado) |> 
+              select(Cluster_ID, Muestreado2),
+            by = "Cluster_ID") |> 
+  left_join(Sec.14 |> 
+              select(IDConglomerado, Muestreado_C3) |> 
+              mutate(Cluster_ID = IDConglomerado,
+                     Muestreado3 = Muestreado_C3) |> 
+              select(Cluster_ID, Muestreado3),
+            by = "Cluster_ID") |> 
+  mutate(Muestreado1 = case_when(Muestreado1 == "Si" ~ 1,
+                                 Muestreado1 == "No" ~ 0)) 
+
+################### 3) CLUSTER AND PLOT STATUS -----------------------------------------------------------
+#### 3.1) Cluster Status Filter ------------------------------------------------
+# STEP 1: Join Diagnostics Dataset and Metadata
+FullStack <- NewBase2 %>% 
+  left_join(Comp_C_Diagnostics_V5 %>%
+              filter(File == 1) %>%
+              rename(Cluster_ID2 = Cluster_ID,
+                     File1 = File) %>%
+              mutate(Cluster_ID = Conglomerado) %>%
+              select("Cluster_ID", "File1"),
+            by = "Cluster_ID") %>%
+  mutate(File1 = case_when(is.na(File1) ~ 100,
+                          T ~ File1)) |> 
+  left_join(Comp_C_Diagnostics_V5 %>%
+              filter(File == 2) %>%
+              rename(Cluster_ID2 = Cluster_ID,
+                     File2 = File) %>%
+              mutate(Cluster_ID = Conglomerado) %>%
+              select("Cluster_ID", "File2"),
+            by = "Cluster_ID") %>%
+  mutate(File2 = case_when(is.na(File2) ~ 100,
+                          T ~ File2)) |> 
+  left_join(Comp_C_Diagnostics_V5 %>%
+              filter(File == 3) %>%
+              rename(Cluster_ID2 = Cluster_ID,
+                     File3 = File) %>%
+              mutate(Cluster_ID = Conglomerado) %>%
+              select("Cluster_ID", "File3"),
+            by = "Cluster_ID") %>%
+  mutate(File3 = case_when(is.na(File3) ~ 100,
+                          T ~ File3))
+
+# STEP 2: Claculate Status of Cluster for each Cycle
+FullStack_V2 <- FullStack |> 
+  mutate(Status1 = Muestreado1 - File1,
+         Status2 = Muestreado2 - File2,
+         Status3 = Muestreado3 - File3) |> 
+  mutate(Status1 = case_when(is.na(Status1) ~ -100,
+                             Status1 > -99 & Status1 <= 0 ~ 1,
+                             T ~ Status1),
+         Status2 = case_when(is.na(Status2) ~ -100,
+                             Status2 > -99 & Status2 <= 0 ~ 1,
+                             T ~ Status2),
+         Status3 = case_when(is.na(Status3) ~ -100,
+                             Status3 > -99 & Status3 <= 0 ~ 1,
+                             T ~ Status3))
+
+
+#### 3.2) Plot Status Filter ---------------------------------------------------
+Sec.04 |> 
+  mutate(Cluster_ID = Conglomerado,
+         Plot1 = Sitios_x_cgl) |> 
+  select(Cluster_ID, Plot1)
+
+FullStack_V3 <- FullStack_V2 |> 
+  left_join(Sec.04 |> 
+              mutate(Cluster_ID = Conglomerado,
+                     Plot_S1 = Sitios_x_cgl) |> 
+              select(Cluster_ID, Plot_S1),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 %>%
+              filter(File == 1) %>%
+              ungroup() |> 
+              rename(Cluster_ID2 = Cluster_ID,
+                     Plot1 = Plots) %>%
+              mutate(Cluster_ID = Conglomerado) %>%
+              select("Cluster_ID", "Plot1"),
+            by = "Cluster_ID") |> 
+  left_join(Sec.09 |> 
+              mutate(Cluster_ID = Conglomerado,
+                     Plot_S2 = Sitios_x_cgl) |> 
+              select(Cluster_ID, Plot_S2),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 %>%
+              filter(File == 2) %>%
+              ungroup() |> 
+              rename(Cluster_ID2 = Cluster_ID,
+                     Plot2 = Plots) %>%
+              mutate(Cluster_ID = Conglomerado) %>%
+              select("Cluster_ID", "Plot2"),
+            by = "Cluster_ID") |> 
+  left_join(Sec.14 |> 
+              mutate(Cluster_ID = IDConglomerado,
+                     Plot_S3 = Sitios_x_cgl_C3) |> 
+              select(Cluster_ID, Plot_S3),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 %>%
+              filter(File == 3) %>%
+              ungroup() |> 
+              rename(Cluster_ID2 = Cluster_ID,
+                     Plot3 = Plots) %>%
+              mutate(Cluster_ID = Conglomerado) %>%
+              select("Cluster_ID", "Plot3"),
+            by = "Cluster_ID") |> 
+  mutate(Plot_Status1 = case_when(Status1 == -100 ~ -100,
+                                  Status1 == -99 ~ -99,
+                                  Status1 > -99 ~ Plot_S1 - Plot1),
+         Plot_Status2 = case_when(Status2 == -100 ~ -100,
+                                  Status2 == -99 ~ -99,
+                                  Status2 > -99 ~ Plot_S2 - Plot2),
+         Plot_Status3 = case_when(Status3 == -100 ~ -100,
+                                  Status3 == -99 ~ -99,
+                                  Status3 > -99 ~ Plot_S3 - Plot3)
+         ) 
+
+
+################### 4) RE-INTRODUCE ECOREGIONS TO DATASET + ADD TOTAL ENTRIES PER CLUSTER FOR EACH CYCLE ---------
+FullStack_V4 <- FullStack_V3 |> 
+  left_join(Sec.14 |> 
+              mutate(Cluster_ID = IDConglomerado) |> 
+              select(Cluster_ID, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 |> 
+              ungroup() |> 
+              filter(File == 1) |> 
+              mutate(Cluster_ID2 = Cluster_ID,
+                     Cluster_ID = Conglomerado,
+                     TE1 = total_entries) |> 
+              select(Cluster_ID, TE1),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 |> 
+              ungroup() |> 
+              filter(File == 2) |> 
+              mutate(Cluster_ID2 = Cluster_ID,
+                     Cluster_ID = Conglomerado,
+                     TE2 = total_entries) |> 
+              select(Cluster_ID, TE2),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 |> 
+              ungroup() |> 
+              filter(File == 3) |> 
+              mutate(Cluster_ID2 = Cluster_ID,
+                     Cluster_ID = Conglomerado,
+                     TE3 = total_entries) |> 
+              select(Cluster_ID, TE3),
+            by = "Cluster_ID") |> 
+  mutate(TE1 = case_when(Muestreado1 == 1 & is.na(TE1) ~ 0,
+                         T ~ TE1),
+         TE2 = case_when(Muestreado2 == 1 & is.na(TE2) ~ 0,
+                         T ~ TE2),
+         TE3 = case_when(Muestreado3 == 1 & is.na(TE3) ~ 0,
+                         T ~ TE3)) |> 
+  mutate(CTE13 = TE3 - TE1)
+
+View(FullStack_V4)
+
+################### 4) TREE COUNT CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
+# STEP 1: 
+ConstantStack_V1 <- FullStack_V4 |> 
+  ungroup() |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1)
+
+# STEP 2: Group by ecoregion
+
+
+
+
+################### 4) PLACEHOLDER -----------------------------------
 View(Sec.04)
 
 Sec.04 |> 
@@ -2936,134 +3143,16 @@ Sec.14 |>
   filter(con_cobertura_1m2_C3 == 1) |> 
   count()
 
-################### 3) CLUSTER COMPARISON -----------------------------------
-Sec.04 |> 
-  select(Conglomerado, X, Y)
 
-Sec.09 |> 
-  select(Conglomerado, X, Y)
-
-# STEP 1: Create Clusterbase
-ClusterBase <- rbind(Sec.04 |> 
-                 select(Conglomerado),
-               Sec.09 |> 
-                 select(Conglomerado),
-               Sec.14 |> 
-                 mutate(Conglomerado = IDConglomerado) |> 
-                 select(Conglomerado)) |> 
-  distinct() |> 
-  mutate(Cluster_ID = Conglomerado) |> 
-  select(Cluster_ID)
-
-ClusterBase |> count()
-View(ClusterBase)
-
-
-# STEP 2: JOIN CLUSTER_ID + X & Y FROM EACH FILE
-#File 1
-Test2 <- ClusterBase |> 
-  left_join(Sec.04 |> 
-              mutate(Cluster_ID = Conglomerado,
-                     Conglomerado1 = Conglomerado,
-                     X1 = X,
-                     Y1 = Y) |> 
-              select(Cluster_ID, Conglomerado1, X1, Y1),
-            by = "Cluster_ID")
-
-#File 2
-Test2 <- Test2 |> 
-  left_join(Sec.09 |> 
-              mutate(Cluster_ID = Conglomerado,
-                     Conglomerado2 = Conglomerado,
-                     X2 = X,
-                     Y2 = Y) |> 
-              select(Cluster_ID, Conglomerado2, X2, Y2),
-            by = "Cluster_ID")
-
-#File 3
-JoinedBase <- Test2 |> 
-  left_join(Sec.14 |> 
-              mutate(Cluster_ID = IDConglomerado,
-                     Conglomerado3 = IDConglomerado,
-                     X3 = X_C3,
-                     Y3 = Y_C3) |> 
-              select(Cluster_ID, Conglomerado3, X3, Y3),
-            by = "Cluster_ID")
-
-# STEP 3: AVERAGE X and Y
-
-NewBase <- JoinedBase |> 
-  group_by(Cluster_ID) |>
-  replace(is.na(JoinedBase), 0) |> 
-  mutate(DIV = case_when(X1 != 0 & X2 != 0 & X3 != 0 ~ 3,
-                         X1 != 0 & X2 != 0 & X3 == 0 ~ 2,
-                         X1 != 0 & X2 == 0 & X3 != 0 ~ 2,
-                         X1 == 0 & X2 != 0 & X3 != 0 ~ 2,
-                         X1 != 0 & X2 == 0 & X3 == 0 ~ 1,
-                         X1 == 0 & X2 != 0 & X3 == 0 ~ 1,
-                         X1 == 0 & X2 == 0 & X3 != 0 ~ 1,
-                         X1 == 0 & X2 == 0 & X3 != 0 ~ NA
-                         ),
-         X = (X1 + X2+ X3)/DIV,
-         Y = (Y1 + Y2+ Y3)/DIV) |> 
-  select(Cluster_ID, Conglomerado1, Conglomerado2, Conglomerado3, X, Y) |> 
-  mutate(DIFF12 = Conglomerado2 - Conglomerado1,
-         DIFF12 = case_when(DIFF12 > 0 ~ 1,
-                            DIFF12 < 0 ~ -1,
-                            TRUE ~ DIFF12),
-         DIFF13 = Conglomerado3 - Conglomerado1,
-         DIFF13 = case_when(DIFF13 > 0 ~ 1,
-                            DIFF13 < 0 ~ -1,
-                            TRUE ~ DIFF13),
-         DIFF23 = Conglomerado3 - Conglomerado2,
-         DIFF23 = case_when(DIFF23 > 0 ~ 1,
-                            DIFF23 < 0 ~ -1,
-                            TRUE ~ DIFF23))
-
-
-  
-NewBase |> 
-  ungroup() |> 
-  filter(DIFF12 == 0 & DIFF13 != 0 &  DIFF23 > 0)
-  
-NewBase
-JoinedBase
-
-Test2 <- rbind(Sec.04 |> 
-                 select(Conglomerado, X, Y),
-               Sec.09 |> 
-                 select(Conglomerado, X, Y),
-               Sec.14 |> 
-                 mutate(Conglomerado = IDConglomerado,
-                        X = X_C3,
-                        Y = Y_C3) |> 
-                 select(Conglomerado, X, Y)) |> 
-  distinct() |> 
-  arrange(Conglomerado) 
-
-
-ClusterBase |> count()
-Test2 |> count()
-
-Test2 |> 
-  filter(is.na(Conglomerado)) |> 
-  count()
-
-View(Test2) 
-
-Sec.04 |> 
-  filter(is.na(X)) |> 
-  count()
-
-Sec.09 |> 
-  count()
-
-
-
-################### 4) GEOSPATIAL PREPARATION -----------------------------------
+################### 5) GEOSPATIAL PREPARATION -----------------------------------
 writeVector(vect(Sec.04, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Clusters04.shp")
 writeVector(vect(Sec.09, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Clusters09.shp")
 writeVector(vect(Sec.14, geom = c("X_C3", "Y_C3"), crs = "+proj=longlat +datum=WGS84"), "Clusters14.shp")
+
+writeVector(vect(FullStack_V3, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "WhatClustersChanged_v2.shp")
+
+#DATA: FUllStack_V4 - for cluster based change in tree counts
+writeVector(vect(FullStack_V4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "ClusterTreeCounts.shp")
 
 ################### 2) PLACEHOLDER -----------------------------------
 
