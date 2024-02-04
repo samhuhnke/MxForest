@@ -763,7 +763,7 @@ NewBase <- MetaBase |>
   ),
   X = (X1 + X2 + X3)/DIV,
   Y = (Y1 + Y2 + Y3)/DIV) |> 
-  select(Cluster_ID, Conglomerado1, Conglomerado2, Conglomerado3, X, Y, Test) |> 
+  select(Cluster_ID, Conglomerado1, Conglomerado2, Conglomerado3, X, Y) |> 
   # Differences in Clusterabailability - for both sampled and not sampled
   mutate(DIFF12 = Conglomerado2 - Conglomerado1,
          DIFF12 = case_when(DIFF12 > 0 ~ 1,
