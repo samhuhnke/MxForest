@@ -592,6 +592,8 @@ C_TreeMorp <- merged |>
             Med_AvgCrownArea = median(AreaCopa, na.rm = T),
             X=mean(X),
             Y=mean(Y)) |> 
+  mutate(AvgCrownHeight = case_when(AvgCrownHeight < 0 ~ NA,
+                                    T ~ AvgCrownHeight)) |> 
   relocate(Cluster_ID)
 
 ###### 4.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024) ----------------------------
@@ -981,7 +983,9 @@ FullStack_V4 <- FullStack_V3 |>
   # in case you wanted to calculate univariate changes in R 
   mutate(CTE13 = TE3 - TE1,
          SC13 = SC3 - SC1,
-         DBH13 = DBH3 -DBH1)
+         DBH13 = DBH3 -DBH1) |> 
+  ungroup()
+
 
 
 ################### 4) TREE COUNT CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
@@ -1020,6 +1024,7 @@ FullStack_V4 <- FullStack_V3 |>
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
+
 
 
 ####################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
@@ -1067,9 +1072,9 @@ file12 <- rbind(file1, file2)
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file12, "iMAD_Data_12.csv")
+ write.csv(file12, "iMAD_Data_12.csv")
 
-################## 1.1) Comparison of Cycle 1 and 2 - FILTER --------------------------------------------
+################## 1.1) Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
 #### STEP 1: disecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 1
 file1 <- FullStack_V4 |> 
@@ -1115,7 +1120,7 @@ file12 <- rbind(file1, file2)
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file12, "iMAD_Data_12_F.csv")
+# write.csv(file12, "iMAD_Data_12_Constant.csv")
 
 ################## 1.2) Comparison of Cycle 1 and 2 - FILTER: NO EMPTY CLUSTERS -------------------------
 #### STEP 1: disecting dataframe by file + add file grouping variable (NO EMPTY CLUSTERS) -----
@@ -1173,11 +1178,20 @@ time.taken
 ####################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
 ################## 1) Comparison of Cycle 1 and 2 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
-results_imad_12_f <- Raw.04 <- fread(here("data", "iMAD", "iMAD_results_12_F.csv"))
-#### STEP 2: PLACEHOLDER ----
+iMAD_results_12_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12_Constant.csv"))
+#### STEP 2: Geospatial Prep ----
+# writeVector(vect(iMAD_results_12_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant.shp")
 
-#### STEP 3: Geospatial Prep ----
-writeVector(vect(results_imad_12_f, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "results_imad_12_f.shp")
+################## 2) Comparison of Cycle 1 and 2 --------------------------------------------
+#### STEP 1: Load data ----
+iMAD_results_12 <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12.csv"))
+#### STEP 2: Geospatial Prep ----
+# writeVector(vect(iMAD_results_12, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12.shp")
+
+########### END -------------------------------------------------------------------------------------------------
+
+
+
 
 ################### CLUSTER METADATA DATASET PLOTTING-------------------------------------------------------------
 #### 1) Individual Tree Entries per Cluster (DATA: ALL SAMPLED CLUSTERS) --------------------------------------------------------------
