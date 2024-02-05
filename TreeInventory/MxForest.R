@@ -1023,7 +1023,7 @@ time.taken
 
 
 ####################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
-################## 1) Comparison of Cycle 1 and 2 --------------------------------------------------------
+################## 1) Comparison of Cycle 1 and 2 - NO FILTER -------------------------------------------
 #### STEP 1: disecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
 ## File 1
 file1 <- FullStack_V4 |> 
@@ -1069,12 +1069,115 @@ file12 <- rbind(file1, file2)
 
 # write.csv(file12, "iMAD_Data_12.csv")
 
+################## 1.1) Comparison of Cycle 1 and 2 - FILTER --------------------------------------------
+#### STEP 1: disecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
+## File 1
+file1 <- FullStack_V4 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH1,
+         AvgCrownDiameter = CD1,
+         AvgCrownHeight = CH1,
+         AvgCrownArea = CA1,
+         SpeciesCount = SC1,
+         AvgTreeHeight = TH1,
+         TreeCount = TE1,
+         J = J1) |> 
+  # add file grouping
+  mutate(File = 1) |> 
+  relocate(File)
+
+file1
+
+## File 2
+file2 <- FullStack_V4 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH2,
+         AvgCrownDiameter = CD2,
+         AvgCrownHeight = CH2,
+         AvgCrownArea = CA2,
+         SpeciesCount = SC2,
+         AvgTreeHeight = TH2,
+         TreeCount = TE2,
+         J = J2) |> 
+  #add file grouping
+  mutate(File = 2) |> 
+  relocate(File)
+
+file2
+
+#### STEP 2: merge into long data format ----
+file12 <- rbind(file1, file2)
+
+
+#### STEP 3: write .csv for python ----
+
+# write.csv(file12, "iMAD_Data_12_F.csv")
+
+################## 1.2) Comparison of Cycle 1 and 2 - FILTER: NO EMPTY CLUSTERS -------------------------
+#### STEP 1: disecting dataframe by file + add file grouping variable (NO EMPTY CLUSTERS) -----
+## File 1
+file1 <- FullStack_V4 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & TE1 != 0 & TE2 != 0) |> 
+  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH1,
+         AvgCrownDiameter = CD1,
+         AvgCrownHeight = CH1,
+         AvgCrownArea = CA1,
+         SpeciesCount = SC1,
+         AvgTreeHeight = TH1,
+         TreeCount = TE1,
+         J = J1) |> 
+  # add file grouping
+  mutate(File = 1) |> 
+  relocate(File)
+
+
+## File 2
+file2 <- FullStack_V4 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & TE1 != 0 & TE2 != 0) |> 
+  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH2,
+         AvgCrownDiameter = CD2,
+         AvgCrownHeight = CH2,
+         AvgCrownArea = CA2,
+         SpeciesCount = SC2,
+         AvgTreeHeight = TH2,
+         TreeCount = TE2,
+         J = J2) |> 
+  #add file grouping
+  mutate(File = 2) |> 
+  relocate(File)
+
+file2
+
+#### STEP 2: merge into long data format ----
+file12 <- rbind(file1, file2)
+
+
+#### STEP 3: write .csv for python ----
+
+ write.csv(file12, "iMAD_Data_12_F_NOEMPTY.csv")
+
 ########### END -------------------------------------------------------------------------------------------------
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
+####################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
+################## 1) Comparison of Cycle 1 and 2 - FILTER: CONSTANT CLUSTERS -------------------------------------------
+#### STEP 1: Load data ----
+results_imad_12_f <- Raw.04 <- fread(here("data", "iMAD", "iMAD_results_12_F.csv"))
+#### STEP 2: PLACEHOLDER ----
+
+#### STEP 3: Geospatial Prep ----
+writeVector(vect(results_imad_12_f, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "results_imad_12_f.shp")
 
 ################### CLUSTER METADATA DATASET PLOTTING-------------------------------------------------------------
 #### 1) Individual Tree Entries per Cluster (DATA: ALL SAMPLED CLUSTERS) --------------------------------------------------------------
@@ -1318,6 +1421,11 @@ TE_ds |>
 
 
 ########## END ------------------------------------------------------------------------------------------
+
+
+
+
+
 
 
 #################### A) EVERYTHING WITH A FILTER FOR TREES ONLY -------------------------------
