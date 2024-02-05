@@ -932,30 +932,45 @@ FullStack_V4 <- FullStack_V3 |>
               filter(File == 1) |> 
               mutate(Cluster_ID2 = Cluster_ID,
                      Cluster_ID = Conglomerado,
-                     TE1 = total_entries,
+                     DBH1 = AvgDbh,
+                     CD1 = AvgCrownDiameter,
+                     CH1 = AvgCrownHeight,
+                     CA1 = AvgCrownArea,
                      SC1 = species_count,
-                     DBH1 = AvgDbh) |> 
-              select(Cluster_ID, TE1, SC1, DBH1),
+                     TH1 = AvgTreeHeight,
+                     TE1 = total_entries,
+                     J1 = J) |> 
+              select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1),
             by = "Cluster_ID") |> 
   left_join(Comp_C_Diagnostics_V5 |> 
               ungroup() |> 
               filter(File == 2) |> 
               mutate(Cluster_ID2 = Cluster_ID,
                      Cluster_ID = Conglomerado,
-                     TE2 = total_entries,
+                     DBH2 = AvgDbh,
+                     CD2 = AvgCrownDiameter,
+                     CH2 = AvgCrownHeight,
+                     CA2 = AvgCrownArea,
                      SC2 = species_count,
-                     DBH2 = AvgDbh) |> 
-              select(Cluster_ID, TE2, SC2, DBH2),
+                     TH2 = AvgTreeHeight,
+                     TE2 = total_entries,
+                     J2 = J) |> 
+              select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2),
             by = "Cluster_ID") |> 
   left_join(Comp_C_Diagnostics_V5 |> 
               ungroup() |> 
               filter(File == 3) |> 
               mutate(Cluster_ID2 = Cluster_ID,
                      Cluster_ID = Conglomerado,
-                     TE3 = total_entries,
+                     DBH3 = AvgDbh,
+                     CD3 = AvgCrownDiameter,
+                     CH3 = AvgCrownHeight,
+                     CA3 = AvgCrownArea,
                      SC3 = species_count,
-                     DBH3 = AvgDbh) |> 
-              select(Cluster_ID, TE3, SC3, DBH3),
+                     TH3 = AvgTreeHeight,
+                     TE3 = total_entries,
+                     J3 = J) |> 
+              select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3),
             by = "Cluster_ID") |> 
   mutate(TE1 = case_when(Muestreado1 == 1 & is.na(TE1) ~ 0,
                          T ~ TE1),
@@ -963,6 +978,7 @@ FullStack_V4 <- FullStack_V3 |>
                          T ~ TE2),
          TE3 = case_when(Muestreado3 == 1 & is.na(TE3) ~ 0,
                          T ~ TE3)) |> 
+  # in case you wanted to calculate univariate changes in R 
   mutate(CTE13 = TE3 - TE1,
          SC13 = SC3 - SC1,
          DBH13 = DBH3 -DBH1)
@@ -998,6 +1014,60 @@ FullStack_V4 <- FullStack_V3 |>
 
 #DATA: FullStack_V4 - FILTER: only constantly sampled clusters (n = 9 795)
   #writeVector(vect(FullStack_V4 |> filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1), geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4_F1.shp")
+
+########### END -------------------------------------------------------------------------------------------------
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+
+####################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
+################## 1) Comparison of Cycle 1 and 2 --------------------------------------------------------
+#### STEP 1: disecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
+## File 1
+file1 <- FullStack_V4 |> 
+  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH1,
+         AvgCrownDiameter = CD1,
+         AvgCrownHeight = CH1,
+         AvgCrownArea = CA1,
+         SpeciesCount = SC1,
+         AvgTreeHeight = TH1,
+         TreeCount = TE1,
+         J = J1) |> 
+  # add file grouping
+  mutate(File = 1) |> 
+  relocate(File)
+
+file1
+
+## File 2
+file2 <- FullStack_V4 |> 
+  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH2,
+         AvgCrownDiameter = CD2,
+         AvgCrownHeight = CH2,
+         AvgCrownArea = CA2,
+         SpeciesCount = SC2,
+         AvgTreeHeight = TH2,
+         TreeCount = TE2,
+         J = J2) |> 
+  #add file grouping
+  mutate(File = 2) |> 
+  relocate(File)
+
+file2
+
+#### STEP 2: merge into long data format ----
+file12 <- rbind(file1, file2)
+
+
+#### STEP 3: write .csv for python ----
+
+# write.csv(file12, "iMAD_Data_12.csv")
 
 ########### END -------------------------------------------------------------------------------------------------
 
