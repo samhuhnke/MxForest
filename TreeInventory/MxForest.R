@@ -974,16 +974,62 @@ FullStack_V4 <- FullStack_V3 |>
                      J3 = J) |> 
               select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3),
             by = "Cluster_ID") |> 
-  mutate(TE1 = case_when(Muestreado1 == 1 & is.na(TE1) ~ 0,
+  # Exchanging NAs with Zeros (except for J)
+  mutate(
+    # Tree Entries
+         TE1 = case_when(Muestreado1 == 1 & is.na(TE1) ~ 0,
                          T ~ TE1),
          TE2 = case_when(Muestreado2 == 1 & is.na(TE2) ~ 0,
                          T ~ TE2),
          TE3 = case_when(Muestreado3 == 1 & is.na(TE3) ~ 0,
-                         T ~ TE3)) |> 
+                         T ~ TE3),
+         # Species Count
+         SC1 = case_when(Muestreado1 == 1 & is.na(SC1) ~ 0,
+                         T ~ SC1),
+         SC2 = case_when(Muestreado2 == 1 & is.na(SC2) ~ 0,
+                         T ~ SC2),
+         SC3 = case_when(Muestreado3 == 1 & is.na(SC3) ~ 0,
+                         T ~ SC3),
+         # DBH
+         DBH1 = case_when(Muestreado1 == 1 & is.na(DBH1) ~ 0,
+                         T ~ DBH1),
+         DBH2 = case_when(Muestreado2 == 1 & is.na(DBH2) ~ 0,
+                         T ~ DBH2),
+         DBH3 = case_when(Muestreado3 == 1 & is.na(DBH3) ~ 0,
+                         T ~ DBH3),
+         # Crown Diameter
+         CD1 = case_when(Muestreado1 == 1 & is.na(CD1) ~ 0,
+                          T ~ CD1),
+         CD2 = case_when(Muestreado2 == 1 & is.na(CD2) ~ 0,
+                          T ~ CD2),
+         CD3 = case_when(Muestreado3 == 1 & is.na(CD3) ~ 0,
+                          T ~ CD3),
+         # Crown Height
+         CH1 = case_when(Muestreado1 == 1 & is.na(CH1) ~ 0,
+                          T ~ CH1),
+         CH2 = case_when(Muestreado2 == 1 & is.na(CH2) ~ 0,
+                          T ~ CH2),
+         CH3 = case_when(Muestreado3 == 1 & is.na(CH3) ~ 0,
+                          T ~ CH3),
+         # Crown Area
+         CA1 = case_when(Muestreado1 == 1 & is.na(CA1) ~ 0,
+                         T ~ CA1),
+         CA2 = case_when(Muestreado2 == 1 & is.na(CA2) ~ 0,
+                         T ~ CA2),
+         CA3 = case_when(Muestreado3 == 1 & is.na(CA3) ~ 0,
+                         T ~ CA3),
+         # Tree Height
+         TH1 = case_when(Muestreado1 == 1 & is.na(CA1) ~ 0,
+                         T ~ CA1),
+         TH2 = case_when(Muestreado2 == 1 & is.na(CA2) ~ 0,
+                         T ~ CA2),
+         TH3 = case_when(Muestreado3 == 1 & is.na(CA3) ~ 0,
+                         T ~ CA3),
+         ) |> 
   # in case you wanted to calculate univariate changes in R 
   mutate(CTE13 = TE3 - TE1,
          SC13 = SC3 - SC1,
-         DBH13 = DBH3 -DBH1) |> 
+         DBH13 = DBH3 - DBH1) |> 
   ungroup()
 
 
@@ -997,10 +1043,6 @@ FullStack_V4 <- FullStack_V3 |>
 
 
 
-
-################### 4) PLACEHOLDER -----------------------------------
-
-##### EMPTY 
 
 ################### 5) GEOSPATIAL PREPARATION -----------------------------------
 
@@ -1029,7 +1071,7 @@ time.taken
 
 ####################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
 ################## 1) Comparison of Cycle 1 and 2 - NO FILTER -------------------------------------------
-#### STEP 1: disecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
+#### STEP 1: dissecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
 ## File 1
 file1 <- FullStack_V4 |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
@@ -1075,7 +1117,7 @@ file12 <- rbind(file1, file2)
  write.csv(file12, "iMAD_Data_12.csv")
 
 ################## 1.1) Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
-#### STEP 1: disecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
+#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 1
 file1 <- FullStack_V4 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
@@ -1125,7 +1167,7 @@ file12 <- rbind(file1, file2)
 ########### CUT -------------------------------------------------------------------------------------------------
 
 ################## 2) Comparison of Cycle 2 and 3 - NO FILTER -------------------------------------------
-#### STEP 1: disecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
+#### STEP 1: dissecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
 ## File 2
 file2 <- FullStack_V4 |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
@@ -1170,8 +1212,8 @@ file23 <- rbind(file2, file3)
 
 write.csv(file23, "iMAD_Data_23.csv")
 
-################## 1.1) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
-#### STEP 1: disecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
+################## 1.1) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
+#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 2
 file2 <- FullStack_V4 |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
@@ -1222,7 +1264,7 @@ file23 <- rbind(file2, file3)
 
 
 ################## 3) Comparison of Cycle 1 and 3 - NO FILTER -------------------------------------------
-#### STEP 1: disecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
+#### STEP 1: dissecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
 ## File 1
 file1 <- FullStack_V4 |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
@@ -1267,8 +1309,8 @@ file13 <- rbind(file1, file3)
 
 write.csv(file13, "iMAD_Data_13.csv")
 
-################## 1.1) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
-#### STEP 1: disecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
+################## 1.1) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
+#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 1
 file1 <- FullStack_V4 |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
@@ -1316,10 +1358,6 @@ file13 <- rbind(file1, file3)
  write.csv(file13, "iMAD_Data_13_Constant.csv")
 
 ########### END -------------------------------------------------------------------------------------------------
-
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
 
 
 ####################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
