@@ -1,20 +1,6 @@
 
-### MxForestInventory Data Cleansing --------------------------------------
-
-#### RANDOM NOTES
-
-# categorical values should pot. be represented as factors in R (like VigorEtapa)
-
-# Analysis: TotalDiameter of ds, mean(diameter) of ds, -> sampled by randomly selected rows -> equal data amount of each ds
-# -> mutate(Mean_XY = mean(xy, na.rm = T)
-# Analysis: heat map of coordniates and tree count (x=x, y=y and color/size of dot = tree count), for example
-# Analysis: amount of disturbances by type and severity
-# Analysis: Scatterplot by numeric values -> color: VigorEtapa, Family (or sorting by family and color by species?), Estado (categorical values)
-
-
-# EDA: Geospatial Analysis for low individual clusters -> where are they located?
-# EDA: How many of the clusters contain all 4 plots? Is there a correlation between low individual clusters and missing plots?
-# EDA: addition to previous line - should also be seen in correlation with Shannon == 0 
+### MxForestInventory Data Wrangling Code --------------------------------------
+### LAST UPDATED: 02/08/2024 (US)
 
 start.time <- Sys.time()
 
@@ -687,13 +673,13 @@ Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("File", 
 Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct(),
                                    by = "Cluster_ID")
 
-########## END -------------------------------------------------------------------------------------------
+##################################     END      ##################################################################
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
-####################          METADATA DATASET CODE            -----------------------------------------------
+####################          METADATA DATASET CODE            ###################################################
 #################### 1) LOAD RAW DATA ------------------------------------------------------------
 ## 2004 - 2007
 Sec.04 <- readxl::read_xlsx(here("data", "secciones", "INFyS_Secciones_2004_2007_7VCcv7Y.xlsx"), sheet= 1, na = c(""))
@@ -766,7 +752,7 @@ NewBase <- MetaBase |>
   X = (X1 + X2 + X3)/DIV,
   Y = (Y1 + Y2 + Y3)/DIV) |> 
   select(Cluster_ID, Conglomerado1, Conglomerado2, Conglomerado3, X, Y) |> 
-  # Differences in Clusterabailability - for both sampled and not sampled
+  # Differences in Clusteravailability - for both sampled and not sampled
   mutate(DIFF12 = Conglomerado2 - Conglomerado1,
          DIFF12 = case_when(DIFF12 > 0 ~ 1,
                             DIFF12 < 0 ~ -1,
@@ -992,10 +978,6 @@ FullStack_V4 <- FullStack_V3 |>
          SC3 = case_when(Muestreado3 == 1 & is.na(SC3) ~ 0,
                          T ~ SC3)
          ) |> 
-  # in case you wanted to calculate univariate changes in R 
-  mutate(CTE13 = TE3 - TE1,
-         SC13 = SC3 - SC1,
-         DBH13 = DBH3 - DBH1) |> 
   ungroup()
 
 #### 4.2) FullStack_V4_Zeros ----
@@ -1100,15 +1082,35 @@ FullStack_V4_Zeros <- FullStack_V3 |>
                     T ~ CA2),
     TH3 = case_when(Muestreado3 == 1 & is.na(CA3) ~ 0,
                     T ~ CA3),
-  ) |> 
-  # in case you wanted to calculate univariate changes in R 
-  mutate(CTE13 = TE3 - TE1,
-         SC13 = SC3 - SC1,
-         DBH13 = DBH3 - DBH1) |> 
+    ) |> 
   ungroup()
 
 
-################### 4) TREE COUNT CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
+################### 5) UNIVARIATE CHANGE CALCULATIONS -----------------------------------
+#### 5.1) FullSack_V4 -----
+FullStack_V4 <- FullStack_V4 |> 
+  # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
+  mutate(TE12 = TE2 -TE1,
+         TE23 = TE3 - TE1,
+         TE13 = TE3 - TE1,
+         SC12 = SC2 - SC1,
+         SC23 = SC3 - SC2,
+         SC13 = SC3 - SC1)
+
+#### 5.1.1) FullSack_V4_Zeros -----
+FullStack_V4_Zeros <- FullStack_V4_Zeros |> 
+  # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
+  mutate(TE12 = TE2 -TE1,
+         TE23 = TE3 - TE1,
+         TE13 = TE3 - TE1,
+         SC12 = SC2 - SC1,
+         SC23 = SC3 - SC2,
+         SC13 = SC3 - SC1)
+
+
+
+
+################### 6) TREE COUNT CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
 
 # STEP 1: IDK
 
@@ -1129,13 +1131,19 @@ FullStack_V4_Zeros <- FullStack_V3 |>
   #writeVector(vect(FullStack_V4 |> filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1), geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "WhatClustersChanged_v2.shp")
 
 
-#DATA: FUllStack_V4 - for cluster based change in tree counts
+#DATA: FUllStack_V4 - for cluster based change in tree counts ----
   #writeVector(vect(FullStack_V4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4.shp")
 
-#DATA: FullStack_V4 - FILTER: only constantly sampled clusters (n = 9 795)
+#DATA: FullStack_V4 - FILTER: only constantly sampled clusters (n = 9 795) ----
   #writeVector(vect(FullStack_V4 |> filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1), geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4_F1.shp")
 
-########### END -------------------------------------------------------------------------------------------------
+#DATA: FullStack_V4 ----
+#  writeVector(vect(FullStack_V4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4.shp")
+
+#DATA: FullStack_V4_Zeros ----
+#  writeVector(vect(FullStack_V4_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4_Zeros.shp")
+
+##################################     END      ##################################################################
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
@@ -1189,7 +1197,7 @@ file12 <- rbind(file1, file2)
 
 #### STEP 3: write .csv for python ----
 
- write.csv(file12, "iMAD_Data_12_Constant.csv")
+# write.csv(file12, "iMAD_Data_12_Constant.csv")
 
 ################## 1.1) ZEROs - Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
@@ -1237,10 +1245,9 @@ file12 <- rbind(file1, file2)
 
 #### STEP 3: write .csv for python ----
 
- write.csv(file12, "iMAD_Data_12_Constant_Zeros.csv")
+# write.csv(file12, "iMAD_Data_12_Constant_Zeros.csv")
 
 ########### CUT -------------------------------------------------------------------------------------------------
-
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 2
@@ -1287,7 +1294,7 @@ file23 <- rbind(file2, file3)
 
 #### STEP 3: write .csv for python ----
 
- write.csv(file23, "iMAD_Data_23_Constant.csv")
+# write.csv(file23, "iMAD_Data_23_Constant.csv")
 
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
@@ -1335,10 +1342,9 @@ file23 <- rbind(file2, file3)
 
 #### STEP 3: write .csv for python ----
 
- write.csv(file23, "iMAD_Data_23_Constant_Zeros.csv")
+# write.csv(file23, "iMAD_Data_23_Constant_Zeros.csv")
 
 ########### CUT -------------------------------------------------------------------------------------------------
-
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 1
@@ -1385,7 +1391,7 @@ file13 <- rbind(file1, file3)
 
 #### STEP 3: write .csv for python ----
 
- write.csv(file13, "iMAD_Data_13_Constant.csv")
+# write.csv(file13, "iMAD_Data_13_Constant.csv")
 
 ################## 3.1) ZEROs - Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
@@ -1433,9 +1439,9 @@ file13 <- rbind(file1, file3)
 
 #### STEP 3: write .csv for python ----
 
- write.csv(file13, "iMAD_Data_13_Constant_Zeros.csv")
+# write.csv(file13, "iMAD_Data_13_Constant_Zeros.csv")
 
-########### END -------------------------------------------------------------------------------------------------
+##################################     END      ##################################################################
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
@@ -1450,7 +1456,6 @@ iMAD_results_12_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", 
 # writeVector(vect(iMAD_results_12_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant.shp")
 
 ########### CUT -------------------------------------------------------------------------------------------------
-
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_23_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_23_Constant.csv"))
@@ -1459,7 +1464,6 @@ iMAD_results_23_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", 
 # writeVector(vect(iMAD_results_23_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant.shp")
 
 ########### CUT -------------------------------------------------------------------------------------------------
-
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_13_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_13_Constant.csv"))
@@ -1467,12 +1471,117 @@ iMAD_results_13_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", 
 
 # writeVector(vect(iMAD_results_13_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant.shp")
 
-########### CUT -------------------------------------------------------------------------------------------------
+##################################     END      ##################################################################
+
+
+
+################### PAPER/BA PLOTS (DATA: FullStack_V4 & FullStack_V4_Zeros) -------------------------------------------------------------
+#### 1) Violinplots --------------------------------------------
+## 1.1) Species Richness ----
+# FullStack_V4 & FullStack_V4 (both 0s for Species Counts)
+FullStack_V4 %>% 
+  select(SC12, SC23, SC13) |> 
+  pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "SpecChange") |> 
+  mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
+  ggplot( aes(x= Comparison, y= SpecChange, fill=Comparison)) +
+  geom_violin()
+  
+## 1.2) Biomass ----
+## 1.3) iMAD ----
+
+
+
+## 1.4) Total Entries ----
+# FullStack_V4 & FullStack_V4 (both 0s for Total Tree Entries)
+FullStack_V4 %>% 
+  select(TE12, TE23, TE13) |> 
+  pivot_longer(c(TE12, TE23, TE13), names_to = "Comparison", values_to = "SpecChange") |> 
+  mutate(Comparison = factor(Comparison, levels = c("TE12", "TE23", "TE13"))) |> 
+  ggplot( aes(x= Comparison, y= SpecChange, fill=Comparison)) +
+  geom_violin()
+
+#### 2) Scatterplots -------------------------------------------
+## 1.1) Species Richness ----
+# FullStack_V4 & FullStack_V4 (both 0s for Species Counts)
+# Cycle 1 - 2:
+FullStack_V4 |> 
+  ggplot(aes(x = SC2, y = SC1)) +
+  geom_point() +
+  geom_abline(color = "red")
+
+# Cycle 2 - 3:
+FullStack_V4 |> 
+  ggplot(aes(x = SC3, y = SC2)) +
+  geom_point() +
+  geom_abline(color = "red")
+
+# Cycle 1 - 3:
+FullStack_V4 |> 
+  ggplot(aes(x = SC3, y = SC1)) +
+  geom_point() +
+  geom_abline(color = "red")
+  
+
+## 1.2) Biomass ----
+## 1.3) iMAD ----
+
+
+
+## 1.4) Total Entries ----
+# FullStack_V4 & FullStack_V4 (both 0s for Total Tree Entries)
+# Cycle 1 - 2:
+FullStack_V4 |> 
+  ggplot(aes(x = TE2, y = TE1)) +
+  geom_point() +
+  geom_abline(color = "red")
+
+# Cycle 2 - 3:
+FullStack_V4 |> 
+  ggplot(aes(x = TE3, y = TE2)) +
+  geom_point() +
+  geom_abline(color = "red")
+
+# Cycle 1 - 3:
+FullStack_V4 |> 
+  ggplot(aes(x = TE3, y = TE1)) +
+  geom_point() +
+  geom_abline(color = "red")
+
+
+#### 3) Ridges -------------------------------------------------
+## 1.1) Species Richness ----
+# FullStack_V4 & FullStack_V4 (both 0s for Species Counts)
+
+
+## 1.2) Biomass ----
+
+## 1.3) iMAD ----
+
+## 1.4) Total Entries ----
+# FullStack_V4 & FullStack_V4 (both 0s for Total Tree Entries)
+FullStack_V4 %>% 
+  select(TE12, TE23, TE13) |> 
+  pivot_longer(c(TE12, TE23, TE13), names_to = "Comparison", values_to = "SpecChange") |> 
+  mutate(Comparison = factor(Comparison, levels = c("TE12", "TE23", "TE13"))) |> 
+  ggplot( aes(x= Comparison, y= SpecChange, fill=Comparison)) +
+  geom_violin() +
+  geom_ridges
+
+## 3.1) Species Richness ----
+FullStack_V4 %>% 
+  select(SC12, SC23, SC13) |> 
+  pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "SpecChange") |> 
+  mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
+  ggplot( aes(x= Comparison, y= SpecChange, fill=Comparison)) +
+  geom_violin()
+
+
+##################################     END      ##################################################################
 
 
 
 
-################### CLUSTER METADATA DATASET PLOTTING -------------------------------------------------------------
+################### CLUSTER METADATA DATASET PLOTTING           ##################################################
 #### 1) Individual Tree Entries per Cluster (DATA: ALL SAMPLED CLUSTERS) --------------------------------------------------------------
 
 # STEP 1: Cut data into pieces devided by Cycle
@@ -1713,14 +1822,13 @@ TE_ds |>
 
 
 
-########## END ------------------------------------------------------------------------------------------
+##################################     END      ##################################################################
 
 
 
 
 
-
-#################### A) EVERYTHING WITH A FILTER FOR TREES ONLY ######################################################################################
+#################### A) EVERYTHING WITH A FILTER FOR TREES ONLY ##################################################
 #################### 4) EDA PREPARATION ------------------------------------------------------------------
 ###### 4.1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ---------------------------
 #### DATA ON CLUSTER LEVEL
@@ -1926,13 +2034,13 @@ Comp_C_Diagnostics_V5_2 <- left_join(Comp_C_Diagnostics_V4_2, merged |>
                                        select(Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct(),
                                    by = "Cluster_ID")
 
-########## END -------------------------------------------------------------------------------------------
+##################################     END      ##################################################################
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
-####################          METADATA DATASET CODE (TREES ONLY FILTER)           -----------------------------------------------
+####################          METADATA DATASET CODE (TREES ONLY FILTER)           ###############################
 #################### 1) LOAD RAW DATA ------------------------------------------------------------
 ## 2004 - 2007
 Sec.04 <- readxl::read_xlsx(here("data", "secciones", "INFyS_Secciones_2004_2007_7VCcv7Y.xlsx"), sheet= 1, na = c(""))
@@ -2252,10 +2360,10 @@ FullStack_V4_2 <- FullStack_V3_2 |>
 #DATA: FullStack_V4 - FILTER: only constantly sampled clusters (n = 9 795)
 #writeVector(vect(FullStack_V4 |> filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1), geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4_F1.shp")
 
-########### END -------------------------------------------------------------------------------------------------
+##################################     END      ##################################################################
 
 
-################### CLUSTER METADATA DATASET PLOTTING (TREES ONLY FILTER)          -------------------------------------------------------------
+################### CLUSTER METADATA DATASET PLOTTING (TREES ONLY FILTER)          ###############################
 #### 1) Individual Tree Entries per Cluster (DATA: ALL SAMPLED CLUSTERS) --------------------------------------------------------------
 
 # STEP 1: Cut data into pieces devided by Cycle
@@ -2496,7 +2604,7 @@ TE_ds |>
 
 
 
-########## END ------------------------------------------------------------------------------------------
+##################################     END      ##################################################################
 #################### A) END ######################################################################################################
 
 
