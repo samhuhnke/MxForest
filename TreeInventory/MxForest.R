@@ -1068,55 +1068,11 @@ time.taken <- end.time - start.time
 time.taken
 
 
+View(FullStack_V4)
+
 
 ####################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
-################## 1) Comparison of Cycle 1 and 2 - NO FILTER -------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
-## File 1
-file1 <- FullStack_V4 |> 
-  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH1,
-         AvgCrownDiameter = CD1,
-         AvgCrownHeight = CH1,
-         AvgCrownArea = CA1,
-         SpeciesCount = SC1,
-         AvgTreeHeight = TH1,
-         TreeCount = TE1,
-         J = J1) |> 
-  # add file grouping
-  mutate(File = 1) |> 
-  relocate(File)
-
-file1
-
-## File 2
-file2 <- FullStack_V4 |> 
-  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH2,
-         AvgCrownDiameter = CD2,
-         AvgCrownHeight = CH2,
-         AvgCrownArea = CA2,
-         SpeciesCount = SC2,
-         AvgTreeHeight = TH2,
-         TreeCount = TE2,
-         J = J2) |> 
-  #add file grouping
-  mutate(File = 2) |> 
-  relocate(File)
-
-file2
-
-#### STEP 2: merge into long data format ----
-file12 <- rbind(file1, file2)
-
-
-#### STEP 3: write .csv for python ----
-
- write.csv(file12, "iMAD_Data_12.csv")
-
-################## 1.1) Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
+################## 1) Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 1
 file1 <- FullStack_V4 |> 
@@ -1166,53 +1122,7 @@ file12 <- rbind(file1, file2)
 
 ########### CUT -------------------------------------------------------------------------------------------------
 
-################## 2) Comparison of Cycle 2 and 3 - NO FILTER -------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
-## File 2
-file2 <- FullStack_V4 |> 
-  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH2,
-         AvgCrownDiameter = CD2,
-         AvgCrownHeight = CH2,
-         AvgCrownArea = CA2,
-         SpeciesCount = SC2,
-         AvgTreeHeight = TH2,
-         TreeCount = TE2,
-         J = J2) |> 
-  #add file grouping
-  mutate(File = 2) |> 
-  relocate(File)
-
-file2
-
-## File 3
-file3 <- FullStack_V4 |> 
-  select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH3,
-         AvgCrownDiameter = CD3,
-         AvgCrownHeight = CH3,
-         AvgCrownArea = CA3,
-         SpeciesCount = SC3,
-         AvgTreeHeight = TH3,
-         TreeCount = TE3,
-         J = J3) |> 
-  #add file grouping
-  mutate(File = 3) |> 
-  relocate(File)
-
-file3
-
-#### STEP 2: merge into long data format ----
-file23 <- rbind(file2, file3)
-
-
-#### STEP 3: write .csv for python ----
-
-write.csv(file23, "iMAD_Data_23.csv")
-
-################## 1.1) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
+################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 2
 file2 <- FullStack_V4 |> 
@@ -1263,53 +1173,7 @@ file23 <- rbind(file2, file3)
 ########### CUT -------------------------------------------------------------------------------------------------
 
 
-################## 3) Comparison of Cycle 1 and 3 - NO FILTER -------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (NO FILTER FOR CONSTANT CLUSTERS) -----
-## File 1
-file1 <- FullStack_V4 |> 
-  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH1,
-         AvgCrownDiameter = CD1,
-         AvgCrownHeight = CH1,
-         AvgCrownArea = CA1,
-         SpeciesCount = SC1,
-         AvgTreeHeight = TH1,
-         TreeCount = TE1,
-         J = J1) |> 
-  # add file grouping
-  mutate(File = 1) |> 
-  relocate(File)
-
-file1
-
-## File 3
-file3 <- FullStack_V4 |> 
-  select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH3,
-         AvgCrownDiameter = CD3,
-         AvgCrownHeight = CH3,
-         AvgCrownArea = CA3,
-         SpeciesCount = SC3,
-         AvgTreeHeight = TH3,
-         TreeCount = TE3,
-         J = J3) |> 
-  #add file grouping
-  mutate(File = 3) |> 
-  relocate(File)
-
-file3
-
-#### STEP 2: merge into long data format ----
-file13 <- rbind(file1, file3)
-
-
-#### STEP 3: write .csv for python ----
-
-write.csv(file13, "iMAD_Data_13.csv")
-
-################## 1.1) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
+################## 3) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 1
 file1 <- FullStack_V4 |> 
