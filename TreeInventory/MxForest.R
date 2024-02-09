@@ -1453,8 +1453,6 @@ time.taken
 #### STEP 1: Load data ----
 iMAD_results_12_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12_Constant.csv"))
 #### STEP 2: Rename Columns + Attach Comparison column ----
-View(iMAD_results_12_Constant)
-
 iMAD_results_12_Constant <- iMAD_results_12_Constant |> 
   rename(Col_1 = SpeciesCount,
          Col_2 = TreeCount,
