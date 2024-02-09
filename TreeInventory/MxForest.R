@@ -1452,14 +1452,90 @@ time.taken
 ################## 1) Comparison of Cycle 1 and 2 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_12_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12_Constant.csv"))
-#### STEP 2: Geospatial Prep ----
+#### STEP 2: Rename Columns + Attach Comparison column ----
+View(iMAD_results_12_Constant)
+
+iMAD_results_12_Constant <- iMAD_results_12_Constant |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle12")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## Column 7
+# Original
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-5, 5))
+
+## Column 8
+# Original
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
+
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-5, 5))
+
+#### STEP 4: Geospatial Prep ----
 # writeVector(vect(iMAD_results_12_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant.shp")
 
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_23_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_23_Constant.csv"))
-#### STEP 2: Geospatial Prep ----
+#### STEP 2: Rename Columns + Attach Comparison column ----
+iMAD_results_23_Constant <- iMAD_results_23_Constant |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle23")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## Column 7
+# Original
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38")
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-5, 5)) 
+
+## Column 8
+# Original
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") 
+
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-5, 5))
+
+#### STEP 4: Geospatial Prep ----
 
 # writeVector(vect(iMAD_results_23_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant.shp")
 
@@ -1467,12 +1543,80 @@ iMAD_results_23_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", 
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_13_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_13_Constant.csv"))
-#### STEP 2: Geospatial Prep ----
+#### STEP 2: Rename Columns + Attach Comparison column ----
+iMAD_results_13_Constant <- iMAD_results_13_Constant |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle13")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## Column 7
+# Original
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF")
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-5, 5))
+
+## Column 8
+# Original
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") 
+
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-20, 20))
+
+#### STEP 4: Geospatial Prep ----
 
 # writeVector(vect(iMAD_results_13_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant.shp")
 
+################## 4) CrOSS COMPARISON - FILTER: CONSTANT CLUSTERS -------------------------------------------
+#### Violin Plot ----
+## STEP 1: Data Preparation ----
+iMAD_results_Constant <- rbind(iMAD_results_12_Constant, iMAD_results_13_Constant, iMAD_results_23_Constant) |> 
+  mutate(Comparison = factor(Comparison, levels = c("Cycle12", "Cycle23", "Cycle13")))
+## STEP 2: Plotting ----
+## Column 7
+# Original
+iMAD_results_Constant |> 
+  ggplot(aes(x = Comparison, y = Col_7, fill = Comparison)) +
+  geom_violin()
+# zoomed
+iMAD_results_Constant |> 
+  ggplot(aes(x = Comparison, y = Col_7, fill = Comparison)) +
+  geom_violin() +
+  coord_cartesian(ylim = c(-25, 25))
+
+## Column 8
+# Original
+iMAD_results_Constant |> 
+  ggplot(aes(x = Comparison, y = Col_8, fill = Comparison)) +
+  geom_violin()
+# Zoomed
+iMAD_results_Constant |> 
+  ggplot(aes(x = Comparison, y = Col_8, fill = Comparison)) +
+  geom_violin() +
+  coord_cartesian(ylim = c(-25, 25))
+
 ##################################     END      ##################################################################
 
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 
 
 ################### PAPER/BA PLOTS (DATA: FullStack_V4 & FullStack_V4_Zeros) -------------------------------------------------------------
