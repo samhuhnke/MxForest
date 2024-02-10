@@ -1,6 +1,6 @@
 
 ### MxForestInventory Data Wrangling Code --------------------------------------
-### LAST UPDATED: 02/08/2024 (US)
+### LAST UPDATED: 02/10/2024 (US)
 
 start.time <- Sys.time()
 
@@ -1202,7 +1202,7 @@ file12 <- rbind(file1, file2)
 ################## 1.1) ZEROs - Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 1
-file1 <- FullStack_V4 |> 
+file1 <- FullStack_V4_Zeros |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
   # changing variable names to file-unspecific names -> in order to create long data format 
@@ -1221,7 +1221,7 @@ file1 <- FullStack_V4 |>
 file1
 
 ## File 2
-file2 <- FullStack_V4 |> 
+file2 <- FullStack_V4_Zeros |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
   # changing variable names to file-unspecific names -> in order to create long data format 
@@ -1245,7 +1245,7 @@ file12 <- rbind(file1, file2)
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file12, "iMAD_Data_12_Constant_Zeros.csv")
+ write.csv(file12, "iMAD_Data_12_Constant_Zeros.csv")
 
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
@@ -1466,6 +1466,65 @@ iMAD_results_12_Constant <- iMAD_results_12_Constant |>
   relocate(Comparison)
 
 #### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_12_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+
+## COL 7 + 8 ----
 ## Column 7
 # Original
 iMAD_results_12_Constant |> 
@@ -1492,6 +1551,108 @@ iMAD_results_12_Constant |>
 #### STEP 4: Geospatial Prep ----
 # writeVector(vect(iMAD_results_12_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant.shp")
 
+################# 1.1) ZEROs - Comparison of Cycle 1 and 2 - FILTER: CONSTANT CLUSTERS ------------------
+#### STEP 1: Load data ----
+iMAD_results_12_Constant_Zeros <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12_Constant_Zeros.csv"))
+#### STEP 2: Rename Columns + Attach Comparison column ----
+iMAD_results_12_Constant_Zeros <- iMAD_results_12_Constant_Zeros |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle12")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+
+## COL 7 + 8 ----
+## Column 7
+# Original
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-5, 5))
+
+## Column 8
+# Original
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
+
+# Zoomed
+iMAD_results_12_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-5, 5))
+
+#### STEP 4: Geospatial Prep ----
+# writeVector(vect(iMAD_results_12_Constant_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant_Zeros.shp")
+
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
@@ -1510,6 +1671,64 @@ iMAD_results_23_Constant <- iMAD_results_23_Constant |>
   relocate(Comparison)
 
 #### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_23_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## COL 7 + 8 ----
 ## Column 7
 # Original
 iMAD_results_23_Constant |> 
@@ -1533,9 +1752,113 @@ iMAD_results_23_Constant |>
   geom_histogram(binwidth = 0.1, fill = "#00BA38") +
   coord_cartesian(xlim = c(-5, 5))
 
+
 #### STEP 4: Geospatial Prep ----
 
 # writeVector(vect(iMAD_results_23_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant.shp")
+
+################## 2.1) ZEROs -  Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
+#### STEP 1: Load data ----
+iMAD_results_23_Constant_Zeros <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_23_Constant_Zeros.csv"))
+#### STEP 2: Rename Columns + Attach Comparison column ----
+iMAD_results_23_Constant_Zeros <- iMAD_results_23_Constant_Zeros |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle23")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## COL 7 + 8 ----
+## Column 7
+# Original
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38")
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-5, 5)) 
+
+## Column 8
+# Original
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") 
+
+# Zoomed
+iMAD_results_23_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-5, 5))
+
+
+#### STEP 4: Geospatial Prep ----
+
+# writeVector(vect(iMAD_results_23_Constant_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant_Zeros.shp")
 
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
@@ -1555,6 +1878,65 @@ iMAD_results_13_Constant <- iMAD_results_13_Constant |>
   relocate(Comparison)
 
 #### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_13_Constant |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+
+## COL 7 + 8 ----
 ## Column 7
 # Original
 iMAD_results_13_Constant |> 
