@@ -679,8 +679,8 @@ end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
-####################          METADATA DATASET CODE            ###################################################
-#################### 1) LOAD RAW DATA ------------------------------------------------------------
+###################          METADATA DATASET CODE            ###################################################
+################### 1) LOAD RAW DATA ------------------------------------------------------------
 ## 2004 - 2007
 Sec.04 <- readxl::read_xlsx(here("data", "secciones", "INFyS_Secciones_2004_2007_7VCcv7Y.xlsx"), sheet= 1, na = c(""))
 ## 2004 - 2007
@@ -852,11 +852,6 @@ FullStack_V2 <- FullStack |>
 
 
 #### 3.2) Plot Status Filter ---------------------------------------------------
-Sec.04 |> 
-  mutate(Cluster_ID = Conglomerado,
-         Plot1 = Sitios_x_cgl) |> 
-  select(Cluster_ID, Plot1)
-
 FullStack_V3 <- FullStack_V2 |> 
   left_join(Sec.04 |> 
               mutate(Cluster_ID = Conglomerado,
@@ -1076,13 +1071,120 @@ FullStack_V4_Zeros <- FullStack_V3 |>
     CA3 = case_when(Muestreado3 == 1 & is.na(CA3) ~ 0,
                     T ~ CA3),
     # Tree Height
-    TH1 = case_when(Muestreado1 == 1 & is.na(CA1) ~ 0,
-                    T ~ CA1),
-    TH2 = case_when(Muestreado2 == 1 & is.na(CA2) ~ 0,
-                    T ~ CA2),
-    TH3 = case_when(Muestreado3 == 1 & is.na(CA3) ~ 0,
-                    T ~ CA3),
+    TH1 = case_when(Muestreado1 == 1 & is.na(TH1) ~ 0,
+                    T ~ TH1),
+    TH2 = case_when(Muestreado2 == 1 & is.na(TH2) ~ 0,
+                    T ~ TH2),
+    TH3 = case_when(Muestreado3 == 1 & is.na(TH3) ~ 0,
+                    T ~ TH3),
     ) |> 
+  ungroup()
+
+
+#### 4.2) FullStack_V4_Noise ----
+FullStack_V4_Noise <- FullStack_V3 |> 
+  left_join(Sec.14 |> 
+              mutate(Cluster_ID = IDConglomerado) |> 
+              select(Cluster_ID, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 |> 
+              ungroup() |> 
+              filter(File == 1) |> 
+              mutate(Cluster_ID2 = Cluster_ID,
+                     Cluster_ID = Conglomerado,
+                     DBH1 = AvgDbh,
+                     CD1 = AvgCrownDiameter,
+                     CH1 = AvgCrownHeight,
+                     CA1 = AvgCrownArea,
+                     SC1 = species_count,
+                     TH1 = AvgTreeHeight,
+                     TE1 = total_entries,
+                     J1 = J) |> 
+              select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 |> 
+              ungroup() |> 
+              filter(File == 2) |> 
+              mutate(Cluster_ID2 = Cluster_ID,
+                     Cluster_ID = Conglomerado,
+                     DBH2 = AvgDbh,
+                     CD2 = AvgCrownDiameter,
+                     CH2 = AvgCrownHeight,
+                     CA2 = AvgCrownArea,
+                     SC2 = species_count,
+                     TH2 = AvgTreeHeight,
+                     TE2 = total_entries,
+                     J2 = J) |> 
+              select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2),
+            by = "Cluster_ID") |> 
+  left_join(Comp_C_Diagnostics_V5 |> 
+              ungroup() |> 
+              filter(File == 3) |> 
+              mutate(Cluster_ID2 = Cluster_ID,
+                     Cluster_ID = Conglomerado,
+                     DBH3 = AvgDbh,
+                     CD3 = AvgCrownDiameter,
+                     CH3 = AvgCrownHeight,
+                     CA3 = AvgCrownArea,
+                     SC3 = species_count,
+                     TH3 = AvgTreeHeight,
+                     TE3 = total_entries,
+                     J3 = J) |> 
+              select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3),
+            by = "Cluster_ID") |> 
+  # Exchanging NAs with Zeros (except for J)
+  mutate(
+    # Tree Entries
+    TE1 = case_when(Muestreado1 == 1 & is.na(TE1) ~ 0,
+                    T ~ TE1),
+    TE2 = case_when(Muestreado2 == 1 & is.na(TE2) ~ 0,
+                    T ~ TE2),
+    TE3 = case_when(Muestreado3 == 1 & is.na(TE3) ~ 0,
+                    T ~ TE3),
+    # Species Count
+    SC1 = case_when(Muestreado1 == 1 & is.na(SC1) ~ 0,
+                    T ~ SC1),
+    SC2 = case_when(Muestreado2 == 1 & is.na(SC2) ~ 0,
+                    T ~ SC2),
+    SC3 = case_when(Muestreado3 == 1 & is.na(SC3) ~ 0,
+                    T ~ SC3),
+    # DBH
+    DBH1 = case_when(Muestreado1 == 1 & TE1 == 0 & is.na(DBH1) ~ runif(1, min = 0.00001, max = 0.0001),
+                     T ~ DBH1),
+    DBH2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(DBH2) ~ runif(1, min = 0.00001, max = 0.0001),
+                     T ~ DBH2),
+    DBH3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(DBH3) ~ runif(1, min = 0.00001, max = 0.0001),
+                     T ~ DBH3),
+    # Crown Diameter
+    CD1 = case_when(Muestreado1 == 1 & TE1 == 0 & is.na(CD1) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CD1),
+    CD2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(CD2) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CD2),
+    CD3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(CD3) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CD3),
+    # Crown Height
+    CH1 = case_when(Muestreado1 == 1 & TE1 == 0 &  is.na(CH1) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CH1),
+    CH2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(CH2) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CH2),
+    CH3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(CH3) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CH3),
+    # Crown Area
+    CA1 = case_when(Muestreado1 == 1 & TE1 == 0 & is.na(CA1) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CA1),
+    CA2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(CA2) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CA2),
+    CA3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(CA3) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ CA3),
+    
+    # Tree Height
+    TH1 = case_when(Muestreado1 == 1 & TE1 == 0 & is.na(TH1) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ TH1),
+    TH2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(TH2) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ TH2),
+    TH3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(TH3) ~ runif(1, min = 0.00001, max = 0.0001),
+                    T ~ TH3),
+  ) |> 
   ungroup()
 
 
@@ -1090,7 +1192,7 @@ FullStack_V4_Zeros <- FullStack_V3 |>
 #### 5.1) FullSack_V4 -----
 FullStack_V4 <- FullStack_V4 |> 
   # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
-  mutate(TE12 = TE2 -TE1,
+  mutate(TE12 = TE2 - TE1,
          TE23 = TE3 - TE1,
          TE13 = TE3 - TE1,
          SC12 = SC2 - SC1,
@@ -1100,13 +1202,21 @@ FullStack_V4 <- FullStack_V4 |>
 #### 5.1.1) FullSack_V4_Zeros -----
 FullStack_V4_Zeros <- FullStack_V4_Zeros |> 
   # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
-  mutate(TE12 = TE2 -TE1,
-         TE23 = TE3 - TE1,
+  mutate(TE12 = TE2 - TE1,
+         TE23 = TE3 - TE2,
          TE13 = TE3 - TE1,
          SC12 = SC2 - SC1,
          SC23 = SC3 - SC2,
          SC13 = SC3 - SC1)
-
+#### 5.1.2) FullSack_V4_Noise -----
+FullStack_V4_Noise <- FullStack_V4_Noise |> 
+  # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
+  mutate(TE12 = TE2 - TE1,
+         TE23 = TE3 - TE2,
+         TE13 = TE3 - TE1,
+         SC12 = SC2 - SC1,
+         SC23 = SC3 - SC2,
+         SC13 = SC3 - SC1)
 
 
 
@@ -1149,8 +1259,7 @@ end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
-
-####################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
+##################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
 ################## 1) Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 1
@@ -1247,6 +1356,56 @@ file12 <- rbind(file1, file2)
 
  write.csv(file12, "iMAD_Data_12_Constant_Zeros.csv")
 
+################## 1.2) NOISE - Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
+#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
+## File 1
+file1 <- FullStack_V4_Noise |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH1,
+         AvgCrownDiameter = CD1,
+         AvgCrownHeight = CH1,
+         AvgCrownArea = CA1,
+         SpeciesCount = SC1,
+         AvgTreeHeight = TH1,
+         TreeCount = TE1,
+         J = J1) |> 
+  # add file grouping
+  mutate(File = 1) |> 
+  relocate(File)
+
+file1
+
+## File 2
+file2 <- FullStack_V4_Noise |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH2,
+         AvgCrownDiameter = CD2,
+         AvgCrownHeight = CH2,
+         AvgCrownArea = CA2,
+         SpeciesCount = SC2,
+         AvgTreeHeight = TH2,
+         TreeCount = TE2,
+         J = J2) |> 
+  #add file grouping
+  mutate(File = 2) |> 
+  relocate(File)
+
+file2
+
+#### STEP 2: merge into long data format ----
+file12 <- rbind(file1, file2)
+
+
+#### STEP 3: write .csv for python ----
+
+write.csv(file12, "iMAD_Data_12_Constant_Noise.csv")
+
+
+
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
@@ -1296,7 +1455,7 @@ file23 <- rbind(file2, file3)
 
 # write.csv(file23, "iMAD_Data_23_Constant.csv")
 
-################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
+################## 2.1) ZEROs - Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
 ## File 2
 file2 <- FullStack_V4_Zeros |> 
@@ -1342,7 +1501,55 @@ file23 <- rbind(file2, file3)
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file23, "iMAD_Data_23_Constant_Zeros.csv")
+ write.csv(file23, "iMAD_Data_23_Constant_Zeros.csv")
+
+################## 2.2) Noise - Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
+#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
+## File 2
+file2 <- FullStack_V4_Noise |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH2,
+         AvgCrownDiameter = CD2,
+         AvgCrownHeight = CH2,
+         AvgCrownArea = CA2,
+         SpeciesCount = SC2,
+         AvgTreeHeight = TH2,
+         TreeCount = TE2,
+         J = J2) |> 
+  #add file grouping
+  mutate(File = 2) |> 
+  relocate(File)
+
+file2
+
+## File 3
+file3 <- FullStack_V4_Noise |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH3,
+         AvgCrownDiameter = CD3,
+         AvgCrownHeight = CH3,
+         AvgCrownArea = CA3,
+         SpeciesCount = SC3,
+         AvgTreeHeight = TH3,
+         TreeCount = TE3,
+         J = J3) |> 
+  #add file grouping
+  mutate(File = 3) |> 
+  relocate(File)
+
+file3
+
+#### STEP 2: merge into long data format ----
+file23 <- rbind(file2, file3)
+
+
+#### STEP 3: write .csv for python ----
+
+ write.csv(file23, "iMAD_Data_23_Constant_Noise.csv")
 
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
@@ -1439,7 +1646,55 @@ file13 <- rbind(file1, file3)
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file13, "iMAD_Data_13_Constant_Zeros.csv")
+ write.csv(file13, "iMAD_Data_13_Constant_Zeros.csv")
+
+################## 3.2) Noise - Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
+#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
+## File 1
+file1 <- FullStack_V4_Noise |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH1,
+         AvgCrownDiameter = CD1,
+         AvgCrownHeight = CH1,
+         AvgCrownArea = CA1,
+         SpeciesCount = SC1,
+         AvgTreeHeight = TH1,
+         TreeCount = TE1,
+         J = J1) |> 
+  # add file grouping
+  mutate(File = 1) |> 
+  relocate(File)
+
+file1
+
+## File 3
+file3 <- FullStack_V4_Noise |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
+  # changing variable names to file-unspecific names -> in order to create long data format 
+  rename(AvgDbh = DBH3,
+         AvgCrownDiameter = CD3,
+         AvgCrownHeight = CH3,
+         AvgCrownArea = CA3,
+         SpeciesCount = SC3,
+         AvgTreeHeight = TH3,
+         TreeCount = TE3,
+         J = J3) |> 
+  #add file grouping
+  mutate(File = 3) |> 
+  relocate(File)
+
+file3
+
+#### STEP 2: merge into long data format ----
+file13 <- rbind(file1, file3)
+
+
+#### STEP 3: write .csv for python ----
+
+ write.csv(file13, "iMAD_Data_13_Constant_Noise.csv")
 
 ##################################     END      ##################################################################
 
@@ -1448,7 +1703,7 @@ time.taken <- end.time - start.time
 time.taken
 
 
-####################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
+##################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
 ################## 1) Comparison of Cycle 1 and 2 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_12_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12_Constant.csv"))
@@ -1652,6 +1907,108 @@ iMAD_results_12_Constant_Zeros |>
 
 #### STEP 4: Geospatial Prep ----
 # writeVector(vect(iMAD_results_12_Constant_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant_Zeros.shp")
+
+################# 1.2) NOISE - Comparison of Cycle 1 and 2 - FILTER: CONSTANT CLUSTERS ------------------
+#### STEP 1: Load data ----
+iMAD_results_12_Constant_Noise <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12_Constant_Noise.csv"))
+#### STEP 2: Rename Columns + Attach Comparison column ----
+iMAD_results_12_Constant_Noise <- iMAD_results_12_Constant_Noise |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle12")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+
+## COL 7 + 8 ----
+## Column 7
+# Original
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-5, 5))
+
+## Column 8
+# Original
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
+
+# Zoomed
+iMAD_results_12_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-5, 5))
+
+#### STEP 4: Geospatial Prep ----
+# writeVector(vect(iMAD_results_12_Constant_Noise, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant_Noise.shp")
 
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
@@ -1860,6 +2217,109 @@ iMAD_results_23_Constant_Zeros |>
 
 # writeVector(vect(iMAD_results_23_Constant_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant_Zeros.shp")
 
+################## 2.2) NOISE -  Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
+#### STEP 1: Load data ----
+iMAD_results_23_Constant_Noise <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_23_Constant_Noise.csv"))
+#### STEP 2: Rename Columns + Attach Comparison column ----
+iMAD_results_23_Constant_Noise <- iMAD_results_23_Constant_Noise |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle23")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## COL 7 + 8 ----
+## Column 7
+# Original
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38")
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-5, 5)) 
+
+## Column 8
+# Original
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") 
+
+# Zoomed
+iMAD_results_23_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
+  coord_cartesian(xlim = c(-5, 5))
+
+
+#### STEP 4: Geospatial Prep ----
+
+# writeVector(vect(iMAD_results_23_Constant_Noise, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant_Noise.shp")
+
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
@@ -1963,6 +2423,212 @@ iMAD_results_13_Constant |>
 #### STEP 4: Geospatial Prep ----
 
 # writeVector(vect(iMAD_results_13_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant.shp")
+
+################## 3.1) ZEROs - Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
+#### STEP 1: Load data ----
+iMAD_results_13_Constant_Zeros <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_13_Constant_Zeros.csv"))
+#### STEP 2: Rename Columns + Attach Comparison column ----
+iMAD_results_13_Constant_Zeros <- iMAD_results_13_Constant_Zeros |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle13")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+
+## COL 7 + 8 ----
+## Column 7
+# Original
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF")
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-5, 5))
+
+## Column 8
+# Original
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") 
+
+# Zoomed
+iMAD_results_13_Constant_Zeros |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-20, 20))
+
+#### STEP 4: Geospatial Prep ----
+
+# writeVector(vect(iMAD_results_13_Constant_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant_Zeros.shp")
+
+################## 3.2) NOISE - Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
+#### STEP 1: Load data ----
+iMAD_results_13_Constant_Noise <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_13_Constant_Noise.csv"))
+#### STEP 2: Rename Columns + Attach Comparison column ----
+iMAD_results_13_Constant_Noise <- iMAD_results_13_Constant_Noise |> 
+  rename(Col_1 = SpeciesCount,
+         Col_2 = TreeCount,
+         Col_3 = J,
+         Col_4 = AvgTreeHeight,
+         Col_5 = AvgDbh,
+         Col_6 = AvgCrownDiameter,
+         Col_7 = AvgCrownHeight,
+         Col_8 = AvgCrownArea) |> 
+  mutate(Comparison = as.factor("Cycle13")) |> 
+  relocate(Comparison)
+
+#### STEP 3: Plotting ----
+## COL 1 - 8 ----
+## Column 1
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 2
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-10, 10))
+
+
+## COL 7 + 8 ----
+## Column 7
+# Original
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF")
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-5, 5))
+
+## Column 8
+# Original
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") 
+
+# Zoomed
+iMAD_results_13_Constant_Noise |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  coord_cartesian(xlim = c(-20, 20))
+
+#### STEP 4: Geospatial Prep ----
+
+# writeVector(vect(iMAD_results_13_Constant_Noise, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant_Noise.shp")
 
 ################## 4) CrOSS COMPARISON - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### Violin Plot ----
