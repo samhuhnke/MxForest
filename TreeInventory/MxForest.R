@@ -567,15 +567,15 @@ C_TreeMorp <- merged |>
             Anio = mean(Anio),
             Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
             AvgTreeHeight = mean(AlturaTotal, na.rm = T),
-            Med_AvgTreeHeight = median(AlturaTotal, na.rm = T),
+            MedTreeHeight = median(AlturaTotal, na.rm = T),
             AvgDbh = mean(DiametroNormal, na.rm = T),
-            Med_AvgDbh = median(DiametroNormal, na.rm = T),
+            MedDbh = median(DiametroNormal, na.rm = T),
             AvgCrownDiameter = mean(DiametroCopa, na.rm = T),
-            Med_AvgCrownDiameter = median(DiametroCopa, na.rm = T),
+            MedCrownDiameter = median(DiametroCopa, na.rm = T),
             AvgCrownHeight = mean(AlturaTotal - AlturaFusteLimpio, na.rm = T),          # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
-            Med_AvgCrownHeight = median(AlturaTotal - AlturaFusteLimpio, na.rm = T),    # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
+            MedCrownHeight = median(AlturaTotal - AlturaFusteLimpio, na.rm = T),    # heuristic calculation: instances in which AT < AFL = negative values for crown height = makes no sense
             AvgCrownArea = mean(AreaCopa, na.rm = T),
-            Med_AvgCrownArea = median(AreaCopa, na.rm = T),
+            MedCrownArea = median(AreaCopa, na.rm = T),
             X=mean(X),
             Y=mean(Y)) |> 
   mutate(AvgCrownHeight = case_when(AvgCrownHeight < 0 ~ NA,
@@ -586,7 +586,7 @@ C_TreeMorp <- merged |>
 
 Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
   relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, 
-           AvgTreeHeight, Med_AvgTreeHeight, AvgDbh, Med_AvgDbh, AvgCrownDiameter, Med_AvgCrownDiameter, AvgCrownHeight, Med_AvgCrownHeight, AvgCrownArea, Med_AvgCrownArea, X, Y)
+           AvgTreeHeight, MedTreeHeight, AvgDbh, MedDbh, AvgCrownDiameter, MedCrownDiameter, AvgCrownHeight, MedCrownHeight, AvgCrownArea, MedCrownArea, X, Y)
 
 # write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
 
@@ -605,6 +605,7 @@ PlotCounts <- merged |>
             X = mean(X),
             Y = mean(Y),
             Plots = n())
+
 
 # combined dataset
 Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("File", "Conglomerado")) |> 
@@ -650,7 +651,7 @@ Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>%
          cycles_one_plots = ifelse(is.na(cycles_one_plots), 0, cycles_one_plots),
          Cycles = (cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots))
 
-
+View(Comp_C_Diagnostics_V3)
 
 ###### 5.3) TREE PLOT COUNT MEANS AND MEDIANS BY CLUSTERS ----------------------
 ## calculate means and medians for each cluster based of total plot entries 
@@ -668,12 +669,13 @@ PTC_C <- SpecRich |>
 
 Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("File", "Conglomerado", "Anio"))
 
-###### 5.4) ESTADO + TIPO EGETACION FILTER -----------------------------------------------------
+###### 5.4) ESTADO + TIPO VEGETACION FILTER -----------------------------------------------------
 
 Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct(),
                                    by = "Cluster_ID")
 
 ##################################     END      ##################################################################
+
 
 
 ###################          METADATA DATASET CODE            ###################################################
@@ -1078,113 +1080,6 @@ FullStack_V4_Zeros <- FullStack_V3 |>
   ungroup()
 
 
-#### 4.2) FullStack_V4_Noise ----
-FullStack_V4_Noise <- FullStack_V3 |> 
-  left_join(Sec.14 |> 
-              mutate(Cluster_ID = IDConglomerado) |> 
-              select(Cluster_ID, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
-            by = "Cluster_ID") |> 
-  left_join(Comp_C_Diagnostics_V5 |> 
-              ungroup() |> 
-              filter(File == 1) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH1 = AvgDbh,
-                     CD1 = AvgCrownDiameter,
-                     CH1 = AvgCrownHeight,
-                     CA1 = AvgCrownArea,
-                     SC1 = species_count,
-                     TH1 = AvgTreeHeight,
-                     TE1 = total_entries,
-                     J1 = J) |> 
-              select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1),
-            by = "Cluster_ID") |> 
-  left_join(Comp_C_Diagnostics_V5 |> 
-              ungroup() |> 
-              filter(File == 2) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH2 = AvgDbh,
-                     CD2 = AvgCrownDiameter,
-                     CH2 = AvgCrownHeight,
-                     CA2 = AvgCrownArea,
-                     SC2 = species_count,
-                     TH2 = AvgTreeHeight,
-                     TE2 = total_entries,
-                     J2 = J) |> 
-              select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2),
-            by = "Cluster_ID") |> 
-  left_join(Comp_C_Diagnostics_V5 |> 
-              ungroup() |> 
-              filter(File == 3) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH3 = AvgDbh,
-                     CD3 = AvgCrownDiameter,
-                     CH3 = AvgCrownHeight,
-                     CA3 = AvgCrownArea,
-                     SC3 = species_count,
-                     TH3 = AvgTreeHeight,
-                     TE3 = total_entries,
-                     J3 = J) |> 
-              select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3),
-            by = "Cluster_ID") |> 
-  # Exchanging NAs with Zeros (except for J)
-  mutate(
-    # Tree Entries
-    TE1 = case_when(Muestreado1 == 1 & is.na(TE1) ~ 0,
-                    T ~ TE1),
-    TE2 = case_when(Muestreado2 == 1 & is.na(TE2) ~ 0,
-                    T ~ TE2),
-    TE3 = case_when(Muestreado3 == 1 & is.na(TE3) ~ 0,
-                    T ~ TE3),
-    # Species Count
-    SC1 = case_when(Muestreado1 == 1 & is.na(SC1) ~ 0,
-                    T ~ SC1),
-    SC2 = case_when(Muestreado2 == 1 & is.na(SC2) ~ 0,
-                    T ~ SC2),
-    SC3 = case_when(Muestreado3 == 1 & is.na(SC3) ~ 0,
-                    T ~ SC3),
-    # DBH
-    DBH1 = case_when(Muestreado1 == 1 & TE1 == 0 & is.na(DBH1) ~ runif(1, min = 0.00001, max = 0.0001),
-                     T ~ DBH1),
-    DBH2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(DBH2) ~ runif(1, min = 0.00001, max = 0.0001),
-                     T ~ DBH2),
-    DBH3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(DBH3) ~ runif(1, min = 0.00001, max = 0.0001),
-                     T ~ DBH3),
-    # Crown Diameter
-    CD1 = case_when(Muestreado1 == 1 & TE1 == 0 & is.na(CD1) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CD1),
-    CD2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(CD2) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CD2),
-    CD3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(CD3) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CD3),
-    # Crown Height
-    CH1 = case_when(Muestreado1 == 1 & TE1 == 0 &  is.na(CH1) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CH1),
-    CH2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(CH2) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CH2),
-    CH3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(CH3) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CH3),
-    # Crown Area
-    CA1 = case_when(Muestreado1 == 1 & TE1 == 0 & is.na(CA1) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CA1),
-    CA2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(CA2) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CA2),
-    CA3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(CA3) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ CA3),
-    
-    # Tree Height
-    TH1 = case_when(Muestreado1 == 1 & TE1 == 0 & is.na(TH1) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ TH1),
-    TH2 = case_when(Muestreado2 == 1 & TE2 == 0 & is.na(TH2) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ TH2),
-    TH3 = case_when(Muestreado3 == 1 & TE3 == 0 & is.na(TH3) ~ runif(1, min = 0.00001, max = 0.0001),
-                    T ~ TH3),
-  ) |> 
-  ungroup()
-
-
 ################### 5) UNIVARIATE CHANGE CALCULATIONS -----------------------------------
 #### 5.1) FullSack_V4 -----
 FullStack_V4 <- FullStack_V4 |> 
@@ -1211,18 +1106,6 @@ FullStack_V4_Zeros <- FullStack_V4_Zeros |>
          DBH12 = DBH2 - DBH1,
          DBH23 = DBH3 - DBH2,
          DBH13 = DBH3 - DBH1)
-#### 5.1.2) FullSack_V4_Noise -----
-FullStack_V4_Noise <- FullStack_V4_Noise |> 
-  # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
-  mutate(TE12 = TE2 - TE1,
-         TE23 = TE3 - TE2,
-         TE13 = TE3 - TE1,
-         SC12 = SC2 - SC1,
-         SC23 = SC3 - SC2,
-         SC13 = SC3 - SC1)
-
-
-
 ################### 6) TREE COUNT CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
 # STEP 1: Calculate Data based on Ecoregions given in Sec.14 ----
 FullStack_V4_Zeros_Eco1 <- FullStack_V4_Zeros |> 
@@ -1328,6 +1211,22 @@ View(FullStack_V4_Zeros_Eco1)
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
