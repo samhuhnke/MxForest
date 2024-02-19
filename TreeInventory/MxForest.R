@@ -734,6 +734,7 @@ MetaBase <- Temp |>
               select(Cluster_ID, Conglomerado3, X3, Y3),
             by = "Cluster_ID")
 
+
 # STEP 3: AVERAGE X and Y
 NewBase <- MetaBase |> 
   group_by(Cluster_ID) |>
@@ -849,7 +850,6 @@ FullStack_V2 <- FullStack |>
                              Status3 > -99 & Status3 <= 0 ~ 1,
                              T ~ Status3))
 
-
 #### 3.2) Plot Status Filter ---------------------------------------------------
 FullStack_V3 <- FullStack_V2 |> 
   left_join(Sec.04 |> 
@@ -902,6 +902,7 @@ FullStack_V3 <- FullStack_V2 |>
                                   Status3 > -99 ~ Plot_S3 - Plot3)
   ) 
 
+View(FullStack_V3)
 
 ################### 4) RE-INTRODUCE ECOREGIONS, TOTAL ENTRIES, SPEC COUNT, AVG DBH PER CLUSTER FOR EACH CYCLE ---------
 #### 4.1) FUllStack_V4 ----
@@ -1102,11 +1103,10 @@ FullStack_V4_Zeros <- FullStack_V4_Zeros |>
          TE13 = TE3 - TE1,
          SC12 = SC2 - SC1,
          SC23 = SC3 - SC2,
-         SC13 = SC3 - SC1,
-         DBH12 = DBH2 - DBH1,
-         DBH23 = DBH3 - DBH2,
-         DBH13 = DBH3 - DBH1)
-################### 6) TREE COUNT CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
+         SC13 = SC3 - SC1)
+
+
+################### 6) UNIVARIATE CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
 # STEP 1: Calculate Data based on Ecoregions given in Sec.14 ----
 FullStack_V4_Zeros_Eco1 <- FullStack_V4_Zeros |> 
   group_by(DESECON1_C3) |> 
@@ -1117,13 +1117,8 @@ FullStack_V4_Zeros_Eco1 <- FullStack_V4_Zeros |>
             TE12_Eco = TE2_Eco - TE1_Eco,
             TE23_Eco = TE3_Eco - TE2_Eco,
             TE13_Eco = TE3_Eco - TE1_Eco,
-            SC1_Eco = sum(SC1, na.rm = T),
-            SC2_Eco = sum(SC2, na.rm = T),
-            SC3_Eco = sum(SC3, na.rm = T),
-            SC12_Eco = SC2_Eco - SC1_Eco,
-            SC23_Eco = SC3_Eco - SC2_Eco,
-            SC13_Eco = SC3_Eco - SC1_Eco,
             Clusters = n()) 
+
 
 
 FullStack_V4_Zeros_Eco2 <- FullStack_V4_Zeros |> 
@@ -1134,13 +1129,7 @@ FullStack_V4_Zeros_Eco2 <- FullStack_V4_Zeros |>
             TE3_Eco2 = sum(TE3, na.rm = T),
             TE12_Eco2 = TE2_Eco2 - TE1_Eco2,
             TE23_Eco2 = TE3_Eco2 - TE2_Eco2,
-            TE13_Eco2 = TE3_Eco2 - TE1_Eco2,
-            SC1_Eco2 = sum(SC1, na.rm = T),
-            SC2_Eco2 = sum(SC2, na.rm = T),
-            SC3_Eco2 = sum(SC3, na.rm = T),
-            SC12_Eco2 = SC2_Eco2 - SC1_Eco2,
-            SC23_Eco2 = SC3_Eco2 - SC2_Eco2,
-            SC13_Eco2 = SC3_Eco2 - SC1_Eco2) 
+            TE13_Eco2 = TE3_Eco2 - TE1_Eco2)
 
 FullStack_V4_Zeros_Eco3 <- FullStack_V4_Zeros |> 
   group_by(DESECON3_C3) |> 
@@ -1150,13 +1139,7 @@ FullStack_V4_Zeros_Eco3 <- FullStack_V4_Zeros |>
             TE3_Eco3 = sum(TE3, na.rm = T),
             TE12_Eco3 = TE2_Eco3 - TE1_Eco3,
             TE23_Eco3 = TE3_Eco3 - TE2_Eco3,
-            TE13_Eco3 = TE3_Eco3 - TE1_Eco3,
-            SC1_Eco3 = sum(SC1, na.rm = T),
-            SC2_Eco3 = sum(SC2, na.rm = T),
-            SC3_Eco3 = sum(SC3, na.rm = T),
-            SC12_Eco3 = SC2_Eco3 - SC1_Eco3,
-            SC23_Eco3 = SC3_Eco3 - SC2_Eco3,
-            SC13_Eco3 = SC3_Eco3 - SC1_Eco3) 
+            TE13_Eco3 = TE3_Eco3 - TE1_Eco3)
 
 FullStack_V4_Zeros_Eco4 <- FullStack_V4_Zeros |> 
   group_by(DESECON4_C3) |> 
@@ -1166,22 +1149,15 @@ FullStack_V4_Zeros_Eco4 <- FullStack_V4_Zeros |>
             TE3_Eco4 = sum(TE3, na.rm = T),
             TE12_Eco4 = TE2_Eco4 - TE1_Eco4,
             TE23_Eco4 = TE3_Eco4 - TE2_Eco4,
-            TE13_Eco4 = TE3_Eco4 - TE1_Eco4,
-            SC1_Eco4 = sum(SC1, na.rm = T),
-            SC2_Eco4 = sum(SC2, na.rm = T),
-            SC3_Eco4 = sum(SC3, na.rm = T),
-            SC12_Eco4 = SC2_Eco4 - SC1_Eco4,
-            SC23_Eco4 = SC3_Eco4 - SC2_Eco4,
-            SC13_Eco4 = SC3_Eco4 - SC1_Eco4) 
+            TE13_Eco4 = TE3_Eco4 - TE1_Eco4)
+
 
 # STEP 2: Rejoin Main Data: FullStack_V5_Zeros ----
 FullStack_V5_Zeros <- FullStack_V4_Zeros |> 
-  left_join(FullStack_V4_Zeros_Eco , by = c("DESECON1_C3")) |> 
+  left_join(FullStack_V4_Zeros_Eco1 , by = c("DESECON1_C3")) |> 
   left_join(FullStack_V4_Zeros_Eco2, by = c("DESECON2_C3")) |> 
   left_join(FullStack_V4_Zeros_Eco3, by = c("DESECON3_C3")) |> 
   left_join(FullStack_V4_Zeros_Eco4, by = c("DESECON4_C3")) 
-
-View(FullStack_V4_Zeros_Eco1)
 
 ################### 5) GEOSPATIAL PREPARATION -----------------------------------
 
@@ -1203,6 +1179,7 @@ View(FullStack_V4_Zeros_Eco1)
 #DATA: FullStack_V4 ----
 #  writeVector(vect(FullStack_V4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4.shp")
 
+#DATA: 
 #DATA: FullStack_V5_Zeros ----
  # writeVector(vect(FullStack_V5_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V5_Zeros.shp")
 
@@ -1213,20 +1190,159 @@ time.taken <- end.time - start.time
 time.taken
 
 
+###################    FOR MAPS: Total Entries, Species Richness and Biomass Calculation based on Ecoregions  #####################
+#### 1) Cluster + Ecoregions Database = Ecoregions_base ----------------
+Ecoregions_base <- NewBase2 |> 
+  select(-c("Conglomerado1", "Conglomerado2", "Conglomerado3", "DIFF12", "DIFF13", "DIFF23")) |> 
+  left_join(Sec.14 |> 
+              mutate(Cluster_ID = IDConglomerado) |> 
+              select(Cluster_ID, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
+            by = "Cluster_ID")
+
+#### 2) Add merged values of interest -----
+#Ecoregion 1
+Ecoregions1_merged <- Ecoregions_base |> 
+  left_join(merged |> 
+              mutate(Cluster_ID = Conglomerado) |> 
+              select(Cluster_ID, File, NombreCientifico_APG),
+            by = "Cluster_ID") |> 
+  ungroup() |> 
+  group_by(File, DESECON1_C3) |> 
+  summarise(File = mean(as.integer(File)),
+            Eco1_speciesrichness = n_distinct(NombreCientifico_APG),
+            Eco1_totalentries = n())
+
+Ecoregions1_merged_ridgeplot <- Ecoregions_base |> 
+  left_join(merged |> 
+              mutate(Cluster_ID = Conglomerado) |> 
+              select(Cluster_ID, File, NombreCientifico_APG),
+            by = "Cluster_ID")
+
+# Ecoregion 2
+Ecoregions2_merged <- Ecoregions_base |> 
+  left_join(merged |> 
+              mutate(Cluster_ID = Conglomerado) |> 
+              select(Cluster_ID, File, NombreCientifico_APG),
+            by = "Cluster_ID") |> 
+  ungroup() |> 
+  group_by(File, DESECON2_C3) |> 
+  summarise(File = mean(as.integer(File)),
+            Eco2_speciesrichness = n_distinct(NombreCientifico_APG),
+            Eco2_totalentries = n())
+
+
+#### 3) Rejoin coordinates ---------
+# Ecoregion 1
+Ecoregions1 <- Ecoregions_base |> 
+  left_join(Ecoregions1_merged,
+            by = c("DESECON1_C3"))
+# Ecoregion 2
+Ecoregions2 <- Ecoregions_base |> 
+  left_join(Ecoregions2_merged,
+            by = c("DESECON2_C3"))
+
+
+#### 4) To make Maps, filter for Specifications ---- 
+# Eco1 ----
+Eco1_1 <- Ecoregions1 |> 
+  filter(!is.na(DESECON1_C3) & File == 1)
+Eco1_1 |> 
+  ungroup() |> 
+  select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
+  distinct()
+# write vector
+
+Eco1_2 <- Ecoregions1 |> 
+  filter(!is.na(DESECON1_C3) & File == 2)
+Eco1_2 |> 
+  ungroup() |> 
+  select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
+  distinct()
+# write vector
+
+Eco1_3 <- Ecoregions1 |> 
+  filter(!is.na(DESECON1_C3) & File == 3)
+Eco1_3 |> 
+  ungroup() |> 
+  select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
+  distinct()
+# write vector
+
+Eco1 <- Eco1_1 |> 
+  mutate(Eco1_SC1 = Eco1_speciesrichness,
+         Eco1_TE1 = Eco1_totalentries) |>
+  left_join(Eco1_2 |> ungroup() |> 
+              mutate(Eco1_SC2 = Eco1_speciesrichness,
+                     Eco1_TE2 = Eco1_totalentries) |>
+              select(Cluster_ID, Eco1_SC2, Eco1_TE2) |> 
+              distinct(), by = "Cluster_ID") |> 
+  left_join(Eco1_3 |> ungroup() |> 
+              mutate(Eco1_SC3 = Eco1_speciesrichness,
+                     Eco1_TE3 = Eco1_totalentries) |>
+              select(Cluster_ID, Eco1_SC3, Eco1_TE3) |> 
+              distinct(), by = "Cluster_ID") |> 
+  select(-c("Eco1_speciesrichness", "Eco1_totalentries")) |> 
+  #univariate changes on ecoregion1 level
+  mutate(SC12 = Eco1_SC2 - Eco1_SC1,
+         SC23 = Eco1_SC3 - Eco1_SC2,
+         SC13 = Eco1_SC3 - Eco1_SC1,
+         Avg_SC = (Eco1_SC1 + Eco1_SC2 + Eco1_SC3)/3)
 
 
 
+# Eco2 ----
+Eco2_1 <- Ecoregions2 |> 
+  filter(!is.na(DESECON2_C3) & File == 1)
+Eco2_1 |> 
+  ungroup() |> 
+  select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
+  distinct()
+# write vector
 
+Eco2_2 <- Ecoregions2 |> 
+  filter(!is.na(DESECON2_C3) & File == 2)
+Eco2_2 |> 
+  ungroup() |> 
+  select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
+  distinct()
+# write vector
 
+Eco2_3 <- Ecoregions2 |> 
+  filter(!is.na(DESECON2_C3) & File == 3)
+Eco2_3 |> 
+  ungroup() |> 
+  select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
+  distinct()
+# write vector
 
+Eco2 <- Eco2_1 |> 
+  mutate(Eco2_SC1 = Eco2_speciesrichness,
+         Eco2_TE1 = Eco2_totalentries) |>
+  left_join(Eco2_2 |> ungroup() |> 
+              mutate(Eco2_SC2 = Eco2_speciesrichness,
+                     Eco2_TE2 = Eco2_totalentries) |>
+              select(Cluster_ID, Eco2_SC2, Eco2_TE2) |> 
+              distinct(), by = "Cluster_ID") |> 
+  left_join(Eco2_3 |> ungroup() |> 
+              mutate(Eco2_SC3 = Eco2_speciesrichness,
+                     Eco2_TE3 = Eco2_totalentries) |>
+              select(Cluster_ID, Eco2_SC3, Eco2_TE3) |> 
+              distinct(), by = "Cluster_ID") |> 
+  select(-c("Eco2_speciesrichness", "Eco2_totalentries")) |> 
+  #univariate changes on ecoregion1 level
+  mutate(SC12 = Eco2_SC2 - Eco2_SC1,
+         SC23 = Eco2_SC3 - Eco2_SC2,
+         SC13 = Eco2_SC3 - Eco2_SC1,
+         Avg_SC = (Eco2_SC1 + Eco2_SC2 + Eco2_SC3)/3)
+#### 5) Geospatial Prep ----
 
+# ECO 1
+# writeVector(vect(Eco1, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco1.shp")
 
+# ECO 2
+# writeVector(vect(Eco2, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco2.shp")
 
-
-
-
-
-
+##################################     END      ##################################################################
 
 
 
@@ -1668,10 +1784,6 @@ file13 <- rbind(file1, file3)
 # write.csv(file13, "iMAD_Data_13_Constant_Noise.csv")
 
 ##################################     END      ##################################################################
-
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
 
 
 ##################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
@@ -2636,10 +2748,9 @@ time.taken <- end.time - start.time
 time.taken
 
 
-
 ################### PAPER/BA PLOTS (DATA: FullStack_V4 & FullStack_V4_Zeros) -------------------------------------------------------------
 #### 1) Violinplots --------------------------------------------
-### 1.1) Species Richness ----
+### 1.1) Species Richness Changes ----
 # FullStack_V4 & FullStack_V4_Zeros (both 0s for Species Counts)
 FullStack_V4 %>% 
   select(SC12, SC23, SC13) |> 
@@ -2647,7 +2758,8 @@ FullStack_V4 %>%
   mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
   ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
   geom_violin()
-  
+
+# each with individual clusters  
 FullStack_V4_Zeros |> 
   select(SC12, SC23, SC13) |> 
   pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "Species_Richness") |> 
@@ -2655,11 +2767,14 @@ FullStack_V4_Zeros |>
   ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
   geom_violin()
 
-summary(FullStack_V4_Zeros |> select(SC23))
-
+# comparable clusters
 FullStack_V4_Zeros |> 
-  ggplot(aes(x=SC23)) + 
-  geom_histogram(binwidth = 1)
+  filter(Muestreado1 ==  1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  select(SC12, SC23, SC13) |> 
+  pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "Species_Richness") |> 
+  mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
+  ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
+  geom_violin()
 
 
 ### 1.2) Biomass ----
@@ -2786,11 +2901,20 @@ FullStack_V4_Zeros %>%
 ## 1.1) Species Richness ----
 # FullStack_V4 & FullStack_V4_Zeros (both 0s for Species Counts)
 # Cycle 1 - 2:
+# with their individual cluster counts
 FullStack_V4 |> 
   ggplot(aes(x = SC1, y = SC2)) +
   geom_point(position = "jitter") +
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
   geom_abline(color = "red") 
+
+# with their comparable counts
+FullStack_V4 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  ggplot(aes(x = SC1, y = SC2)) +
+  geom_point(position = "jitter") +
+  coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
+  geom_abline(color = "red")
 
 # Cycle 2 - 3:
 FullStack_V4 |> 
@@ -2799,12 +2923,28 @@ FullStack_V4 |>
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
   geom_abline(color = "red") 
 
+# with their comparable counts
+FullStack_V4 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  ggplot(aes(x = SC2, y = SC3)) +
+  geom_point(position = "jitter") +
+  coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
+  geom_abline(color = "red")
+
 # Cycle 1 - 3:
 FullStack_V4 |> 
   ggplot(aes(x = SC1, y = SC3)) +
   geom_point(position = "jitter") +
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
   geom_abline(color = "red") 
+
+# with their comparable counts
+FullStack_V4 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  ggplot(aes(x = SC1, y = SC3)) +
+  geom_point(position = "jitter") +
+  coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
+  geom_abline(color = "red")
   
 
 ## 1.2) Biomass ----
@@ -2883,25 +3023,75 @@ FullStack_V4_Zeros |>
   geom_abline(color = "red") +
   geom_smooth(method = lm)
 
-#### 3) Ridges -------------------------------------------------
+#### 3) Ridges ------------------------------------------------- these make sense
 ## 1.1) Species Richness Distribution ----
 # SC1
+# Ecoregion 1
 FullStack_V5_Zeros |> 
   filter(!is.na(DESECON1_C3)) |> 
   ggplot(aes(y = DESECON1_C3, x = SC1, fill = DESECON1_C3)) +
-  geom_density_ridges()
+  geom_density_ridges(show.legend = F)
+
+# Comparison with constantly available plots
+FullStack_V5_Zeros |>
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(!is.na(DESECON1_C3)) |> 
+  ggplot(aes(y = DESECON1_C3, x = SC1, fill = DESECON1_C3)) +
+  geom_density_ridges(show.legend = F)
+
+# Ecoregion 2
+FullStack_V5_Zeros |> 
+  filter(!is.na(DESECON2_C3)) |> 
+  ggplot(aes(y = DESECON2_C3, x = SC1, fill = DESECON2_C3)) +
+  geom_density_ridges(show.legend = F)
+
+# Comparison with constantly available plots
+FullStack_V5_Zeros |>
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(!is.na(DESECON2_C3)) |> 
+  ggplot(aes(y = DESECON2_C3, x = SC1, fill = DESECON2_C3)) +
+  geom_density_ridges(show.legend = F)
+
 
 # SC2
+# Ecoregion 1
 FullStack_V5_Zeros |> 
   filter(!is.na(DESECON1_C3)) |>
   ggplot(aes(y = DESECON1_C3, x = SC2, fill = DESECON1_C3)) +
-  geom_density_ridges()
+  geom_density_ridges(show.legend = F)
+
+# Comparison with constantly available plots
+FullStack_V5_Zeros |>
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(!is.na(DESECON1_C3)) |> 
+  ggplot(aes(y = DESECON1_C3, x = SC2, fill = DESECON1_C3)) +
+  geom_density_ridges(show.legend = F)
+
+# Ecoregion 2
+FullStack_V5_Zeros |> 
+  filter(!is.na(DESECON2_C3)) |>
+  ggplot(aes(y = DESECON2_C3, x = SC2, fill = DESECON2_C3)) +
+  geom_density_ridges(show.legend = F)
 
 # SC3
+#Ecoregion 1
 FullStack_V5_Zeros |> 
   filter(!is.na(DESECON1_C3)) |>
   ggplot(aes(y = DESECON1_C3, x = SC3, fill = DESECON1_C3)) +
-  geom_density_ridges()
+  geom_density_ridges(show.legend = F)
+
+# Comparison with constantly available plots
+FullStack_V5_Zeros |>
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |>
+  filter(!is.na(DESECON1_C3)) |> 
+  ggplot(aes(y = DESECON1_C3, x = SC3, fill = DESECON1_C3)) +
+  geom_density_ridges(show.legend = F)
+
+#Ecoregion 2
+FullStack_V5_Zeros |> 
+  filter(!is.na(DESECON2_C3)) |>
+  ggplot(aes(y = DESECON2_C3, x = SC3, fill = DESECON2_C3)) +
+  geom_density_ridges(show.legend = F)
 
 ## 1.1.1) Species Richness Change ----
 
@@ -2909,19 +3099,20 @@ FullStack_V5_Zeros |>
 FullStack_V5_Zeros |> 
   filter(!is.na(DESECON1_C3)) |> 
   ggplot(aes(y = DESECON1_C3, x = SC12, fill = DESECON1_C3)) +
-  geom_density_ridges()
+  geom_density_ridges(show.legend = F)
+
 
 # SC23
 FullStack_V5_Zeros |> 
   filter(!is.na(DESECON1_C3)) |>
   ggplot(aes(y = DESECON1_C3, x = SC23, fill = DESECON1_C3)) +
-  geom_density_ridges()
+  geom_density_ridges(show.legend = F)
 
 # SC13
 FullStack_V5_Zeros |> 
   filter(!is.na(DESECON1_C3)) |>
   ggplot(aes(y = DESECON1_C3, x = SC13, fill = DESECON1_C3)) +
-  geom_density_ridges()
+  geom_density_ridges(show.legend = F)
 
 
 
@@ -3060,17 +3251,26 @@ TE_ds <- rbind(C1, C2, C3)
 TE_ds
 
 # 2a) Density -----
-TE_ds |> 
-  ggplot(aes(x= SC, color = Cycle)) +
+FullStack_V4_Zeros |> 
+  select(SC1, SC2, SC3) |> 
+  pivot_longer(c(SC1, SC2, SC3), names_to = "Comparison", values_to = "Species_Richness") |> 
+  mutate(Comparison = factor(Comparison, levels = c("SC1", "SC2", "SC3"))) |> 
+  ggplot(aes(x= Species_Richness, color=Comparison)) +
   geom_density()
 # 2b) Histogram ----
-TE_ds |> 
-  ggplot(aes(x= SC, fill = Cycle)) +
-  geom_histogram(position = "identity", alpha = 0.3, binwidth = 1)
+FullStack_V4_Zeros |> 
+  select(SC1, SC2, SC3) |> 
+  pivot_longer(c(SC1, SC2, SC3), names_to = "Comparison", values_to = "Species_Richness") |> 
+  mutate(Comparison = factor(Comparison, levels = c("SC1", "SC2", "SC3"))) |> 
+  ggplot(aes(x= Species_Richness, fill=Comparison)) +
+  geom_histogram(position = "identity", alpha = 0.3)
 # 2c) Frequency ----
-TE_ds |> 
-  ggplot(aes(x= SC, color = Cycle)) +
-  geom_freqpoly(binwidth = 1)
+FullStack_V4_Zeros |> 
+  select(SC1, SC2, SC3) |> 
+  pivot_longer(c(SC1, SC2, SC3), names_to = "Comparison", values_to = "Species_Richness") |> 
+  mutate(Comparison = factor(Comparison, levels = c("SC1", "SC2", "SC3"))) |> 
+  ggplot(aes(x= Species_Richness, color=Comparison)) +
+  geom_freqpoly()
 
 
 
