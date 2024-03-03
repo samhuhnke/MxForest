@@ -1620,7 +1620,16 @@ Rarefied_Test2_long |>
   group_by(Cycle, DESECON2) |> 
   summarise(n = n())
 ##################################     END      ##################################################################
+FullStack_V4 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
+  count()
 
+FullStack_V4 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter((Plot_S2 == 4 & Plot_S3 == 4) | (Plot_S2 == 3 & Plot_S3 == 3) | 
+           (Plot_S2 == 2 & Plot_S3 == 2)| (Plot_S2 == 1 & Plot_S3 == 1)) |> 
+  count()
 
 
 
