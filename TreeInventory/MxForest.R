@@ -93,10 +93,10 @@ Arb.04 <- Raw.04 |>
                           Condicion == "Vivo" ~ "Arbol vivo",
                           TRUE ~ Condicion),
     # Added File number 
-    File = "1"
+    Cycle = "1"
   ) |>
   # setting initial column order +
-  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
+  select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
@@ -300,11 +300,11 @@ Arb.09 <- Raw.09 |>
     # "NombreCientifico_APG" Correction - "ZZ_Desconocido" -> NA
     NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ_Desconocido" ~ "ZZ Desconocido",
                                      TRUE ~ NombreCientifico_APG),
-    # Added File number 
-    File = "2"
+    # Added Cycle number 
+    Cycle = "2"
   ) |> 
   # setting initial column order + attaching everything so far not considered to the end
-  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
+  select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
@@ -418,10 +418,10 @@ Arb.14 <- Raw.14 |>
     NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ "ZZ Desconocido",
                                      TRUE ~ NombreCientifico_APG),
     # Added File number 
-    File = "3"
+    Cycle = "3"
   ) |> 
   # setting initial column order + attaching everything so far not considered to the end
-  select(File, Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
+  select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
          NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal, AlturaFusteLimpio, AlturaComercial,
          DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa, PosicionCopa, ExposicionCopa, DensidadCopa,
          TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion, Danio1, Severidad1, Danio2, Severidad2, NumeroTallos,
@@ -439,7 +439,7 @@ Arb.14 <- Raw.14 |>
 M.04 <- Arb.04 |>
   mutate(CveVeg = CveVeg_S5,
          TipoVeg = TipoVeg_S5) |> 
-  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
+  select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
@@ -449,7 +449,7 @@ M.04 <- Arb.04 |>
 M.09 <- Arb.09 |>
   mutate(CveVeg = CveVeg_S5,
          TipoVeg = TipoVeg_S5) |> 
-  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
+  select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
@@ -460,7 +460,7 @@ M.14 <- Arb.14 |>
   mutate(cgl_sit_reg = NA,
          CveVeg = CveVeg_S7,
          TipoVeg = TipoVeg_S7) |> 
-  select(File, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
+  select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg, TipoVeg, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
          PosicionCopa, ExposicionCopa, DensidadCopa, TransparenciaCopa, MuerteRegresiva, VigorEtapa, Edad, Condicion,
@@ -468,10 +468,10 @@ M.14 <- Arb.14 |>
 
 #merge
 merged <- rbind(M.04, M.09, M.14) |> 
-  mutate(Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_")) |> 
-  mutate(Cluster_ID = paste(File, Conglomerado, Anio, sep = "_")) |> 
-  select(Cluster_ID, Plot_ID, File, Conglomerado, Sitio, Anio, everything())
-
+  mutate(Plot_ID = paste(Cycle, Conglomerado, Sitio, Anio, sep = "_")) |> 
+  mutate(Cluster_ID = Conglomerado) |> 
+  select(Cluster_ID, Plot_ID, Cycle, Sitio, Anio, everything(), -c(Conglomerado))
+View(merged)
 
 
 #################### 4) EDA PREPARATION ------------------------------------------------------------------
@@ -535,6 +535,9 @@ C_Temp.Shannon <- C_SpecAbun |>
   ungroup() |> 
   select(Cluster_ID, NombreCientifico_APG, abundance) |> 
   pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+C_SpecAbun
+C_Temp.Shannon
 
 #### STEP 2: exchange NAs with Zeros 
 ## DATA ON CLUSTER LEVEL
@@ -1353,7 +1356,6 @@ end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
-Ecoregions_base
 
 ################### National Level Species Richenss ###############################################
 # STEP 1: What is the cluster base i'll use? ----------
@@ -1425,90 +1427,22 @@ National |>
 
 ##################################     END      ##################################################################
 
-
-############### CODE TO ADD FROMACION FORESTAL AS A GROUPING VARIABLE #######################
-## STEP 1: were do I take it from? ----------
-Sec.04 |> 
-  group_by(Formacion_SV) |> 
-  count()
-
-Sec.14 |> 
-  group_by(FORM_S7_C3) |> 
-  count()
-## STEP 2: make both datasets comparable! ----------
-S.04 <- Sec.04 |> 
-  mutate(Cluster_ID = Conglomerado,
-         Formacion1 = case_when(Formacion_SV == "AREAS NO FORESTALES" ~ "areas no forestales",
-                               Formacion_SV == "BOSQUE MESOFILO" ~ "bosque mesofilo",
-                               Formacion_SV == "CONIFERAS" ~ "coniferas",
-                               Formacion_SV == "CONIFERAS Y LATIFOLIADAS" ~ "coniferas y latifoliadas",
-                               Formacion_SV == "LATIFOLIADAS" ~ "latifoliadas",
-                               Formacion_SV == "MANGALAR" ~ "mangalar",
-                               Formacion_SV == "OTRAS AREAS FORESTALES" ~ "otras areas forestales",
-                               Formacion_SV == "OTRAS ASOCIACIONES" ~ "otras asociaciones",
-                               Formacion_SV == "SELVAS ALTAS Y MEDINAS" ~ "selvas altas y medinas",
-                               Formacion_SV == "SELVAS BAJAS" ~ "selvas bajas",
-                               Formacion_SV == "ZONAS ARIDAS" ~ "zonas aridas",
-                               Formacion_SV == "ZONAS SEMIARIDAS" ~ "zonas semiaridas")) |> 
-  select(Cluster_ID, Formacion1)
-
-S.14 <- Sec.14 |> 
-  mutate(Cluster_ID = IDConglomerado,
-         Formacion2 = case_when(FORM_S7_C3 == "Áreas no forestales" ~ "areas no forestales",
-                               FORM_S7_C3 == "Bosque mesófilo " ~ "bosque mesofilo",
-                               FORM_S7_C3 == "Coníferas" ~ "coniferas",
-                               FORM_S7_C3 == "Coníferas y latifoliadas" ~ "coniferas y latifoliadas",
-                               FORM_S7_C3 == "Latifoliadas" ~ "latifoliadas",
-                               FORM_S7_C3 == "Manglar" ~ "mangalar",
-                               FORM_S7_C3 == "Otras áreas forestales" ~ "otras areas forestales",
-                               FORM_S7_C3 == "Otras asociaciones" ~ "otras asociaciones",
-                               FORM_S7_C3 == "Selvas altas y medianas" ~ "selvas altas y medinas",
-                               FORM_S7_C3 == "Selvas bajas" ~ "selvas bajas",
-                               FORM_S7_C3 == "ZONAS ÁRIDAS" ~ "zonas aridas",
-                               FORM_S7_C3 == "Zonas áridas" ~ "zonas aridas",
-                               FORM_S7_C3 == "Zonas semiáridas" ~ "zonas semiaridas",
-                               is.na(FORM_S7_C3) ~ NA)) |> 
-  select(Cluster_ID, Formacion2)
-
-
-## Create new base data with Formacion forestal -----------
-Test <- NewBase |> 
-  select(Cluster_ID, X, Y) |> 
-  left_join(S.04,
-            by = "Cluster_ID") |> 
-  left_join(S.14,
-            by = "Cluster_ID")
-
-Formacion <- Test |> 
-  mutate(Formacion = case_when(Formacion1 == Formacion2 ~ Formacion1,
-                               !is.na(Formacion1) &  !is.na(Formacion2) & Formacion1 != Formacion2 ~ "Changed",
-                               !is.na(Formacion1) & is.na(Formacion2) ~ Formacion1,
-                               is.na(Formacion1) & !is.na(Formacion2) ~ Formacion2,)) |> 
-  select(-c(Formacion1, Formacion2)) |> 
-  ungroup()
-
-
-## quick qgis check ---------
-# writeVector(vect(Formacion, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Formacion.shp")
-
-##################################     END      ##################################################################
-
 ############### ECOREGIONS BASED ON SHAPEFILE   ############################################
 ## STEP 1: load package ---------------
 library(sf)
 
-## STEP 2: read shapefile "ecoregions"
+## STEP 2: read shapefile "ecoregions" -----
 
 shapefile <- st_read(here("data", "Ecoregions", "ecort08cw.shp"))
 
-## STEP 3: create sf object for coordinates
+## STEP 3: create sf object for coordinates -----
 coordinates_df <- Ecoregions_base |> 
   filter(!is.na(X)) %>%
   st_as_sf(coords = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
 
 coordinates_df
 
-## STEP 4: ensure CRS compatability
+## STEP 4: ensure CRS compatability -----
 # Check CRS of both datasets
 crs_shapefile <- st_crs(shapefile)
 crs_coordinates_df <- st_crs(coordinates_df)
@@ -1517,13 +1451,178 @@ if (crs_shapefile != crs_coordinates_df) {
   coordinates_df <- st_transform(coordinates_df, crs_shapefile)
 }
 
-## STEP 5: spatial join
+## STEP 5: spatial join ----
 joined_data <- st_join(coordinates_df, shapefile)
 
-## STEP 6: drop everything apart from cluster_ID and DESECON  + return to regular df 
+## STEP 6: drop everything apart from cluster_ID and DESECON  + return to regular df ----
 Ecoregions <- st_set_geometry(joined_data |> 
   select(Cluster_ID, DESECON1, DESECON2, DESECON3, DESECON4), NULL)
 ##################################     END      ##################################################################
+
+##############  BASE FOR ALL CACLULATIONS      #################################################
+## STEP 1: JOIN National_Base and Ecoregions based on Cluster_ID ----
+Base <- National_Base |> 
+  left_join(Ecoregions, by = "Cluster_ID")
+
+##################################     END      ##################################################################
+
+##############  ECOREGIONS CALCULATION         ###############################################
+## STEP 1: add ecoregions to rest of data based on cluster_ID ----
+Eco_Calc <- merged |> 
+  select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
+  left_join(Ecoregions, by = "Cluster_ID")
+
+## STEP 2: Calculate number of clusters per ecoregion ----
+Eco_Cluster <- Eco_Calc |> 
+  select(Cluster_ID, Cycle, DESECON2) |> 
+  group_by(Cycle, DESECON2) |> 
+  distinct() |> 
+  group_by(Cycle, DESECON2) |> 
+  summarise(number_of_clusters = n())
+
+## STEP 3: Caculate species abundances per ecoregion ----
+Eco_Species <- Eco_Calc |> 
+  select(NombreCientifico_APG, Cycle, DESECON2) |> 
+  group_by(Cycle, DESECON2, NombreCientifico_APG) |> 
+  summarise(species_abundance = n())
+
+## STEP 4: Pivot Eco_Species from long to wide -----
+# pivot
+Eco_Species_wide <- Eco_Species |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = species_abundance)
+
+# change NA in DESECON to character "NA"
+Eco_Species_wide <- Eco_Species_wide |> 
+  mutate(DESECON2 = case_when(is.na(DESECON2) ~ "NA",
+                              T ~ DESECON2)) 
+
+# exchange all NAs with 0 for calculation
+Eco_Species_wide <- Eco_Species_wide |> 
+  replace(is.na(Eco_Species_wide), 0)
+
+  
+  
+## STEP 5: Combine Eco_Species and Eco_Cluster ----
+Eco_wide <- Eco_Cluster |> 
+  left_join(Eco_Species_wide,
+            by = c("Cycle", "DESECON2")) 
+
+Eco_wide
+
+## STEP 6: Ready for rarefaction ----
+Test <- Eco_wide |> 
+  filter(DESECON2 == "Sierra Madre del Sur")
+Test
+
+Eco_long |> 
+  group_by(Cycle, DESECON2) |> 
+  count() |> 
+  print(n = 100)
+
+##################################     END      ##################################################################
+
+
+############### RAREFACTION CODE  ######################
+### loop for rarefaction ----
+### IMPORTANT: run this code only with species as cols and samples as rows!!!
+m.rar.time <- Test[, -c(1:3)]
+
+m.rar.time <- m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
+
+
+
+a <- min(Test$number_of_clusters) # -> 55 days
+m3_rarified <- m.rar.time 
+for (k in 1:ncol(m.rar.time)) {
+  for (i in 1:nrow(m.rar.time)) {
+    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Test$number_of_clusters[i])
+  }
+}
+
+m3_rarified_rd <- trunc(m3_rarified)
+commas <- m3_rarified - m3_rarified_rd
+
+upround <- rowSums(commas)
+
+rank <- as.data.frame(t(apply(-commas, 1, order)))
+
+for (k in 1:nrow(m.rar.time)){
+  for (i in 1:round(upround[k])) {if(round(upround[k])>0){
+    m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
+  }}
+
+finish <- trunc(m3_rarified)
+
+# return to original dataformat
+Rarefied_Test1 <- cbind(Test[1:2], finish)
+Rarefied_Test1
+
+# 
+Rarefied_Test1_long <- Rarefied_Test %>% 
+  pivot_longer(
+    cols = -c(1:2), # Excludes the first two columns
+    names_to = "species_names",
+    values_to = "values"
+  )
+
+#
+Rarefied_Test1_long |> 
+  filter(values != 0) |> 
+  group_by(Cycle, DESECON2) |> 
+  summarise(n = n())
+
+
+### loop for rarefaction ----
+### IMPORTANT: run this code only with species as cols and samples as rows!!!
+m.rar.time <- Test[, -c(1:3)]
+
+m.rar.time <- m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
+
+
+
+a <- min(Test$number_of_clusters) # -> 55 days
+m3_rarified <- m.rar.time 
+for (k in 1:ncol(m.rar.time)) {
+  for (i in 1:nrow(m.rar.time)) {
+    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Test$number_of_clusters[i])
+  }
+}
+
+m3_rarified_rd <- trunc(m3_rarified)
+commas <- m3_rarified - m3_rarified_rd
+
+upround <- rowSums(commas)
+
+rank <- as.data.frame(t(apply(-commas, 1, order)))
+
+for (k in 1:nrow(m.rar.time)){
+  for (i in 1:round(upround[k])) {if(round(upround[k])>0){
+    m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
+  }}
+
+finish <- trunc(m3_rarified)
+
+# return to original dataformat
+Rarefied_Test2 <- cbind(Test[1:2], finish)
+Rarefied_Test2
+
+# 
+Rarefied_Test2_long <- Rarefied_Test2 %>% 
+  pivot_longer(
+    cols = -c(1:2), # Excludes the first two columns
+    names_to = "species_names",
+    values_to = "values"
+  )
+
+#
+Rarefied_Test2_long |> 
+  filter(values != 0) |> 
+  group_by(Cycle, DESECON2) |> 
+  summarise(n = n())
+##################################     END      ##################################################################
+
+
+
 
 
 ##################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
