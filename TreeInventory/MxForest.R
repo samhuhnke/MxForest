@@ -1353,7 +1353,7 @@ end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
-
+Ecoregions_base
 
 ################### National Level Species Richenss ###############################################
 # STEP 1: What is the cluster base i'll use? ----------
@@ -1471,7 +1471,7 @@ S.14 <- Sec.14 |>
   select(Cluster_ID, Formacion2)
 
 
-# Create new base data with Formacion forestal -----------
+## Create new base data with Formacion forestal -----------
 Test <- NewBase |> 
   select(Cluster_ID, X, Y) |> 
   left_join(S.04,
@@ -1488,10 +1488,42 @@ Formacion <- Test |>
   ungroup()
 
 
+## quick qgis check ---------
+# writeVector(vect(Formacion, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Formacion.shp")
+
 ##################################     END      ##################################################################
 
+############### ECOREGIONS BASED ON SHAPEFILE   ############################################
+## STEP 1: load package ---------------
+library(sf)
 
+## STEP 2: read shapefile "ecoregions"
 
+shapefile <- st_read(here("data", "Ecoregions", "ecort08cw.shp"))
+
+## STEP 3: create sf object for coordinates
+coordinates_df <- Ecoregions_base |> 
+  filter(!is.na(X)) %>%
+  st_as_sf(coords = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
+
+coordinates_df
+
+## STEP 4: ensure CRS compatability
+# Check CRS of both datasets
+crs_shapefile <- st_crs(shapefile)
+crs_coordinates_df <- st_crs(coordinates_df)
+
+if (crs_shapefile != crs_coordinates_df) {
+  coordinates_df <- st_transform(coordinates_df, crs_shapefile)
+}
+
+## STEP 5: spatial join
+joined_data <- st_join(coordinates_df, shapefile)
+
+## STEP 6: drop everything apart from cluster_ID and DESECON  + return to regular df 
+Ecoregions <- st_set_geometry(joined_data |> 
+  select(Cluster_ID, DESECON1, DESECON2, DESECON3, DESECON4), NULL)
+##################################     END      ##################################################################
 
 
 ##################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
