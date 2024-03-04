@@ -92,7 +92,7 @@ Arb.04 <- Raw.04 |>
     Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
                           Condicion == "Vivo" ~ "Arbol vivo",
                           TRUE ~ Condicion),
-    # Added File number 
+    # Added Cycle number 
     Cycle = "1"
   ) |>
   # setting initial column order +
@@ -417,7 +417,7 @@ Arb.14 <- Raw.14 |>
     # "NombreCientifico" Correction - "ZZ Genero Desconocido" -> NA
     NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ "ZZ Desconocido",
                                      TRUE ~ NombreCientifico_APG),
-    # Added File number 
+    # Added Cycle number 
     Cycle = "3"
   ) |> 
   # setting initial column order + attaching everything so far not considered to the end
@@ -433,7 +433,7 @@ Arb.14 <- Raw.14 |>
 
 
 
-#################### 3) MERGE FILES FOR OVERLAPPING VARIABLES ------------------------------------------------------
+#################### 3) MERGE CycleS FOR OVERLAPPING VARIABLES ------------------------------------------------------
 
 #Arb.04
 M.04 <- Arb.04 |>
@@ -478,32 +478,27 @@ View(merged)
 ###### 4.1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ---------------------------
 #### DATA ON CLUSTER LEVEL
 C_SpecRich <- merged |> 
-  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
+  select(Plot_ID, Cycle, Cluster_ID, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(Cycle, Cluster_ID) |> 
+  summarise(Cycle = mean(as.integer(Cycle)),
+            Cluster_ID = mean(Cluster_ID),
             Anio = mean(Anio),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
             species_count = n_distinct(NombreCientifico_APG),
             total_entries = n(),
             X = mean(X),
             Y = mean(Y)) |> 
   relocate(Cluster_ID)
 
-merged |> 
-  ungroup() |> 
-  group_by(File) |> 
-  summarise(Species_count = n_distinct(NombreCientifico_APG))
 
 #### DATA ON PLOT LEVEL - used for later calculation in 5.3)
 SpecRich <- merged |> 
-  select(Plot_ID, File, Conglomerado, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado, Sitio) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
+  select(Plot_ID, Cycle, Cluster_ID, Sitio, Anio, NombreCientifico_APG, X, Y) |> 
+  group_by(Cycle, Cluster_ID, Sitio) |> 
+  summarise(Cycle = mean(as.integer(Cycle)),
+            Cluster_ID = mean(Cluster_ID),
             Sitio = mean(Sitio),
             Anio = mean(Anio),
-            Plot_ID = paste(File, Conglomerado, Sitio, Anio, sep = "_"),
+            Plot_ID = paste(Cycle, Cluster_ID, Sitio, Anio, sep = "_"),
             species_count = n_distinct(NombreCientifico_APG),
             total_entries = n(),
             X = mean(X),
@@ -515,13 +510,12 @@ SpecRich <- merged |>
 
 #### DATA CALCULATED PER CLUSTER
 C_SpecAbun <- merged |> 
-  select(File, Anio, Conglomerado, Sitio, NombreCientifico_APG, X, Y) |> 
-  group_by(File, Conglomerado, NombreCientifico_APG) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
+  select(Cycle, Anio, Cluster_ID, Sitio, NombreCientifico_APG, X, Y) |> 
+  group_by(Cycle, Cluster_ID, NombreCientifico_APG) |> 
+  summarise(Cycle = mean(as.integer(Cycle)),
+            Cluster_ID = mean(Cluster_ID),
             Anio = mean(Anio),
             abundance=n(),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
             X=mean(X),
             Y=mean(Y)) |> 
   relocate(Cluster_ID)
@@ -533,7 +527,7 @@ C_SpecAbun <- merged |>
 ## DATA ON CLUSTER LEVEL
 C_Temp.Shannon <- C_SpecAbun |> 
   ungroup() |> 
-  select(Cluster_ID, NombreCientifico_APG, abundance) |> 
+  select(Cycle, Cluster_ID, NombreCientifico_APG, abundance) |> 
   pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
 
 C_SpecAbun
@@ -544,22 +538,27 @@ C_Temp.Shannon
 C_PresenceAbsence <- C_Temp.Shannon |> 
   replace(is.na(C_Temp.Shannon), 0)
 
+C_PresenceAbsence
+
+
 #### STEP 3: Calculate Shannon-Index H using diversity()  ###### TEMPORARY
 ## DATA ON CLUSTER LEVEL
-H <- diversity(C_PresenceAbsence[,-1])
+H <- diversity(C_PresenceAbsence[,-2])
 
 #### STEP 4: calculate Eveness J ######## TEMPORARY
 ## DATA ON CLUSTER LEVEL
-J <- H/log(specnumber(C_PresenceAbsence[, -1]))
+J <- H/log(specnumber(C_PresenceAbsence[, -2]))
 
 #### STEP 5: merging H and J into dataframe + renaming ID-Column to be in line with other datasets 
-C_Temp.HJ <- data.frame(C_PresenceAbsence$Cluster_ID, H, J) |> 
-  rename(Cluster_ID = C_PresenceAbsence.Cluster_ID)
+C_Temp.HJ <- data.frame(C_PresenceAbsence$Cycle, C_PresenceAbsence$Cluster_ID, H, J) |> 
+  rename(Cycle = C_PresenceAbsence.Cycle,
+         Cluster_ID = C_PresenceAbsence.Cluster_ID)
+
 
 #### STEP 6: merged data table 
 ## DATA ON CLUSTER LEVEL
-ClusterDiagnostics <- left_join(C_SpecRich, C_Temp.HJ, by= c("Cluster_ID")) |> 
-  select(File, Cluster_ID, Conglomerado, Anio, species_count, total_entries, H, J, X, Y)
+ClusterDiagnostics <- left_join(C_SpecRich, C_Temp.HJ, by= c("Cycle","Cluster_ID")) |> 
+  select(Cycle, Cluster_ID, Anio, species_count, total_entries, H, J, X, Y)
 
 
 ###### 4.4) TREE MORPHOLOGY -----------------------------------------------
@@ -569,11 +568,10 @@ ClusterDiagnostics <- left_join(C_SpecRich, C_Temp.HJ, by= c("Cluster_ID")) |>
 # Example: for Tree Height Means are on average -20cm compared to Median
 
 C_TreeMorp <- merged |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(as.integer(File)),
-            Conglomerado = mean(Conglomerado),
+  group_by(Cycle, Cluster_ID) |> 
+  summarise(Cycle = mean(as.integer(Cycle)),
+            Cluster_ID = mean(Cluster_ID),
             Anio = mean(Anio),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
             AvgTreeHeight = mean(AlturaTotal, na.rm = T),
             MedTreeHeight = median(AlturaTotal, na.rm = T),
             AvgDbh = mean(DiametroNormal, na.rm = T),
@@ -592,31 +590,29 @@ C_TreeMorp <- merged |>
 
 ###### 4.5) COMPLETE DIAGNOSTICS DATASET (excluding Biomass; 01/10/2024) ----------------------------
 
-Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cluster_ID", "File", "Conglomerado", "Anio", "X", "Y")) |> 
-  relocate(Cluster_ID, File, Conglomerado, Anio, species_count, total_entries, H, J, 
+Comp_C_Diagnostics <- left_join(ClusterDiagnostics, C_TreeMorp, by= c("Cycle", "Cluster_ID", "Anio", "X", "Y")) |> 
+  relocate(Cycle, Cluster_ID, Anio, species_count, total_entries, H, J, 
            AvgTreeHeight, MedTreeHeight, AvgDbh, MedDbh, AvgCrownDiameter, MedCrownDiameter, AvgCrownHeight, MedCrownHeight, AvgCrownArea, MedCrownArea, X, Y)
-
-# write.csv(Comp_C_Diagnostics, "INFyS_Selection_Cluster.csv")
 
 #################### 5) METADATA STUFF -------------------------------------------------------------------
 ###### 5.1) PLOT COUNTS FOR EACH CLUSTER -----------------------------------------
 
 # Adding the Number of Plots per Cluster ("Plots")
 PlotCounts <- merged |> 
-  group_by(File, Conglomerado, Sitio, X, Y) |> 
+  group_by(Cycle, Cluster_ID, Sitio, X, Y) |> 
   count() |>
   ungroup() |> 
-  select(File, Conglomerado, Sitio, X, Y) |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(as.numeric(File)),
-            Conglomerado = mean(Conglomerado),
+  select(Cycle, Cluster_ID, Sitio, X, Y) |> 
+  group_by(Cycle, Cluster_ID) |> 
+  summarise(Cycle = mean(as.numeric(Cycle)),
+            Cluster_ID = mean(Cluster_ID),
             X = mean(X),
             Y = mean(Y),
             Plots = n())
 
 
 # combined dataset
-Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("File", "Conglomerado")) |> 
+Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("Cycle", "Cluster_ID")) |> 
   select(everything(), -c("X.y", "Y.y")) |> 
   rename(X = X.x,
          Y = Y.x)
@@ -626,11 +622,11 @@ Comp_C_Diagnostics_V2 <- left_join(Comp_C_Diagnostics, PlotCounts, by= c("File",
 # function to count number of cycles with a given number of plots 
 summarise_data <- function(data, plot_number) {
   data |> 
-    select(File, Conglomerado, Anio, Plots, X, Y) |> 
+    select(Cycle, Cluster_ID, Anio, Plots, X, Y) |> 
     filter(Plots == plot_number) |> 
-    group_by(Conglomerado) |> 
-    arrange(Conglomerado) |> 
-    summarise(Conglomerado = mean(Conglomerado),
+    group_by(Cluster_ID) |> 
+    arrange(Cluster_ID) |> 
+    summarise(Cluster_ID = mean(Cluster_ID),
               n = n(),
               X1 = mean(X),
               Y1 = mean(Y)) |> 
@@ -639,16 +635,16 @@ summarise_data <- function(data, plot_number) {
 
 # combined dataset V3
 Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>% 
-  left_join(summarise_data(. ,4), by = "Conglomerado") %>%
-  left_join(summarise_data(. ,3), by = "Conglomerado") %>% 
-  left_join(summarise_data(. ,2), by = "Conglomerado") %>%
-  left_join(summarise_data(. ,1), by = "Conglomerado") %>%
+  left_join(summarise_data(. ,4), by = "Cluster_ID") %>%
+  left_join(summarise_data(. ,3), by = "Cluster_ID") %>% 
+  left_join(summarise_data(. ,2), by = "Cluster_ID") %>%
+  left_join(summarise_data(. ,1), by = "Cluster_ID") %>%
   select(-c("X1.x", "Y1.x", "X1.y", "Y1.y", "X1.x.x", "Y1.x.x", "X1.y.y", "Y1.y.y")) |> 
   rename(cycles_four_plots = n_cycles_placeholder.x,
          cycles_three_plots = n_cycles_placeholder.y,
          cycles_two_plots = n_cycles_placeholder.x.x,
          cycles_one_plots = n_cycles_placeholder.y.y,) |> 
-  arrange(Conglomerado) |> 
+  arrange(Cluster_ID) |> 
   mutate(Consistent =  case_when(cycles_four_plots == 3 ~ T, cycles_four_plots <= 2 ~ F,
                                  cycles_three_plots == 3 ~ T,cycles_three_plots <= 2 ~ F,
                                  cycles_two_plots == 3 ~ T, cycles_two_plots <= 2 ~ F,
@@ -659,31 +655,28 @@ Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>%
          cycles_one_plots = ifelse(is.na(cycles_one_plots), 0, cycles_one_plots),
          Cycles = (cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots))
 
-View(Comp_C_Diagnostics_V3)
 
+###### 5.4) ESTADO + TIPO VEGETACION FILTER -----------------------------------------------------
 ###### 5.3) TREE PLOT COUNT MEANS AND MEDIANS BY CLUSTERS ----------------------
 ## calculate means and medians for each cluster based of total plot entries 
 PTC_C <- SpecRich |> 
-  group_by(File, Conglomerado) |> 
-  summarise(File = mean(File),
-            Conglomerado = mean(Conglomerado),
+  group_by(Cycle, Cluster_ID) |> 
+  summarise(Cycle = mean(Cycle),
+            Cluster_ID = mean(Cluster_ID),
             Anio = mean(Anio),
-            Cluster_ID = paste(File, Conglomerado, Anio, sep = "_"),
             Plot_TreeCount_Mean = mean(total_entries),
             Plot_TreeCount_Median = median(total_entries),
             X = mean(X),
             Y = mean(Y)) |> 
-  select(File, Conglomerado, Anio, Plot_TreeCount_Mean, Plot_TreeCount_Median)
+  select(Cycle, Cluster_ID, Anio, Plot_TreeCount_Mean, Plot_TreeCount_Median)
 
-Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("File", "Conglomerado", "Anio"))
+Comp_C_Diagnostics_V4 <- left_join(Comp_C_Diagnostics_V3, PTC_C, by = c("Cycle", "Cluster_ID", "Anio"))
 
-###### 5.4) ESTADO + TIPO VEGETACION FILTER -----------------------------------------------------
 
-Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct(),
-                                   by = "Cluster_ID")
+Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cycle, Cluster_ID, Estado, CveVeg, TipoVeg) |> distinct() |> mutate(Cycle = as.numeric(Cycle)),
+                                   by = c("Cycle", "Cluster_ID"))
 
 ##################################     END      ##################################################################
-
 
 
 ###################          METADATA DATASET CODE            ###################################################
@@ -713,8 +706,8 @@ ClusterBase <- rbind(Sec.04 |>
   mutate(Cluster_ID = Conglomerado) |> 
   select(Cluster_ID)
 
-# STEP 2: JOIN CLUSTER_ID + X & Y FROM EACH FILE
-#File 1
+# STEP 2: JOIN CLUSTER_ID + X & Y FROM EACH Cycle
+#Cycle 1
 Temp <- ClusterBase |> 
   left_join(Sec.04 |> 
               mutate(Cluster_ID = Conglomerado,
@@ -723,7 +716,7 @@ Temp <- ClusterBase |>
                      Y1 = Y) |> 
               select(Cluster_ID, Conglomerado1, X1, Y1),
             by = "Cluster_ID")
-#File 2
+#Cycle 2
 Temp <- Temp |> 
   left_join(Sec.09 |> 
               mutate(Cluster_ID = Conglomerado,
@@ -732,7 +725,7 @@ Temp <- Temp |>
                      Y2 = Y) |> 
               select(Cluster_ID, Conglomerado2, X2, Y2),
             by = "Cluster_ID")
-#File 3
+#Cycle 3
 MetaBase <- Temp |> 
   left_join(Sec.14 |> 
               mutate(Cluster_ID = IDConglomerado,
@@ -783,7 +776,7 @@ NewBase <- MetaBase |>
 
 #STEP 4: RE-INTRODUCE WHETHER IT WAS SAMPLED
 NewBase2 <- NewBase |> 
-  # Join File 1
+  # Join Cycle 1
   left_join(Sec.04 |> 
               select(Conglomerado, Muestreado) |> 
               mutate(Cluster_ID = Conglomerado,
@@ -791,14 +784,14 @@ NewBase2 <- NewBase |>
               select(Cluster_ID, Muestreado1),
             by = "Cluster_ID"
   ) |> 
-  # Join File 2
+  # Join Cycle 2
   left_join(Sec.09 |> 
               select(Conglomerado, Muestreado) |> 
               mutate(Cluster_ID = Conglomerado,
                      Muestreado2 = Muestreado) |> 
               select(Cluster_ID, Muestreado2),
             by = "Cluster_ID") |> 
-  # Join File 3
+  # Join Cycle 3
   left_join(Sec.14 |> 
               select(IDConglomerado, Muestreado_C3) |> 
               mutate(Cluster_ID = IDConglomerado,
@@ -816,38 +809,37 @@ NewBase2 <- NewBase |>
 # STEP 1: Join Diagnostics Dataset and Metadata
 FullStack <- NewBase2 %>% 
   left_join(Comp_C_Diagnostics_V5 %>%
-              filter(File == 1) %>%
-              rename(Cluster_ID2 = Cluster_ID,
-                     File1 = File) %>%
-              mutate(Cluster_ID = Conglomerado) %>%
-              select("Cluster_ID", "File1"),
-            by = "Cluster_ID") %>%
-  mutate(File1 = case_when(is.na(File1) ~ 100,
-                           T ~ File1)) |> 
+              filter(Cycle == 1) %>%
+              rename(Cycle1 = Cycle) %>%
+             select("Cluster_ID", "Cycle1"),
+             by = "Cluster_ID") %>%
+  rename(Cycle1 = Cycle1.y) |> 
+  mutate(Cycle1 = case_when(is.na(Cycle1) ~ 100,
+                           T ~ Cycle1)) |> 
   left_join(Comp_C_Diagnostics_V5 %>%
-              filter(File == 2) %>%
-              rename(Cluster_ID2 = Cluster_ID,
-                     File2 = File) %>%
-              mutate(Cluster_ID = Conglomerado) %>%
-              select("Cluster_ID", "File2"),
+              filter(Cycle == 2) %>%
+              rename(Cycle2 = Cycle) %>%
+              select("Cluster_ID", "Cycle2"),
             by = "Cluster_ID") %>%
-  mutate(File2 = case_when(is.na(File2) ~ 100,
-                           T ~ File2)) |> 
+  rename(Cycle2 = Cycle2.y) |> 
+  mutate(Cycle2 = case_when(is.na(Cycle2) ~ 100,
+                           T ~ Cycle2)) |> 
   left_join(Comp_C_Diagnostics_V5 %>%
-              filter(File == 3) %>%
-              rename(Cluster_ID2 = Cluster_ID,
-                     File3 = File) %>%
-              mutate(Cluster_ID = Conglomerado) %>%
-              select("Cluster_ID", "File3"),
+              filter(Cycle == 3) %>%
+              rename(Cycle3 = Cycle) %>%
+              select("Cluster_ID", "Cycle3"),
             by = "Cluster_ID") %>%
-  mutate(File3 = case_when(is.na(File3) ~ 100,
-                           T ~ File3))
+  rename(Cycle3 = Cycle3.y) |> 
+  mutate(Cycle3 = case_when(is.na(Cycle3) ~ 100,
+                           T ~ Cycle3))
 
+
+  
 # STEP 2: Claculate Status of Cluster for each Cycle
 FullStack_V2 <- FullStack |> 
-  mutate(Status1 = Muestreado1 - File1,
-         Status2 = Muestreado2 - File2,
-         Status3 = Muestreado3 - File3) |> 
+  mutate(Status1 = Muestreado1 - Cycle1,
+         Status2 = Muestreado2 - Cycle2,
+         Status3 = Muestreado3 - Cycle3) |> 
   mutate(Status1 = case_when(is.na(Status1) ~ -100,
                              Status1 > -99 & Status1 <= 0 ~ 1,
                              T ~ Status1),
@@ -866,11 +858,9 @@ FullStack_V3 <- FullStack_V2 |>
               select(Cluster_ID, Plot_S1),
             by = "Cluster_ID") |> 
   left_join(Comp_C_Diagnostics_V5 %>%
-              filter(File == 1) %>%
+              filter(Cycle == 1) %>%
               ungroup() |> 
-              rename(Cluster_ID2 = Cluster_ID,
-                     Plot1 = Plots) %>%
-              mutate(Cluster_ID = Conglomerado) %>%
+              rename(Plot1 = Plots) %>%
               select("Cluster_ID", "Plot1"),
             by = "Cluster_ID") |> 
   left_join(Sec.09 |> 
@@ -879,11 +869,9 @@ FullStack_V3 <- FullStack_V2 |>
               select(Cluster_ID, Plot_S2),
             by = "Cluster_ID") |> 
   left_join(Comp_C_Diagnostics_V5 %>%
-              filter(File == 2) %>%
+              filter(Cycle == 2) %>%
               ungroup() |> 
-              rename(Cluster_ID2 = Cluster_ID,
-                     Plot2 = Plots) %>%
-              mutate(Cluster_ID = Conglomerado) %>%
+              rename(Plot2 = Plots) %>%
               select("Cluster_ID", "Plot2"),
             by = "Cluster_ID") |> 
   left_join(Sec.14 |> 
@@ -892,11 +880,9 @@ FullStack_V3 <- FullStack_V2 |>
               select(Cluster_ID, Plot_S3),
             by = "Cluster_ID") |> 
   left_join(Comp_C_Diagnostics_V5 %>%
-              filter(File == 3) %>%
+              filter(Cycle == 3) %>%
               ungroup() |> 
-              rename(Cluster_ID2 = Cluster_ID,
-                     Plot3 = Plots) %>%
-              mutate(Cluster_ID = Conglomerado) %>%
+              rename(Plot3 = Plots) %>%
               select("Cluster_ID", "Plot3"),
             by = "Cluster_ID") |> 
   mutate(Plot_Status1 = case_when(Status1 == -100 ~ -100,
@@ -908,81 +894,139 @@ FullStack_V3 <- FullStack_V2 |>
          Plot_Status3 = case_when(Status3 == -100 ~ -100,
                                   Status3 == -99 ~ -99,
                                   Status3 > -99 ~ Plot_S3 - Plot3)
-  ) 
+         ) 
 
-View(FullStack_V3)
 
-################### 4) RE-INTRODUCE ECOREGIONS, TOTAL ENTRIES, SPEC COUNT, AVG DBH PER CLUSTER FOR EACH CYCLE ---------
-#### 4.1) FUllStack_V4 ----
-FullStack_V4 <- FullStack_V3 |> 
-  left_join(Sec.14 |> 
-              mutate(Cluster_ID = IDConglomerado) |> 
-              select(Cluster_ID, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
-            by = "Cluster_ID") |> 
-  left_join(Comp_C_Diagnostics_V5 |> 
-              ungroup() |> 
-              filter(File == 1) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH1 = AvgDbh,
-                     CD1 = AvgCrownDiameter,
-                     CH1 = AvgCrownHeight,
-                     CA1 = AvgCrownArea,
-                     SC1 = species_count,
-                     TH1 = AvgTreeHeight,
-                     TE1 = total_entries,
-                     J1 = J) |> 
-              select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1),
-            by = "Cluster_ID") |> 
-  left_join(Comp_C_Diagnostics_V5 |> 
-              ungroup() |> 
-              filter(File == 2) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH2 = AvgDbh,
-                     CD2 = AvgCrownDiameter,
-                     CH2 = AvgCrownHeight,
-                     CA2 = AvgCrownArea,
-                     SC2 = species_count,
-                     TH2 = AvgTreeHeight,
-                     TE2 = total_entries,
-                     J2 = J) |> 
-              select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2),
-            by = "Cluster_ID") |> 
-  left_join(Comp_C_Diagnostics_V5 |> 
-              ungroup() |> 
-              filter(File == 3) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH3 = AvgDbh,
-                     CD3 = AvgCrownDiameter,
-                     CH3 = AvgCrownHeight,
-                     CA3 = AvgCrownArea,
-                     SC3 = species_count,
-                     TH3 = AvgTreeHeight,
-                     TE3 = total_entries,
-                     J3 = J) |> 
-              select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3),
-            by = "Cluster_ID") |> 
-  # Exchanging NAs with Zeros (except for J)
-  mutate(
-    # Tree Entries
-         TE1 = case_when(Muestreado1 == 1 & is.na(TE1) ~ 0,
-                         T ~ TE1),
-         TE2 = case_when(Muestreado2 == 1 & is.na(TE2) ~ 0,
-                         T ~ TE2),
-         TE3 = case_when(Muestreado3 == 1 & is.na(TE3) ~ 0,
-                         T ~ TE3),
-         # Species Count
-         SC1 = case_when(Muestreado1 == 1 & is.na(SC1) ~ 0,
-                         T ~ SC1),
-         SC2 = case_when(Muestreado2 == 1 & is.na(SC2) ~ 0,
-                         T ~ SC2),
-         SC3 = case_when(Muestreado3 == 1 & is.na(SC3) ~ 0,
-                         T ~ SC3)
-         ) |> 
-  ungroup()
 
+
+
+
+
+
+
+
+
+
+
+
+##################################     END      ##################################################################
+#
+################### National Level Species Richenss ###############################################
+# STEP 1: What is the cluster base i'll use? ----------
+
+National_Base <- FullStack_V3 |> 
+  select(Cluster_ID, X, Y, Muestreado1, Muestreado2, Muestreado3, Plot_S1, Plot_S2, Plot_S3)
+
+# STEP 2: Calculation for cycle 1, 2, and 3 -----------
+# Cycle 1
+National_1 <- National_Base |> 
+  left_join(merged |> 
+              filter(Cycle == 1) |>  
+              select(Cluster_ID, NombreCientifico_APG),
+            by = "Cluster_ID")
+
+N1 <- National_1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
+  distinct(NombreCientifico_APG) |> 
+  count() |> 
+  mutate(Cycle = 1)
+
+N1
+
+# Cycle 2
+National_2 <- National_Base |> 
+  left_join(merged |> 
+              filter(Cycle == 2) |> 
+              select(Cluster_ID, NombreCientifico_APG),
+            by = "Cluster_ID")
+
+N2 <- National_2 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
+  distinct(NombreCientifico_APG) |> 
+  count() |> 
+  mutate(Cycle = 2)
+
+# Cycle 3
+National_3 <- National_Base |> 
+  left_join(merged |> 
+              filter(Cycle == 3) |> 
+              select(Cluster_ID, NombreCientifico_APG),
+            by = "Cluster_ID")
+
+N3 <- National_3 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
+  distinct(NombreCientifico_APG)  |> 
+  count() |> 
+  mutate(Cycle = 3)
+
+
+
+
+# STEP 3: Cute Barplot ------
+# df
+National <- rbind(N1, N2, N3)
+National
+
+# plot
+National |> 
+  ggplot(aes(x = Cycle, y = n)) +
+  geom_bar(stat = "identity")
+
+
+##################################     END      ##################################################################
+#
+############### ECOREGIONS BASED ON SHAPEFILE  ############################################
+## STEP 1: load package ---------------
+library(sf)
+
+## STEP 2: read shapeCycle "ecoregions" -----
+
+shapefile <- st_read(here("data", "Ecoregions", "ecort08cw.shp"))
+
+## STEP 3: create sf object for coordinates -----
+coordinates_df <- National_Base |> 
+  filter(!is.na(X)) %>%
+  st_as_sf(coords = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
+
+coordinates_df
+
+
+## STEP 4: ensure CRS compatability -----
+# Check CRS of both datasets
+crs_shapefile <- st_crs(shapefile)
+crs_coordinates_df <- st_crs(coordinates_df)
+
+if (crs_shapefile != crs_coordinates_df) {
+  coordinates_df <- st_transform(coordinates_df, crs_shapefile)
+}
+
+## STEP 5: spatial join ----
+joined_data <- st_join(coordinates_df, shapefile)
+
+## STEP 6: drop everything apart from cluster_ID and DESECON  + return to regular df ----
+Ecoregions <- st_set_geometry(joined_data |> 
+                                select(Cluster_ID, DESECON1, DESECON2, DESECON3, DESECON4), NULL)
+##################################     END      ##################################################################
+#
+##############  BASE FOR ALL CACLULATIONS      #################################################
+## STEP 1: JOIN National_Base and Ecoregions based on Cluster_ID ----
+Base <- National_Base |> 
+  left_join(Ecoregions, by = "Cluster_ID")
+
+Base
+##################################     END      ##################################################################
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+
+Base
+
+################### 4) FULLSTACK_V4 onwards, TOTAL ENTRIES, SPEC COUNT, AVG DBH PER CLUSTER FOR EACH CYCLE ---------
 #### 4.2) FullStack_V4_Zeros ----
 FullStack_V4_Zeros <- FullStack_V3 |> 
   left_join(Sec.14 |> 
@@ -991,10 +1035,8 @@ FullStack_V4_Zeros <- FullStack_V3 |>
             by = "Cluster_ID") |> 
   left_join(Comp_C_Diagnostics_V5 |> 
               ungroup() |> 
-              filter(File == 1) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH1 = AvgDbh,
+              filter(Cycle == 1) |> 
+              mutate(DBH1 = AvgDbh,
                      CD1 = AvgCrownDiameter,
                      CH1 = AvgCrownHeight,
                      CA1 = AvgCrownArea,
@@ -1006,10 +1048,8 @@ FullStack_V4_Zeros <- FullStack_V3 |>
             by = "Cluster_ID") |> 
   left_join(Comp_C_Diagnostics_V5 |> 
               ungroup() |> 
-              filter(File == 2) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH2 = AvgDbh,
+              filter(Cycle == 2) |> 
+              mutate(DBH2 = AvgDbh,
                      CD2 = AvgCrownDiameter,
                      CH2 = AvgCrownHeight,
                      CA2 = AvgCrownArea,
@@ -1021,10 +1061,8 @@ FullStack_V4_Zeros <- FullStack_V3 |>
             by = "Cluster_ID") |> 
   left_join(Comp_C_Diagnostics_V5 |> 
               ungroup() |> 
-              filter(File == 3) |> 
-              mutate(Cluster_ID2 = Cluster_ID,
-                     Cluster_ID = Conglomerado,
-                     DBH3 = AvgDbh,
+              filter(Cycle == 3) |> 
+              mutate(DBH3 = AvgDbh,
                      CD3 = AvgCrownDiameter,
                      CH3 = AvgCrownHeight,
                      CA3 = AvgCrownArea,
@@ -1090,19 +1128,6 @@ FullStack_V4_Zeros <- FullStack_V3 |>
 
 
 ################### 5) UNIVARIATE CHANGE CALCULATIONS -----------------------------------
-#### 5.1) FullSack_V4 -----
-FullStack_V4 <- FullStack_V4 |> 
-  # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
-  mutate(TE12 = TE2 - TE1,
-         TE23 = TE3 - TE2,
-         TE13 = TE3 - TE1,
-         SC12 = SC2 - SC1,
-         SC23 = SC3 - SC2,
-         SC13 = SC3 - SC1,
-         DBH12 = DBH2 - DBH1,
-         DBH23 = DBH3 - DBH2,
-         DBH13 = DBH3 - DBH1)
-
 #### 5.1.1) FullSack_V4_Zeros -----
 FullStack_V4_Zeros <- FullStack_V4_Zeros |> 
   # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
@@ -1111,8 +1136,7 @@ FullStack_V4_Zeros <- FullStack_V4_Zeros |>
          TE13 = TE3 - TE1,
          SC12 = SC2 - SC1,
          SC23 = SC3 - SC2,
-         SC13 = SC3 - SC1,
-         CA13 = CA3 - CA1)
+         SC13 = SC3 - SC1)
 
 
 ################### 6) UNIVARIATE CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
@@ -1198,6 +1222,13 @@ time.taken <- end.time - start.time
 time.taken
 
 
+
+
+
+
+
+
+
 ###################    FOR MAPS: Total Entries, Species Richness and Biomass Calculation based on Ecoregions  #####################
 #### 1) Cluster + Ecoregions Database = Ecoregions_base ----------------
 Ecoregions_base <- NewBase2 |> 
@@ -1207,34 +1238,36 @@ Ecoregions_base <- NewBase2 |>
               select(Cluster_ID, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
             by = "Cluster_ID")
 
+Ecoregions_base
+
 #### 2) Add merged values of interest -----
 #Ecoregion 1
 Ecoregions1_merged <- Ecoregions_base |> 
   left_join(merged |> 
               mutate(Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, File, NombreCientifico_APG),
+              select(Cluster_ID, Cycle, NombreCientifico_APG),
             by = "Cluster_ID") |> 
   ungroup() |> 
-  group_by(File, DESECON1_C3) |> 
-  summarise(File = mean(as.integer(File)),
+  group_by(Cycle, DESECON1_C3) |> 
+  summarise(Cycle = mean(as.integer(Cycle)),
             Eco1_speciesrichness = n_distinct(NombreCientifico_APG),
             Eco1_totalentries = n())
 
 Ecoregions1_merged_ridgeplot <- Ecoregions_base |> 
   left_join(merged |> 
               mutate(Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, File, NombreCientifico_APG),
+              select(Cluster_ID, Cycle, NombreCientifico_APG),
             by = "Cluster_ID")
 
 # Ecoregion 2
 Ecoregions2_merged <- Ecoregions_base |> 
   left_join(merged |> 
               mutate(Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, File, NombreCientifico_APG),
+              select(Cluster_ID, Cycle, NombreCientifico_APG),
             by = "Cluster_ID") |> 
   ungroup() |> 
-  group_by(File, DESECON2_C3) |> 
-  summarise(File = mean(as.integer(File)),
+  group_by(Cycle, DESECON2_C3) |> 
+  summarise(Cycle = mean(as.integer(Cycle)),
             Eco2_speciesrichness = n_distinct(NombreCientifico_APG),
             Eco2_totalentries = n())
 
@@ -1253,7 +1286,7 @@ Ecoregions2 <- Ecoregions_base |>
 #### 4) To make Maps, filter for Specifications ---- 
 # Eco1 ----
 Eco1_1 <- Ecoregions1 |> 
-  filter(!is.na(DESECON1_C3) & File == 1)
+  filter(!is.na(DESECON1_C3) & Cycle == 1)
 Eco1_1 |> 
   ungroup() |> 
   select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
@@ -1261,7 +1294,7 @@ Eco1_1 |>
 # write vector
 
 Eco1_2 <- Ecoregions1 |> 
-  filter(!is.na(DESECON1_C3) & File == 2)
+  filter(!is.na(DESECON1_C3) & Cycle == 2)
 Eco1_2 |> 
   ungroup() |> 
   select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
@@ -1269,7 +1302,7 @@ Eco1_2 |>
 # write vector
 
 Eco1_3 <- Ecoregions1 |> 
-  filter(!is.na(DESECON1_C3) & File == 3)
+  filter(!is.na(DESECON1_C3) & Cycle == 3)
 Eco1_3 |> 
   ungroup() |> 
   select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
@@ -1300,7 +1333,7 @@ Eco1 <- Eco1_1 |>
 
 # Eco2 ----
 Eco2_1 <- Ecoregions2 |> 
-  filter(!is.na(DESECON2_C3) & File == 1)
+  filter(!is.na(DESECON2_C3) & Cycle == 1)
 Eco2_1 |> 
   ungroup() |> 
   select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
@@ -1308,7 +1341,7 @@ Eco2_1 |>
 # write vector
 
 Eco2_2 <- Ecoregions2 |> 
-  filter(!is.na(DESECON2_C3) & File == 2)
+  filter(!is.na(DESECON2_C3) & Cycle == 2)
 Eco2_2 |> 
   ungroup() |> 
   select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
@@ -1316,7 +1349,7 @@ Eco2_2 |>
 # write vector
 
 Eco2_3 <- Ecoregions2 |> 
-  filter(!is.na(DESECON2_C3) & File == 3)
+  filter(!is.na(DESECON2_C3) & Cycle == 3)
 Eco2_3 |> 
   ungroup() |> 
   select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
@@ -1357,114 +1390,6 @@ time.taken <- end.time - start.time
 time.taken
 
 
-################### National Level Species Richenss ###############################################
-# STEP 1: What is the cluster base i'll use? ----------
-
-National_Base <- FullStack_V4 |> 
-  select(Cluster_ID, X, Y, Muestreado1, Muestreado2, Muestreado3, Plot_S1, Plot_S2, Plot_S3)
-
-# STEP 2: Calculation for cycle 1, 2, and 3 -----------
-# Cycle 1
-National_1 <- National_Base |> 
-  left_join(merged |> 
-              filter(File == 1) |> 
-              rename(ID = Cluster_ID,
-                     Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, NombreCientifico_APG),
-            by = "Cluster_ID")
-
-N1 <- National_1 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
-  distinct(NombreCientifico_APG) |> 
-  count() |> 
-  mutate(Cycle = 1)
-
-# Cycle 2
-National_2 <- National_Base |> 
-  left_join(merged |> 
-              filter(File == 2) |> 
-              rename(ID = Cluster_ID,
-                     Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, NombreCientifico_APG),
-            by = "Cluster_ID")
-
-N2 <- National_2 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
-  distinct(NombreCientifico_APG) |> 
-  count() |> 
-  mutate(Cycle = 2)
-
-# Cycle 3
-National_3 <- National_Base |> 
-  left_join(merged |> 
-              filter(File == 3) |> 
-              rename(ID = Cluster_ID,
-                     Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, NombreCientifico_APG),
-            by = "Cluster_ID")
-
-N3 <- National_3 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
-  distinct(NombreCientifico_APG)  |> 
-  count() |> 
-  mutate(Cycle = 3)
-
-
-
-
-# STEP 3: Cute Barplot ------
-# df
-National <- rbind(N1, N2, N3)
-
-# plot
-National |> 
-  ggplot(aes(x = Cycle, y = n)) +
-  geom_bar(stat = "identity")
-
-
-##################################     END      ##################################################################
-
-############### ECOREGIONS BASED ON SHAPEFILE   ############################################
-## STEP 1: load package ---------------
-library(sf)
-
-## STEP 2: read shapefile "ecoregions" -----
-
-shapefile <- st_read(here("data", "Ecoregions", "ecort08cw.shp"))
-
-## STEP 3: create sf object for coordinates -----
-coordinates_df <- Ecoregions_base |> 
-  filter(!is.na(X)) %>%
-  st_as_sf(coords = c("X", "Y"), crs = "+proj=longlat +datum=WGS84")
-
-coordinates_df
-
-## STEP 4: ensure CRS compatability -----
-# Check CRS of both datasets
-crs_shapefile <- st_crs(shapefile)
-crs_coordinates_df <- st_crs(coordinates_df)
-
-if (crs_shapefile != crs_coordinates_df) {
-  coordinates_df <- st_transform(coordinates_df, crs_shapefile)
-}
-
-## STEP 5: spatial join ----
-joined_data <- st_join(coordinates_df, shapefile)
-
-## STEP 6: drop everything apart from cluster_ID and DESECON  + return to regular df ----
-Ecoregions <- st_set_geometry(joined_data |> 
-  select(Cluster_ID, DESECON1, DESECON2, DESECON3, DESECON4), NULL)
-##################################     END      ##################################################################
-
-##############  BASE FOR ALL CACLULATIONS      #################################################
-## STEP 1: JOIN National_Base and Ecoregions based on Cluster_ID ----
-Base <- National_Base |> 
-  left_join(Ecoregions, by = "Cluster_ID")
-
-##################################     END      ##################################################################
 
 ##############  ECOREGIONS CALCULATION         ###############################################
 ## STEP 1: add ecoregions to rest of data based on cluster_ID ----
@@ -1509,6 +1434,8 @@ Eco_wide <- Eco_Cluster |>
 
 Eco_wide
 
+
+
 ## STEP 6: Ready for rarefaction ----
 Test <- Eco_wide |> 
   filter(DESECON2 == "Sierra Madre del Sur")
@@ -1520,6 +1447,10 @@ Eco_long |>
   print(n = 100)
 
 ##################################     END      ##################################################################
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 
 
 ############### RAREFACTION CODE  ######################
@@ -1620,12 +1551,12 @@ Rarefied_Test2_long |>
   group_by(Cycle, DESECON2) |> 
   summarise(n = n())
 ##################################     END      ##################################################################
-FullStack_V4 |> 
+FullStack_V4_Zeros |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
   count()
 
-FullStack_V4 |> 
+FullStack_V4_Zeros |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   filter((Plot_S2 == 4 & Plot_S3 == 4) | (Plot_S2 == 3 & Plot_S3 == 3) | 
            (Plot_S2 == 2 & Plot_S3 == 2)| (Plot_S2 == 1 & Plot_S3 == 1)) |> 
@@ -1636,12 +1567,12 @@ FullStack_V4 |>
 
 ##################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
 ################## 1) Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 1
-file1 <- FullStack_V4 |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 1
+Cycle1 <- FullStack_V4 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH1,
          AvgCrownDiameter = CD1,
          AvgCrownHeight = CH1,
@@ -1650,17 +1581,17 @@ file1 <- FullStack_V4 |>
          AvgTreeHeight = TH1,
          TreeCount = TE1,
          J = J1) |> 
-  # add file grouping
-  mutate(File = 1) |> 
-  relocate(File)
+  # add Cycle grouping
+  mutate(Cycle = 1) |> 
+  relocate(Cycle)
 
-file1
+Cycle1
 
-## File 2
-file2 <- FullStack_V4 |> 
+## Cycle 2
+Cycle2 <- FullStack_V4 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH2,
          AvgCrownDiameter = CD2,
          AvgCrownHeight = CH2,
@@ -1669,27 +1600,27 @@ file2 <- FullStack_V4 |>
          AvgTreeHeight = TH2,
          TreeCount = TE2,
          J = J2) |> 
-  #add file grouping
-  mutate(File = 2) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 2) |> 
+  relocate(Cycle)
 
-file2
+Cycle2
 
 #### STEP 2: merge into long data format ----
-file12 <- rbind(file1, file2)
+Cycle12 <- rbind(Cycle1, Cycle2)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file12, "iMAD_Data_12_Constant.csv")
+# write.csv(Cycle12, "iMAD_Data_12_Constant.csv")
 
 ################## 1.1) ZEROs - Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 1
-file1 <- FullStack_V4_Zeros |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 1
+Cycle1 <- FullStack_V4_Zeros |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH1,
          AvgCrownDiameter = CD1,
          AvgCrownHeight = CH1,
@@ -1698,17 +1629,17 @@ file1 <- FullStack_V4_Zeros |>
          AvgTreeHeight = TH1,
          TreeCount = TE1,
          J = J1) |> 
-  # add file grouping
-  mutate(File = 1) |> 
-  relocate(File)
+  # add Cycle grouping
+  mutate(Cycle = 1) |> 
+  relocate(Cycle)
 
-file1
+Cycle1
 
-## File 2
-file2 <- FullStack_V4_Zeros |> 
+## Cycle 2
+Cycle2 <- FullStack_V4_Zeros |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH2,
          AvgCrownDiameter = CD2,
          AvgCrownHeight = CH2,
@@ -1717,27 +1648,27 @@ file2 <- FullStack_V4_Zeros |>
          AvgTreeHeight = TH2,
          TreeCount = TE2,
          J = J2) |> 
-  #add file grouping
-  mutate(File = 2) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 2) |> 
+  relocate(Cycle)
 
-file2
+Cycle2
 
 #### STEP 2: merge into long data format ----
-file12 <- rbind(file1, file2)
+Cycle12 <- rbind(Cycle1, Cycle2)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file12, "iMAD_Data_12_Constant_Zeros.csv")
+# write.csv(Cycle12, "iMAD_Data_12_Constant_Zeros.csv")
 
 ################## 1.2) NOISE - Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 1
-file1 <- FullStack_V4_Noise |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 1
+Cycle1 <- FullStack_V4_Noise |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH1,
          AvgCrownDiameter = CD1,
          AvgCrownHeight = CH1,
@@ -1746,17 +1677,17 @@ file1 <- FullStack_V4_Noise |>
          AvgTreeHeight = TH1,
          TreeCount = TE1,
          J = J1) |> 
-  # add file grouping
-  mutate(File = 1) |> 
-  relocate(File)
+  # add Cycle grouping
+  mutate(Cycle = 1) |> 
+  relocate(Cycle)
 
-file1
+Cycle1
 
-## File 2
-file2 <- FullStack_V4_Noise |> 
+## Cycle 2
+Cycle2 <- FullStack_V4_Noise |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH2,
          AvgCrownDiameter = CD2,
          AvgCrownHeight = CH2,
@@ -1765,30 +1696,30 @@ file2 <- FullStack_V4_Noise |>
          AvgTreeHeight = TH2,
          TreeCount = TE2,
          J = J2) |> 
-  #add file grouping
-  mutate(File = 2) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 2) |> 
+  relocate(Cycle)
 
-file2
+Cycle2
 
 #### STEP 2: merge into long data format ----
-file12 <- rbind(file1, file2)
+Cycle12 <- rbind(Cycle1, Cycle2)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file12, "iMAD_Data_12_Constant_Noise.csv")
+# write.csv(Cycle12, "iMAD_Data_12_Constant_Noise.csv")
 
 
 
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 2
-file2 <- FullStack_V4 |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 2
+Cycle2 <- FullStack_V4 |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH2,
          AvgCrownDiameter = CD2,
          AvgCrownHeight = CH2,
@@ -1797,17 +1728,17 @@ file2 <- FullStack_V4 |>
          AvgTreeHeight = TH2,
          TreeCount = TE2,
          J = J2) |> 
-  #add file grouping
-  mutate(File = 2) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 2) |> 
+  relocate(Cycle)
 
-file2
+Cycle2
 
-## File 3
-file3 <- FullStack_V4 |> 
+## Cycle 3
+Cycle3 <- FullStack_V4 |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH3,
          AvgCrownDiameter = CD3,
          AvgCrownHeight = CH3,
@@ -1816,27 +1747,27 @@ file3 <- FullStack_V4 |>
          AvgTreeHeight = TH3,
          TreeCount = TE3,
          J = J3) |> 
-  #add file grouping
-  mutate(File = 3) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 3) |> 
+  relocate(Cycle)
 
-file3
+Cycle3
 
 #### STEP 2: merge into long data format ----
-file23 <- rbind(file2, file3)
+Cycle23 <- rbind(Cycle2, Cycle3)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file23, "iMAD_Data_23_Constant.csv")
+# write.csv(Cycle23, "iMAD_Data_23_Constant.csv")
 
 ################## 2.1) ZEROs - Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 2
-file2 <- FullStack_V4_Zeros |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 2
+Cycle2 <- FullStack_V4_Zeros |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH2,
          AvgCrownDiameter = CD2,
          AvgCrownHeight = CH2,
@@ -1845,17 +1776,17 @@ file2 <- FullStack_V4_Zeros |>
          AvgTreeHeight = TH2,
          TreeCount = TE2,
          J = J2) |> 
-  #add file grouping
-  mutate(File = 2) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 2) |> 
+  relocate(Cycle)
 
-file2
+Cycle2
 
-## File 3
-file3 <- FullStack_V4_Zeros |> 
+## Cycle 3
+Cycle3 <- FullStack_V4_Zeros |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH3,
          AvgCrownDiameter = CD3,
          AvgCrownHeight = CH3,
@@ -1864,27 +1795,27 @@ file3 <- FullStack_V4_Zeros |>
          AvgTreeHeight = TH3,
          TreeCount = TE3,
          J = J3) |> 
-  #add file grouping
-  mutate(File = 3) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 3) |> 
+  relocate(Cycle)
 
-file3
+Cycle3
 
 #### STEP 2: merge into long data format ----
-file23 <- rbind(file2, file3)
+Cycle23 <- rbind(Cycle2, Cycle3)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file23, "iMAD_Data_23_Constant_Zeros.csv")
+# write.csv(Cycle23, "iMAD_Data_23_Constant_Zeros.csv")
 
 ################## 2.2) Noise - Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 2
-file2 <- FullStack_V4_Noise |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 2
+Cycle2 <- FullStack_V4_Noise |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH2,
          AvgCrownDiameter = CD2,
          AvgCrownHeight = CH2,
@@ -1893,17 +1824,17 @@ file2 <- FullStack_V4_Noise |>
          AvgTreeHeight = TH2,
          TreeCount = TE2,
          J = J2) |> 
-  #add file grouping
-  mutate(File = 2) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 2) |> 
+  relocate(Cycle)
 
-file2
+Cycle2
 
-## File 3
-file3 <- FullStack_V4_Noise |> 
+## Cycle 3
+Cycle3 <- FullStack_V4_Noise |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH3,
          AvgCrownDiameter = CD3,
          AvgCrownHeight = CH3,
@@ -1912,28 +1843,28 @@ file3 <- FullStack_V4_Noise |>
          AvgTreeHeight = TH3,
          TreeCount = TE3,
          J = J3) |> 
-  #add file grouping
-  mutate(File = 3) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 3) |> 
+  relocate(Cycle)
 
-file3
+Cycle3
 
 #### STEP 2: merge into long data format ----
-file23 <- rbind(file2, file3)
+Cycle23 <- rbind(Cycle2, Cycle3)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file23, "iMAD_Data_23_Constant_Noise.csv")
+# write.csv(Cycle23, "iMAD_Data_23_Constant_Noise.csv")
 
 ########### CUT -------------------------------------------------------------------------------------------------
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 1
-file1 <- FullStack_V4 |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 1
+Cycle1 <- FullStack_V4 |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH1,
          AvgCrownDiameter = CD1,
          AvgCrownHeight = CH1,
@@ -1942,17 +1873,17 @@ file1 <- FullStack_V4 |>
          AvgTreeHeight = TH1,
          TreeCount = TE1,
          J = J1) |> 
-  # add file grouping
-  mutate(File = 1) |> 
-  relocate(File)
+  # add Cycle grouping
+  mutate(Cycle = 1) |> 
+  relocate(Cycle)
 
-file1
+Cycle1
 
-## File 3
-file3 <- FullStack_V4 |> 
+## Cycle 3
+Cycle3 <- FullStack_V4 |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH3,
          AvgCrownDiameter = CD3,
          AvgCrownHeight = CH3,
@@ -1961,27 +1892,27 @@ file3 <- FullStack_V4 |>
          AvgTreeHeight = TH3,
          TreeCount = TE3,
          J = J3) |> 
-  #add file grouping
-  mutate(File = 3) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 3) |> 
+  relocate(Cycle)
 
-file3
+Cycle3
 
 #### STEP 2: merge into long data format ----
-file13 <- rbind(file1, file3)
+Cycle13 <- rbind(Cycle1, Cycle3)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file13, "iMAD_Data_13_Constant.csv")
+# write.csv(Cycle13, "iMAD_Data_13_Constant.csv")
 
 ################## 3.1) ZEROs - Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 1
-file1 <- FullStack_V4_Zeros |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 1
+Cycle1 <- FullStack_V4_Zeros |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH1,
          AvgCrownDiameter = CD1,
          AvgCrownHeight = CH1,
@@ -1990,17 +1921,17 @@ file1 <- FullStack_V4_Zeros |>
          AvgTreeHeight = TH1,
          TreeCount = TE1,
          J = J1) |> 
-  # add file grouping
-  mutate(File = 1) |> 
-  relocate(File)
+  # add Cycle grouping
+  mutate(Cycle = 1) |> 
+  relocate(Cycle)
 
-file1
+Cycle1
 
-## File 3
-file3 <- FullStack_V4_Zeros |> 
+## Cycle 3
+Cycle3 <- FullStack_V4_Zeros |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH3,
          AvgCrownDiameter = CD3,
          AvgCrownHeight = CH3,
@@ -2009,27 +1940,27 @@ file3 <- FullStack_V4_Zeros |>
          AvgTreeHeight = TH3,
          TreeCount = TE3,
          J = J3) |> 
-  #add file grouping
-  mutate(File = 3) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 3) |> 
+  relocate(Cycle)
 
-file3
+Cycle3
 
 #### STEP 2: merge into long data format ----
-file13 <- rbind(file1, file3)
+Cycle13 <- rbind(Cycle1, Cycle3)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file13, "iMAD_Data_13_Constant_Zeros.csv")
+# write.csv(Cycle13, "iMAD_Data_13_Constant_Zeros.csv")
 
 ################## 3.2) Noise - Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by file + add file grouping variable (CONSTANT CLUSTERS) -----
-## File 1
-file1 <- FullStack_V4_Noise |> 
+#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
+## Cycle 1
+Cycle1 <- FullStack_V4_Noise |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH1,
          AvgCrownDiameter = CD1,
          AvgCrownHeight = CH1,
@@ -2038,17 +1969,17 @@ file1 <- FullStack_V4_Noise |>
          AvgTreeHeight = TH1,
          TreeCount = TE1,
          J = J1) |> 
-  # add file grouping
-  mutate(File = 1) |> 
-  relocate(File)
+  # add Cycle grouping
+  mutate(Cycle = 1) |> 
+  relocate(Cycle)
 
-file1
+Cycle1
 
-## File 3
-file3 <- FullStack_V4_Noise |> 
+## Cycle 3
+Cycle3 <- FullStack_V4_Noise |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to file-unspecific names -> in order to create long data format 
+  # changing variable names to Cycle-unspecific names -> in order to create long data format 
   rename(AvgDbh = DBH3,
          AvgCrownDiameter = CD3,
          AvgCrownHeight = CH3,
@@ -2057,19 +1988,19 @@ file3 <- FullStack_V4_Noise |>
          AvgTreeHeight = TH3,
          TreeCount = TE3,
          J = J3) |> 
-  #add file grouping
-  mutate(File = 3) |> 
-  relocate(File)
+  #add Cycle grouping
+  mutate(Cycle = 3) |> 
+  relocate(Cycle)
 
-file3
+Cycle3
 
 #### STEP 2: merge into long data format ----
-file13 <- rbind(file1, file3)
+Cycle13 <- rbind(Cycle1, Cycle3)
 
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(file13, "iMAD_Data_13_Constant_Noise.csv")
+# write.csv(Cycle13, "iMAD_Data_13_Constant_Noise.csv")
 
 ##################################     END      ##################################################################
 
@@ -3081,7 +3012,7 @@ FullStack_V4_Zeros |>
   geom_abline(color = "red") +
   geom_smooth(method = lm)
 
-#### 3) Ridges ------------------------------------------------- these make sense
+#### 3) Ridges ------------------------------------------------- 
 ## 1.1) Species Richness Distribution ----
 # SC1
 # Ecoregion 1
