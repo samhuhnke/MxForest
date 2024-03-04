@@ -678,6 +678,8 @@ Comp_C_Diagnostics_V5 <- left_join(Comp_C_Diagnostics_V4, merged |> select(Cycle
 
 ##################################     END      ##################################################################
 
+end.time <- Sys.time()
+time.taken1 <- end.time - start.time
 
 ###################          METADATA DATASET CODE            ###################################################
 ################### 1) LOAD RAW DATA ------------------------------------------------------------
@@ -737,7 +739,7 @@ MetaBase <- Temp |>
 
 
 # STEP 3: AVERAGE X and Y
-NewBase <- MetaBase |> 
+PreBase <- MetaBase |> 
   group_by(Cluster_ID) |>
   replace(is.na(MetaBase), 0) |>
   # Averaging X and Y coordinates for each cluster
@@ -775,7 +777,7 @@ NewBase <- MetaBase |>
                             TRUE ~ 0),)
 
 #STEP 4: RE-INTRODUCE WHETHER IT WAS SAMPLED
-NewBase2 <- NewBase |> 
+PreBase2 <- PreBase |> 
   # Join Cycle 1
   left_join(Sec.04 |> 
               select(Conglomerado, Muestreado) |> 
@@ -807,7 +809,7 @@ NewBase2 <- NewBase |>
 ################### 3) CLUSTER AND PLOT STATUS -----------------------------------------------------------
 #### 3.1) Cluster Status Filter ------------------------------------------------
 # STEP 1: Join Diagnostics Dataset and Metadata
-FullStack <- NewBase2 %>% 
+MetaStack <- PreBase2 %>% 
   left_join(Comp_C_Diagnostics_V5 %>%
               filter(Cycle == 1) %>%
               rename(Cycle1 = Cycle) %>%
@@ -836,7 +838,7 @@ FullStack <- NewBase2 %>%
 
   
 # STEP 2: Claculate Status of Cluster for each Cycle
-FullStack_V2 <- FullStack |> 
+MetaStack_V2 <- MetaStack |> 
   mutate(Status1 = Muestreado1 - Cycle1,
          Status2 = Muestreado2 - Cycle2,
          Status3 = Muestreado3 - Cycle3) |> 
@@ -851,7 +853,7 @@ FullStack_V2 <- FullStack |>
                              T ~ Status3))
 
 #### 3.2) Plot Status Filter ---------------------------------------------------
-FullStack_V3 <- FullStack_V2 |> 
+MetaStack_V3 <- MetaStack_V2 |> 
   left_join(Sec.04 |> 
               mutate(Cluster_ID = Conglomerado,
                      Plot_S1 = Sitios_x_cgl) |> 
@@ -896,26 +898,14 @@ FullStack_V3 <- FullStack_V2 |>
                                   Status3 > -99 ~ Plot_S3 - Plot3)
          ) 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 ##################################     END      ##################################################################
 #
 ################### National Level Species Richenss ###############################################
 # STEP 1: What is the cluster base i'll use? ----------
 
-National_Base <- FullStack_V3 |> 
+National_Base <- MetaStack_V3 |> 
   select(Cluster_ID, X, Y, Muestreado1, Muestreado2, Muestreado3, Plot_S1, Plot_S2, Plot_S3)
+
 
 # STEP 2: Calculation for cycle 1, 2, and 3 -----------
 # Cycle 1
@@ -925,7 +915,9 @@ National_1 <- National_Base |>
               select(Cluster_ID, NombreCientifico_APG),
             by = "Cluster_ID")
 
+
 N1 <- National_1 |> 
+  ungroup() |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
   filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
   distinct(NombreCientifico_APG) |> 
@@ -942,6 +934,7 @@ National_2 <- National_Base |>
             by = "Cluster_ID")
 
 N2 <- National_2 |> 
+  ungroup() |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
   filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
   distinct(NombreCientifico_APG) |> 
@@ -956,6 +949,7 @@ National_3 <- National_Base |>
             by = "Cluster_ID")
 
 N3 <- National_3 |> 
+  ungroup() |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
   filter(Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4) |> 
   distinct(NombreCientifico_APG)  |> 
@@ -1020,19 +1014,21 @@ Base
 ##################################     END      ##################################################################
 
 end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
+time.taken2 <- end.time - start.time
 
 
-Base
+################### FILTER FOR COMPARABLE CLUSTERS ###############################################################
+c123_filter <- function(data) {
+  data %>%
+    filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1 & 
+             Plot_S1 == 4 & Plot_S2 == 4 & Plot_S3 == 4)
+}
+##################################     END      ##################################################################
 
-################### 4) FULLSTACK_V4 onwards, TOTAL ENTRIES, SPEC COUNT, AVG DBH PER CLUSTER FOR EACH CYCLE ---------
-#### 4.2) FullStack_V4_Zeros ----
-FullStack_V4_Zeros <- FullStack_V3 |> 
-  left_join(Sec.14 |> 
-              mutate(Cluster_ID = IDConglomerado) |> 
-              select(Cluster_ID, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
-            by = "Cluster_ID") |> 
+
+###################  UNIVARIATE CLUSTERBASED CHANGE CALCULATIONS  ################################################
+################### 1) FullStack_V1 ----
+FullStack_V1 <- Base |> 
   left_join(Comp_C_Diagnostics_V5 |> 
               ungroup() |> 
               filter(Cycle == 1) |> 
@@ -1123,13 +1119,12 @@ FullStack_V4_Zeros <- FullStack_V3 |>
                     T ~ TH2),
     TH3 = case_when(Muestreado3 == 1 & is.na(TH3) ~ 0,
                     T ~ TH3),
-    ) |> 
+  ) |> 
   ungroup()
 
-
-################### 5) UNIVARIATE CHANGE CALCULATIONS -----------------------------------
-#### 5.1.1) FullSack_V4_Zeros -----
-FullStack_V4_Zeros <- FullStack_V4_Zeros |> 
+ 
+################### 2) UNIVARIATE CHANGE CALCULATIONS -----------------------------------
+FullStack_V1 <- FullStack_V1 |> 
   # Calculate univariate changes in TreeCounts (TE) and SpeciesCounts (SC)
   mutate(TE12 = TE2 - TE1,
          TE23 = TE3 - TE2,
@@ -1139,58 +1134,7 @@ FullStack_V4_Zeros <- FullStack_V4_Zeros |>
          SC13 = SC3 - SC1)
 
 
-################### 6) UNIVARIATE CHANGE CALCULATION BASED ON ECOREGIONS -----------------------------------
-# STEP 1: Calculate Data based on Ecoregions given in Sec.14 ----
-FullStack_V4_Zeros_Eco1 <- FullStack_V4_Zeros |> 
-  group_by(DESECON1_C3) |> 
-  filter(!is.na(DESECON1_C3) & !is.na(TE1) & !is.na(TE2)) |> 
-  summarise(TE1_Eco = sum(TE1, na.rm = T),
-            TE2_Eco = sum(TE2, na.rm = T),
-            TE3_Eco = sum(TE3, na.rm = T),
-            TE12_Eco = TE2_Eco - TE1_Eco,
-            TE23_Eco = TE3_Eco - TE2_Eco,
-            TE13_Eco = TE3_Eco - TE1_Eco,
-            Clusters = n()) 
 
-
-
-FullStack_V4_Zeros_Eco2 <- FullStack_V4_Zeros |> 
-  group_by(DESECON2_C3) |> 
-  filter(!is.na(DESECON2_C3)) |> 
-  summarise(TE1_Eco2 = sum(TE1, na.rm = T),
-            TE2_Eco2 = sum(TE2, na.rm = T),
-            TE3_Eco2 = sum(TE3, na.rm = T),
-            TE12_Eco2 = TE2_Eco2 - TE1_Eco2,
-            TE23_Eco2 = TE3_Eco2 - TE2_Eco2,
-            TE13_Eco2 = TE3_Eco2 - TE1_Eco2)
-
-FullStack_V4_Zeros_Eco3 <- FullStack_V4_Zeros |> 
-  group_by(DESECON3_C3) |> 
-  filter(!is.na(DESECON3_C3)) |> 
-  summarise(TE1_Eco3 = sum(TE1, na.rm = T),
-            TE2_Eco3 = sum(TE2, na.rm = T),
-            TE3_Eco3 = sum(TE3, na.rm = T),
-            TE12_Eco3 = TE2_Eco3 - TE1_Eco3,
-            TE23_Eco3 = TE3_Eco3 - TE2_Eco3,
-            TE13_Eco3 = TE3_Eco3 - TE1_Eco3)
-
-FullStack_V4_Zeros_Eco4 <- FullStack_V4_Zeros |> 
-  group_by(DESECON4_C3) |> 
-  filter(!is.na(DESECON4_C3)) |> 
-  summarise(TE1_Eco4 = sum(TE1, na.rm = T),
-            TE2_Eco4 = sum(TE2, na.rm = T),
-            TE3_Eco4 = sum(TE3, na.rm = T),
-            TE12_Eco4 = TE2_Eco4 - TE1_Eco4,
-            TE23_Eco4 = TE3_Eco4 - TE2_Eco4,
-            TE13_Eco4 = TE3_Eco4 - TE1_Eco4)
-
-
-# STEP 2: Rejoin Main Data: FullStack_V5_Zeros ----
-FullStack_V5_Zeros <- FullStack_V4_Zeros |> 
-  left_join(FullStack_V4_Zeros_Eco1 , by = c("DESECON1_C3")) |> 
-  left_join(FullStack_V4_Zeros_Eco2, by = c("DESECON2_C3")) |> 
-  left_join(FullStack_V4_Zeros_Eco3, by = c("DESECON3_C3")) |> 
-  left_join(FullStack_V4_Zeros_Eco4, by = c("DESECON4_C3")) 
 
 ################### 5) GEOSPATIAL PREPARATION -----------------------------------
 
@@ -1218,180 +1162,11 @@ FullStack_V5_Zeros <- FullStack_V4_Zeros |>
 ##################################     END      ##################################################################
 
 end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
+time.taken3 <- end.time - start.time
 
 
 
-
-
-
-
-
-
-###################    FOR MAPS: Total Entries, Species Richness and Biomass Calculation based on Ecoregions  #####################
-#### 1) Cluster + Ecoregions Database = Ecoregions_base ----------------
-Ecoregions_base <- NewBase2 |> 
-  select(-c("Conglomerado1", "Conglomerado2", "Conglomerado3", "DIFF12", "DIFF13", "DIFF23")) |> 
-  left_join(Sec.14 |> 
-              mutate(Cluster_ID = IDConglomerado) |> 
-              select(Cluster_ID, DESECON1_C3, DESECON2_C3, DESECON3_C3, DESECON4_C3),
-            by = "Cluster_ID")
-
-Ecoregions_base
-
-#### 2) Add merged values of interest -----
-#Ecoregion 1
-Ecoregions1_merged <- Ecoregions_base |> 
-  left_join(merged |> 
-              mutate(Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, Cycle, NombreCientifico_APG),
-            by = "Cluster_ID") |> 
-  ungroup() |> 
-  group_by(Cycle, DESECON1_C3) |> 
-  summarise(Cycle = mean(as.integer(Cycle)),
-            Eco1_speciesrichness = n_distinct(NombreCientifico_APG),
-            Eco1_totalentries = n())
-
-Ecoregions1_merged_ridgeplot <- Ecoregions_base |> 
-  left_join(merged |> 
-              mutate(Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, Cycle, NombreCientifico_APG),
-            by = "Cluster_ID")
-
-# Ecoregion 2
-Ecoregions2_merged <- Ecoregions_base |> 
-  left_join(merged |> 
-              mutate(Cluster_ID = Conglomerado) |> 
-              select(Cluster_ID, Cycle, NombreCientifico_APG),
-            by = "Cluster_ID") |> 
-  ungroup() |> 
-  group_by(Cycle, DESECON2_C3) |> 
-  summarise(Cycle = mean(as.integer(Cycle)),
-            Eco2_speciesrichness = n_distinct(NombreCientifico_APG),
-            Eco2_totalentries = n())
-
-
-#### 3) Rejoin coordinates ---------
-# Ecoregion 1
-Ecoregions1 <- Ecoregions_base |> 
-  left_join(Ecoregions1_merged,
-            by = c("DESECON1_C3"))
-# Ecoregion 2
-Ecoregions2 <- Ecoregions_base |> 
-  left_join(Ecoregions2_merged,
-            by = c("DESECON2_C3"))
-
-
-#### 4) To make Maps, filter for Specifications ---- 
-# Eco1 ----
-Eco1_1 <- Ecoregions1 |> 
-  filter(!is.na(DESECON1_C3) & Cycle == 1)
-Eco1_1 |> 
-  ungroup() |> 
-  select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
-  distinct()
-# write vector
-
-Eco1_2 <- Ecoregions1 |> 
-  filter(!is.na(DESECON1_C3) & Cycle == 2)
-Eco1_2 |> 
-  ungroup() |> 
-  select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
-  distinct()
-# write vector
-
-Eco1_3 <- Ecoregions1 |> 
-  filter(!is.na(DESECON1_C3) & Cycle == 3)
-Eco1_3 |> 
-  ungroup() |> 
-  select(DESECON1_C3, Eco1_speciesrichness, Eco1_totalentries) |> 
-  distinct()
-# write vector
-
-Eco1 <- Eco1_1 |> 
-  mutate(Eco1_SC1 = Eco1_speciesrichness,
-         Eco1_TE1 = Eco1_totalentries) |>
-  left_join(Eco1_2 |> ungroup() |> 
-              mutate(Eco1_SC2 = Eco1_speciesrichness,
-                     Eco1_TE2 = Eco1_totalentries) |>
-              select(Cluster_ID, Eco1_SC2, Eco1_TE2) |> 
-              distinct(), by = "Cluster_ID") |> 
-  left_join(Eco1_3 |> ungroup() |> 
-              mutate(Eco1_SC3 = Eco1_speciesrichness,
-                     Eco1_TE3 = Eco1_totalentries) |>
-              select(Cluster_ID, Eco1_SC3, Eco1_TE3) |> 
-              distinct(), by = "Cluster_ID") |> 
-  select(-c("Eco1_speciesrichness", "Eco1_totalentries")) |> 
-  #univariate changes on ecoregion1 level
-  mutate(SC12 = Eco1_SC2 - Eco1_SC1,
-         SC23 = Eco1_SC3 - Eco1_SC2,
-         SC13 = Eco1_SC3 - Eco1_SC1,
-         Avg_SC = (Eco1_SC1 + Eco1_SC2 + Eco1_SC3)/3)
-
-
-
-# Eco2 ----
-Eco2_1 <- Ecoregions2 |> 
-  filter(!is.na(DESECON2_C3) & Cycle == 1)
-Eco2_1 |> 
-  ungroup() |> 
-  select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
-  distinct()
-# write vector
-
-Eco2_2 <- Ecoregions2 |> 
-  filter(!is.na(DESECON2_C3) & Cycle == 2)
-Eco2_2 |> 
-  ungroup() |> 
-  select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
-  distinct()
-# write vector
-
-Eco2_3 <- Ecoregions2 |> 
-  filter(!is.na(DESECON2_C3) & Cycle == 3)
-Eco2_3 |> 
-  ungroup() |> 
-  select(DESECON2_C3, Eco2_speciesrichness, Eco2_totalentries) |> 
-  distinct()
-# write vector
-
-Eco2 <- Eco2_1 |> 
-  mutate(Eco2_SC1 = Eco2_speciesrichness,
-         Eco2_TE1 = Eco2_totalentries) |>
-  left_join(Eco2_2 |> ungroup() |> 
-              mutate(Eco2_SC2 = Eco2_speciesrichness,
-                     Eco2_TE2 = Eco2_totalentries) |>
-              select(Cluster_ID, Eco2_SC2, Eco2_TE2) |> 
-              distinct(), by = "Cluster_ID") |> 
-  left_join(Eco2_3 |> ungroup() |> 
-              mutate(Eco2_SC3 = Eco2_speciesrichness,
-                     Eco2_TE3 = Eco2_totalentries) |>
-              select(Cluster_ID, Eco2_SC3, Eco2_TE3) |> 
-              distinct(), by = "Cluster_ID") |> 
-  select(-c("Eco2_speciesrichness", "Eco2_totalentries")) |> 
-  #univariate changes on ecoregion1 level
-  mutate(SC12 = Eco2_SC2 - Eco2_SC1,
-         SC23 = Eco2_SC3 - Eco2_SC2,
-         SC13 = Eco2_SC3 - Eco2_SC1,
-         Avg_SC = (Eco2_SC1 + Eco2_SC2 + Eco2_SC3)/3)
-#### 5) Geospatial Prep ----
-
-# ECO 1
-# writeVector(vect(Eco1, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco1.shp")
-
-# ECO 2
-# writeVector(vect(Eco2, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Eco2.shp")
-
-##################################     END      ##################################################################
-
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
-
-
-
-##############  ECOREGIONS CALCULATION         ###############################################
+##############  ECOREGIONS BASED CALCULATION         ###############################################
 ## STEP 1: add ecoregions to rest of data based on cluster_ID ----
 Eco_Calc <- merged |> 
   select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
@@ -1425,8 +1200,8 @@ Eco_Species_wide <- Eco_Species_wide |>
 Eco_Species_wide <- Eco_Species_wide |> 
   replace(is.na(Eco_Species_wide), 0)
 
-  
-  
+
+
 ## STEP 5: Combine Eco_Species and Eco_Cluster ----
 Eco_wide <- Eco_Cluster |> 
   left_join(Eco_Species_wide,
@@ -1441,27 +1216,16 @@ Test <- Eco_wide |>
   filter(DESECON2 == "Sierra Madre del Sur")
 Test
 
-Eco_long |> 
-  group_by(Cycle, DESECON2) |> 
-  count() |> 
-  print(n = 100)
 
-##################################     END      ##################################################################
-
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
-
-
-############### RAREFACTION CODE  ######################
-### loop for rarefaction ----
+## STEP 7: Rarefaction ----
 ### IMPORTANT: run this code only with species as cols and samples as rows!!!
 m.rar.time <- Test[, -c(1:3)]
 
-m.rar.time <- m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
+# preparation step: change integer values to numeric 
+m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
 
 
-
+# rarefaction
 a <- min(Test$number_of_clusters) # -> 55 days
 m3_rarified <- m.rar.time 
 for (k in 1:ncol(m.rar.time)) {
@@ -1470,6 +1234,7 @@ for (k in 1:ncol(m.rar.time)) {
   }
 }
 
+# rounding of values
 m3_rarified_rd <- trunc(m3_rarified)
 commas <- m3_rarified - m3_rarified_rd
 
@@ -1488,88 +1253,35 @@ finish <- trunc(m3_rarified)
 Rarefied_Test1 <- cbind(Test[1:2], finish)
 Rarefied_Test1
 
-# 
-Rarefied_Test1_long <- Rarefied_Test %>% 
+# pivot to long data format
+Rarefied_Test1_long <- Rarefied_Test1 %>% 
   pivot_longer(
     cols = -c(1:2), # Excludes the first two columns
     names_to = "species_names",
     values_to = "values"
   )
 
-#
+# calculate number of species
 Rarefied_Test1_long |> 
   filter(values != 0) |> 
   group_by(Cycle, DESECON2) |> 
   summarise(n = n())
 
 
-### loop for rarefaction ----
-### IMPORTANT: run this code only with species as cols and samples as rows!!!
-m.rar.time <- Test[, -c(1:3)]
 
-m.rar.time <- m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
-
-
-
-a <- min(Test$number_of_clusters) # -> 55 days
-m3_rarified <- m.rar.time 
-for (k in 1:ncol(m.rar.time)) {
-  for (i in 1:nrow(m.rar.time)) {
-    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Test$number_of_clusters[i])
-  }
-}
-
-m3_rarified_rd <- trunc(m3_rarified)
-commas <- m3_rarified - m3_rarified_rd
-
-upround <- rowSums(commas)
-
-rank <- as.data.frame(t(apply(-commas, 1, order)))
-
-for (k in 1:nrow(m.rar.time)){
-  for (i in 1:round(upround[k])) {if(round(upround[k])>0){
-    m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
-  }}
-
-finish <- trunc(m3_rarified)
-
-# return to original dataformat
-Rarefied_Test2 <- cbind(Test[1:2], finish)
-Rarefied_Test2
-
-# 
-Rarefied_Test2_long <- Rarefied_Test2 %>% 
-  pivot_longer(
-    cols = -c(1:2), # Excludes the first two columns
-    names_to = "species_names",
-    values_to = "values"
-  )
-
-#
-Rarefied_Test2_long |> 
-  filter(values != 0) |> 
-  group_by(Cycle, DESECON2) |> 
-  summarise(n = n())
 ##################################     END      ##################################################################
-FullStack_V4_Zeros |> 
-  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
-  count()
 
-FullStack_V4_Zeros |> 
-  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter((Plot_S2 == 4 & Plot_S3 == 4) | (Plot_S2 == 3 & Plot_S3 == 3) | 
-           (Plot_S2 == 2 & Plot_S3 == 2)| (Plot_S2 == 1 & Plot_S3 == 1)) |> 
-  count()
 
+end.time <- Sys.time()
+time.taken4 <- end.time - start.time
 
 
 
 ##################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
-################## 1) Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
+################## 1) Cycle 1-2 -------------------------------------------
 #### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
 ## Cycle 1
-Cycle1 <- FullStack_V4 |> 
+Cycle1 <- FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
   # changing variable names to Cycle-unspecific names -> in order to create long data format 
@@ -1588,7 +1300,7 @@ Cycle1 <- FullStack_V4 |>
 Cycle1
 
 ## Cycle 2
-Cycle2 <- FullStack_V4 |> 
+Cycle2 <- FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
   # changing variable names to Cycle-unspecific names -> in order to create long data format 
@@ -1612,111 +1324,13 @@ Cycle12 <- rbind(Cycle1, Cycle2)
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(Cycle12, "iMAD_Data_12_Constant.csv")
-
-################## 1.1) ZEROs - Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
-#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
-## Cycle 1
-Cycle1 <- FullStack_V4_Zeros |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
-  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH1,
-         AvgCrownDiameter = CD1,
-         AvgCrownHeight = CH1,
-         AvgCrownArea = CA1,
-         SpeciesCount = SC1,
-         AvgTreeHeight = TH1,
-         TreeCount = TE1,
-         J = J1) |> 
-  # add Cycle grouping
-  mutate(Cycle = 1) |> 
-  relocate(Cycle)
-
-Cycle1
-
-## Cycle 2
-Cycle2 <- FullStack_V4_Zeros |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
-  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH2,
-         AvgCrownDiameter = CD2,
-         AvgCrownHeight = CH2,
-         AvgCrownArea = CA2,
-         SpeciesCount = SC2,
-         AvgTreeHeight = TH2,
-         TreeCount = TE2,
-         J = J2) |> 
-  #add Cycle grouping
-  mutate(Cycle = 2) |> 
-  relocate(Cycle)
-
-Cycle2
-
-#### STEP 2: merge into long data format ----
-Cycle12 <- rbind(Cycle1, Cycle2)
-
-
-#### STEP 3: write .csv for python ----
-
-# write.csv(Cycle12, "iMAD_Data_12_Constant_Zeros.csv")
-
-################## 1.2) NOISE - Comparison of Cycle 1 and 2 - FILTER: Only Clusters that are available for 1 and 2 --------------------------------------------
-#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
-## Cycle 1
-Cycle1 <- FullStack_V4_Noise |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
-  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH1,
-         AvgCrownDiameter = CD1,
-         AvgCrownHeight = CH1,
-         AvgCrownArea = CA1,
-         SpeciesCount = SC1,
-         AvgTreeHeight = TH1,
-         TreeCount = TE1,
-         J = J1) |> 
-  # add Cycle grouping
-  mutate(Cycle = 1) |> 
-  relocate(Cycle)
-
-Cycle1
-
-## Cycle 2
-Cycle2 <- FullStack_V4_Noise |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
-  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH2,
-         AvgCrownDiameter = CD2,
-         AvgCrownHeight = CH2,
-         AvgCrownArea = CA2,
-         SpeciesCount = SC2,
-         AvgTreeHeight = TH2,
-         TreeCount = TE2,
-         J = J2) |> 
-  #add Cycle grouping
-  mutate(Cycle = 2) |> 
-  relocate(Cycle)
-
-Cycle2
-
-#### STEP 2: merge into long data format ----
-Cycle12 <- rbind(Cycle1, Cycle2)
-
-
-#### STEP 3: write .csv for python ----
-
-# write.csv(Cycle12, "iMAD_Data_12_Constant_Noise.csv")
-
-
-
+write.csv(Cycle12, "iMAD_Data_12.csv")
 ########### CUT -------------------------------------------------------------------------------------------------
+
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
 ## Cycle 2
-Cycle2 <- FullStack_V4 |> 
+Cycle2 <- FullStack_V1 |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
   # changing variable names to Cycle-unspecific names -> in order to create long data format 
@@ -1735,7 +1349,7 @@ Cycle2 <- FullStack_V4 |>
 Cycle2
 
 ## Cycle 3
-Cycle3 <- FullStack_V4 |> 
+Cycle3 <- FullStack_V1 |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
   # changing variable names to Cycle-unspecific names -> in order to create long data format 
@@ -1759,109 +1373,14 @@ Cycle23 <- rbind(Cycle2, Cycle3)
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(Cycle23, "iMAD_Data_23_Constant.csv")
-
-################## 2.1) ZEROs - Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
-## Cycle 2
-Cycle2 <- FullStack_V4_Zeros |> 
-  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH2,
-         AvgCrownDiameter = CD2,
-         AvgCrownHeight = CH2,
-         AvgCrownArea = CA2,
-         SpeciesCount = SC2,
-         AvgTreeHeight = TH2,
-         TreeCount = TE2,
-         J = J2) |> 
-  #add Cycle grouping
-  mutate(Cycle = 2) |> 
-  relocate(Cycle)
-
-Cycle2
-
-## Cycle 3
-Cycle3 <- FullStack_V4_Zeros |> 
-  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH3,
-         AvgCrownDiameter = CD3,
-         AvgCrownHeight = CH3,
-         AvgCrownArea = CA3,
-         SpeciesCount = SC3,
-         AvgTreeHeight = TH3,
-         TreeCount = TE3,
-         J = J3) |> 
-  #add Cycle grouping
-  mutate(Cycle = 3) |> 
-  relocate(Cycle)
-
-Cycle3
-
-#### STEP 2: merge into long data format ----
-Cycle23 <- rbind(Cycle2, Cycle3)
-
-
-#### STEP 3: write .csv for python ----
-
-# write.csv(Cycle23, "iMAD_Data_23_Constant_Zeros.csv")
-
-################## 2.2) Noise - Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
-## Cycle 2
-Cycle2 <- FullStack_V4_Noise |> 
-  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(Cluster_ID, DBH2, CD2, CH2, CA2, SC2, TH2, TE2, J2, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH2,
-         AvgCrownDiameter = CD2,
-         AvgCrownHeight = CH2,
-         AvgCrownArea = CA2,
-         SpeciesCount = SC2,
-         AvgTreeHeight = TH2,
-         TreeCount = TE2,
-         J = J2) |> 
-  #add Cycle grouping
-  mutate(Cycle = 2) |> 
-  relocate(Cycle)
-
-Cycle2
-
-## Cycle 3
-Cycle3 <- FullStack_V4_Noise |> 
-  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH3,
-         AvgCrownDiameter = CD3,
-         AvgCrownHeight = CH3,
-         AvgCrownArea = CA3,
-         SpeciesCount = SC3,
-         AvgTreeHeight = TH3,
-         TreeCount = TE3,
-         J = J3) |> 
-  #add Cycle grouping
-  mutate(Cycle = 3) |> 
-  relocate(Cycle)
-
-Cycle3
-
-#### STEP 2: merge into long data format ----
-Cycle23 <- rbind(Cycle2, Cycle3)
-
-
-#### STEP 3: write .csv for python ----
-
-# write.csv(Cycle23, "iMAD_Data_23_Constant_Noise.csv")
+ write.csv(Cycle23, "iMAD_Data_23.csv")
 
 ########### CUT -------------------------------------------------------------------------------------------------
+
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
 #### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
 ## Cycle 1
-Cycle1 <- FullStack_V4 |> 
+Cycle1 <- FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
   # changing variable names to Cycle-unspecific names -> in order to create long data format 
@@ -1880,7 +1399,7 @@ Cycle1 <- FullStack_V4 |>
 Cycle1
 
 ## Cycle 3
-Cycle3 <- FullStack_V4 |> 
+Cycle3 <- FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
   select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
   # changing variable names to Cycle-unspecific names -> in order to create long data format 
@@ -1904,113 +1423,60 @@ Cycle13 <- rbind(Cycle1, Cycle3)
 
 #### STEP 3: write .csv for python ----
 
-# write.csv(Cycle13, "iMAD_Data_13_Constant.csv")
-
-################## 3.1) ZEROs - Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
-## Cycle 1
-Cycle1 <- FullStack_V4_Zeros |> 
-  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
-  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH1,
-         AvgCrownDiameter = CD1,
-         AvgCrownHeight = CH1,
-         AvgCrownArea = CA1,
-         SpeciesCount = SC1,
-         AvgTreeHeight = TH1,
-         TreeCount = TE1,
-         J = J1) |> 
-  # add Cycle grouping
-  mutate(Cycle = 1) |> 
-  relocate(Cycle)
-
-Cycle1
-
-## Cycle 3
-Cycle3 <- FullStack_V4_Zeros |> 
-  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
-  select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH3,
-         AvgCrownDiameter = CD3,
-         AvgCrownHeight = CH3,
-         AvgCrownArea = CA3,
-         SpeciesCount = SC3,
-         AvgTreeHeight = TH3,
-         TreeCount = TE3,
-         J = J3) |> 
-  #add Cycle grouping
-  mutate(Cycle = 3) |> 
-  relocate(Cycle)
-
-Cycle3
-
-#### STEP 2: merge into long data format ----
-Cycle13 <- rbind(Cycle1, Cycle3)
-
-
-#### STEP 3: write .csv for python ----
-
-# write.csv(Cycle13, "iMAD_Data_13_Constant_Zeros.csv")
-
-################## 3.2) Noise - Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
-#### STEP 1: dissecting dataframe by Cycle + add Cycle grouping variable (CONSTANT CLUSTERS) -----
-## Cycle 1
-Cycle1 <- FullStack_V4_Noise |> 
-  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
-  select(Cluster_ID, DBH1, CD1, CH1, CA1, SC1, TH1, TE1, J1, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH1,
-         AvgCrownDiameter = CD1,
-         AvgCrownHeight = CH1,
-         AvgCrownArea = CA1,
-         SpeciesCount = SC1,
-         AvgTreeHeight = TH1,
-         TreeCount = TE1,
-         J = J1) |> 
-  # add Cycle grouping
-  mutate(Cycle = 1) |> 
-  relocate(Cycle)
-
-Cycle1
-
-## Cycle 3
-Cycle3 <- FullStack_V4_Noise |> 
-  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
-  select(Cluster_ID, DBH3, CD3, CH3, CA3, SC3, TH3, TE3, J3, X, Y) |> 
-  # changing variable names to Cycle-unspecific names -> in order to create long data format 
-  rename(AvgDbh = DBH3,
-         AvgCrownDiameter = CD3,
-         AvgCrownHeight = CH3,
-         AvgCrownArea = CA3,
-         SpeciesCount = SC3,
-         AvgTreeHeight = TH3,
-         TreeCount = TE3,
-         J = J3) |> 
-  #add Cycle grouping
-  mutate(Cycle = 3) |> 
-  relocate(Cycle)
-
-Cycle3
-
-#### STEP 2: merge into long data format ----
-Cycle13 <- rbind(Cycle1, Cycle3)
-
-
-#### STEP 3: write .csv for python ----
-
-# write.csv(Cycle13, "iMAD_Data_13_Constant_Noise.csv")
+ write.csv(Cycle13, "iMAD_Data_13.csv")
 
 ##################################     END      ##################################################################
 
 
+end.time <- Sys.time()
+time.taken5 <- end.time - start.time
+
+time.taken1
+time.taken2
+time.taken3
+time.taken4
+time.taken5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ##################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
-################## 1) Comparison of Cycle 1 and 2 - FILTER: CONSTANT CLUSTERS -------------------------------------------
+################## 1) PLOT FILTER -------------------------------------------
 #### STEP 1: Load data ----
-iMAD_results_12_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12_Constant.csv"))
+iMAD_results_12 <- Raw.04 <- fread(here("data", "iMAD", "[1] iMAD Results", "iMAD_results_12.csv"))
 #### STEP 2: Rename Columns + Attach Comparison column ----
-iMAD_results_12_Constant <- iMAD_results_12_Constant |> 
+iMAD_results_12 <- iMAD_results_12 |> 
   rename(Col_1 = SpeciesCount,
          Col_2 = TreeCount,
          Col_3 = J,
@@ -2026,56 +1492,62 @@ iMAD_results_12_Constant <- iMAD_results_12_Constant |>
 ## COL 1 - 8 ----
 ## Column 1
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_1)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
+  coord_cartesian(xlim = c(-20, 20))
+
+
+sd(iMAD_results_12$Col_)
+
+iMAD_results_12 |> 
+  filter(iMAD_results_12$Col_2 > 2*sd(iMAD_results_12$Col_2))
 
 ## Column 2
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_2)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 3
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_3)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 4
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_4)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 5
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_5)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 6
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_6)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 7
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_7)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 8
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_8)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
@@ -2084,165 +1556,95 @@ iMAD_results_12_Constant |>
 ## COL 7 + 8 ----
 ## Column 7
 # Original
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_7)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") 
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_7)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-5, 5))
 
 ## Column 8
 # Original
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_8)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") 
 
 # Zoomed
-iMAD_results_12_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_8)) +
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-5, 5))
+
+#### STEP 4: chi-squared ----
+summary(iMAD_results_12$chi_squared)
+
+iMAD_results_12 |> 
+  ggplot(aes(x=chi_squared)) +
+  geom_density() +
+  coord_cartesian(xlim = c(0, 1e+8))
+
+iMAD_results_12 |> 
+  ggplot(aes(x=chi_squared)) +
+  geom_boxplot() +
+  coord_cartesian(xlim = c(0, 1e+5))
+
+iMAD_results_12 |> 
+  filter(chi_squared > quantile(iMAD_results_12$chi_squared, 0.95, df = 8))
+
+iMAD_results_12 |> 
+  filter(chi_squared <= quantile(iMAD_results_12$chi_squared, 0.05, df = 8))
+
+summary(iMAD_results_23$chi_squared)
+
+iMAD_results_23 |> 
+  ggplot(aes(x=chi_squared)) +
+  geom_density() +
+  coord_cartesian(xlim = c(0, 1e+06))
+
+iMAD_results_23 |> 
+  ggplot(aes(x=chi_squared)) +
+  geom_boxplot() +
+  coord_cartesian(xlim = c(0, 1e+6))
+
+iMAD_results_23 |> 
+  filter(chi_squared > quantile(iMAD_results_23$chi_squared, 0.95, df = 8))
+
+iMAD_results_23 |> 
+  filter(chi_squared <= quantile(iMAD_results_23$chi_squared, 0.05, df = 8))
+
+
+summary(iMAD_results_13$chi_squared)
+
+iMAD_results_13 |> 
+  ggplot(aes(x=chi_squared)) +
+  geom_density() +
+  coord_cartesian(xlim = c(0, 1e+15))
+
+iMAD_results_13 |> 
+  ggplot(aes(x=chi_squared)) +
+  geom_boxplot() +
+  coord_cartesian(xlim = c(0, 1e+14))
+
+iMAD_results_13 |> 
+  filter(chi_squared > quantile(iMAD_results_13$chi_squared, 0.95, df = 8))
+
+iMAD_results_13 |> 
+  filter(chi_squared <= quantile(iMAD_results_13$chi_squared, 0.05, df = 8))
+
+quantile(iMAD_results_13$chi_squared, 0.15, df = 8)
 
 #### STEP 4: Geospatial Prep ----
 # writeVector(vect(iMAD_results_12_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant.shp")
 
-################# 1.1) ZEROs - Comparison of Cycle 1 and 2 - FILTER: CONSTANT CLUSTERS ------------------
-#### STEP 1: Load data ----
-iMAD_results_12_Constant_Zeros <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_12_Constant_Zeros.csv"))
-#### STEP 2: Rename Columns + Attach Comparison column ----
-iMAD_results_12_Constant_Zeros <- iMAD_results_12_Constant_Zeros |> 
-  rename(Col_1 = SpeciesCount,
-         Col_2 = TreeCount,
-         Col_3 = J,
-         Col_4 = AvgTreeHeight,
-         Col_5 = AvgDbh,
-         Col_6 = AvgCrownDiameter,
-         Col_7 = AvgCrownHeight,
-         Col_8 = AvgCrownArea) |> 
-  mutate(Comparison = as.factor("Cycle12")) |> 
-  relocate(Comparison)
-
-#### STEP 3: Plotting ----
-## COL 1 - 8 ----
-## Column 1
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_1)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 2
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_2)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 3
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_3)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 4
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_4)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 5
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_5)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 6
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_6)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 7
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 8
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-
-## COL 7 + 8 ----
-## Column 7
-# Original
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-5, 5))
-
-## Column 8
-# Original
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
-
-# Zoomed
-iMAD_results_12_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-5, 5))
-
-#### STEP 4: Chi^2 ----
-View(iMAD_results_12_Constant_Zeros)
-
-iMAD_results_12_Constant_Zeros |> 
-  select(chisqr) |> 
-  quantile(probs = .95, na.rm = T)
-
-iMAD_results_12_Constant_Zeros |> 
-  select(chisqr) |> 
-  quantile(probs = .05, na.rm = T)
-
-# 95% percentile significance
-iMAD_results_12_Constant_Zeros_Map <- iMAD_results_12_Constant_Zeros |> 
-  mutate(chisqr = case_when(chisqr > 3.356961e+15 ~ 1,
-                            chisqr < -3.332335e+15 ~ 0,
-                            T ~ chisqr))
-
-
-iMAD_results_12_Constant_Zeros_Map |> 
-  ggplot(aes(x=chisqr)) +
-  geom_density()# +
-  coord_cartesian(xlim = c(0, 1e+16))
-
-
-#### STEP 5: Geospatial Prep ----
-
-# writeVector(vect(iMAD_results_12_Constant_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant_Zeros.shp")
-
-# writeVector(vect(iMAD_results_12_Constant_Zeros_Map, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant_Zeros_Map.shp")
-
-########### CUT -------------------------------------------------------------------------------------------------
+########### CUT -------------------------------------------------------------------------------
+  
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
-iMAD_results_23_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_23_Constant.csv"))
+iMAD_results_23 <- Raw.04 <- fread(here("data", "iMAD", "[1] iMAD Results", "iMAD_results_23.csv"))
 #### STEP 2: Rename Columns + Attach Comparison column ----
-iMAD_results_23_Constant <- iMAD_results_23_Constant |> 
+iMAD_results_23 <- iMAD_results_23 |> 
   rename(Col_1 = SpeciesCount,
          Col_2 = TreeCount,
          Col_3 = J,
@@ -2258,7 +1660,7 @@ iMAD_results_23_Constant <- iMAD_results_23_Constant |>
 ## COL 1 - 8 ----
 ## Column 1
 # Zoomed
-iMAD_results_23_Constant |> 
+iMAD_results_23 |> 
   ggplot(aes(x=Col_1)) +
   geom_histogram(binwidth = 0.1, fill = "#00BA38") +
   coord_cartesian(xlim = c(-10, 10))
@@ -2341,141 +1743,14 @@ iMAD_results_23_Constant |>
 
 # writeVector(vect(iMAD_results_23_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant.shp")
 
-################## 2.1) ZEROs -  Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
-#### STEP 1: Load data ----
-iMAD_results_23_Constant_Zeros <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_23_Constant_Zeros.csv"))
-#### STEP 2: Rename Columns + Attach Comparison column ----
-iMAD_results_23_Constant_Zeros <- iMAD_results_23_Constant_Zeros |> 
-  rename(Col_1 = SpeciesCount,
-         Col_2 = TreeCount,
-         Col_3 = J,
-         Col_4 = AvgTreeHeight,
-         Col_5 = AvgDbh,
-         Col_6 = AvgCrownDiameter,
-         Col_7 = AvgCrownHeight,
-         Col_8 = AvgCrownArea) |> 
-  mutate(Comparison = as.factor("Cycle23")) |> 
-  relocate(Comparison)
-
-#### STEP 3: Plotting ----
-## COL 1 - 8 ----
-## Column 1
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_1)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 2
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_2)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 3
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_3)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 4
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_4)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 5
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_5)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 6
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_6)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 7
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 8
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## COL 7 + 8 ----
-## Column 7
-# Original
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38")
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-5, 5)) 
-
-## Column 8
-# Original
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") 
-
-# Zoomed
-iMAD_results_23_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-5, 5))
-
-
-#### STEP 4: Chi 2 ----
-View(iMAD_results_23_Constant_Zeros)
-
-iMAD_results_23_Constant_Zeros |> 
-  select(chisqr) |> 
-  quantile(probs = .95, na.rm = T)
-
-iMAD_results_23_Constant_Zeros |> 
-  select(chisqr) |> 
-  quantile(probs = .05, na.rm = T)
-
-iMAD_results_23_Constant_Zeros_Map <- iMAD_results_23_Constant_Zeros |> 
-  mutate(chisqr = case_when(chisqr > 9.323437e+15 ~ 1,
-                            chisqr < 7.577778e+13 ~ 0,
-                            T ~ chisqr))
-
-
-
-iMAD_results_23_Constant_Zeros_Map |> 
-  ggplot(aes(x=chisqr)) +
-  geom_density() +
-  coord_cartesian(xlim = c(0, 1e+16))
-
-
-#### STEP 4: Geospatial Prep ----
-
-# writeVector(vect(iMAD_results_23_Constant_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant_Zeros.shp")
-
-# writeVector(vect(iMAD_results_23_Constant_Zeros_Map, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant_Zeros_Map.shp")
-
 ########### CUT -------------------------------------------------------------------------------------------------
+
+
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
-iMAD_results_13_Constant <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_13_Constant.csv"))
+iMAD_results_13 <- Raw.04 <- fread(here("data", "iMAD", "[1] iMAD Results", "iMAD_results_13.csv"))
 #### STEP 2: Rename Columns + Attach Comparison column ----
-iMAD_results_13_Constant <- iMAD_results_13_Constant |> 
+iMAD_results_13 <- iMAD_results_13 |> 
   rename(Col_1 = SpeciesCount,
          Col_2 = TreeCount,
          Col_3 = J,
@@ -2491,7 +1766,7 @@ iMAD_results_13_Constant <- iMAD_results_13_Constant |>
 ## COL 1 - 8 ----
 ## Column 1
 # Zoomed
-iMAD_results_13_Constant |> 
+iMAD_results_13 |> 
   ggplot(aes(x=Col_1)) +
   geom_histogram(binwidth = 0.1, fill = "#619CFF") +
   coord_cartesian(xlim = c(-10, 10))
@@ -2574,133 +1849,8 @@ iMAD_results_13_Constant |>
 
 # writeVector(vect(iMAD_results_13_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant.shp")
 
-################## 3.1) ZEROs - Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
-#### STEP 1: Load data ----
-iMAD_results_13_Constant_Zeros <- Raw.04 <- fread(here("data", "iMAD", "[1] Cluster", "iMAD_results_13_Constant_Zeros.csv"))
-#### STEP 2: Rename Columns + Attach Comparison column ----
-iMAD_results_13_Constant_Zeros <- iMAD_results_13_Constant_Zeros |> 
-  rename(Col_1 = SpeciesCount,
-         Col_2 = TreeCount,
-         Col_3 = J,
-         Col_4 = AvgTreeHeight,
-         Col_5 = AvgDbh,
-         Col_6 = AvgCrownDiameter,
-         Col_7 = AvgCrownHeight,
-         Col_8 = AvgCrownArea) |> 
-  mutate(Comparison = as.factor("Cycle13")) |> 
-  relocate(Comparison)
+########### CUT -------------------------------------------------------------------------------------------------
 
-#### STEP 3: Plotting ----
-## COL 1 - 8 ----
-## Column 1
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_1)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 2
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_2)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 3
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_3)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 4
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_4)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 5
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_5)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 6
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_6)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 7
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 8
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
-
-
-## COL 7 + 8 ----
-## Column 7
-# Original
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF")
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-5, 5))
-
-## Column 8
-# Original
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") 
-
-# Zoomed
-iMAD_results_13_Constant_Zeros |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-20, 20))
-
-#### STEP 4: Chi^2 ----
-View(iMAD_results_13_Constant_Zeros)
-
-iMAD_results_13_Constant_Zeros |> 
-  select(chisqr) |> 
-  quantile(probs = .95, na.rm = T)
-
-iMAD_results_13_Constant_Zeros |> 
-  select(chisqr) |> 
-  quantile(probs = .05, na.rm = T)
-
-iMAD_results_13_Constant_Zeros_Map <- iMAD_results_13_Constant_Zeros |> 
-  mutate(chisqr = case_when(chisqr > 4.584666e+15 ~ 1,
-                            chisqr < 1.127424e+14 ~ 0,
-                            T ~ chisqr))
-
-
-iMAD_results_13_Constant_Zeros_Map |> 
-  ggplot(aes(x=chisqr)) +
-  geom_density()# +
-  coord_cartesian(xlim = c(0, 1e+16))
-
-
-#### STEP 4: Geospatial Prep ----
-
-# writeVector(vect(iMAD_results_13_Constant_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant_Zeros.shp")
-
-# writeVector(vect(iMAD_results_13_Constant_Zeros_Map, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant_Zeros_Map.shp")
 
 ################## 4) CrOSS COMPARISON - FILTER: CONSTANT CLUSTERS -------------------------------------------
 ## STEP 1: Data Preparation ----
@@ -2735,6 +1885,26 @@ iMAD_results_Constant |>
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ################### PAPER/BA PLOTS (DATA: FullStack_V4 & FullStack_V4_Zeros) -------------------------------------------------------------
@@ -3133,11 +2303,7 @@ FullStack_V4 %>%
 
 
 ##################################     END      ##################################################################
-
-
-
-
-
+#
 ################### CLUSTER METADATA DATASET PLOTTING           ##################################################
 #### 1) Individual Tree Entries per Cluster (DATA: ALL SAMPLED CLUSTERS) --------------------------------------------------------------
 
