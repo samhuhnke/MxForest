@@ -14,6 +14,7 @@ library(tidyverse)  #data tidying
 library(ggridges)   #geom_density_ridges()
 library(terra)      #geo_spatial coordinates
 library(vegan)      #for shannon-index and pielou-eveness
+library(svglite)    #to save figures as .svg
 
 #################### 1) LOAD RAW DATA ------------------------------------------------------------
 
@@ -1134,8 +1135,6 @@ FullStack_V1 <- FullStack_V1 |>
          SC13 = SC3 - SC1)
 
 
-
-
 ################### 5) GEOSPATIAL PREPARATION -----------------------------------
 
   #writeVector(vect(Sec.04, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Clusters04.shp")
@@ -1271,7 +1270,210 @@ Rarefied_Test1_long |>
 
 ##################################     END      ##################################################################
 
+##############  NATIONAL BASED CALCULATION         ###############################################
+# STEP 1: calculate number of clusters per cycle ----
+# Cycle 1
+National_C.1 <- National_Base |> 
+  filter(Muestreado1 == 1) |> 
+  select(Cluster_ID)
 
+National_C.1
+
+National_Calc.1 <- National_C.1 |> 
+  left_join(merged |> filter(Cycle == 1) |> select(Cycle, Cluster_ID),
+            by = "Cluster_ID") |> 
+  ungroup() |> 
+  summarise(Cycle = as.character(1),
+            number_of_clusters = n_distinct(Cluster_ID))
+
+National_Calc.1
+
+# Cycle 2 
+National_C.2 <- National_Base |> 
+  filter(Muestreado2 == 1) |> 
+  select(Cluster_ID)
+
+National_C.2
+
+National_Calc.2 <- National_C.2 |> 
+  left_join(merged |> filter(Cycle == 2) |> select(Cycle, Cluster_ID),
+            by = "Cluster_ID") |> 
+  ungroup() |> 
+  summarise(Cycle = as.character(2),
+            number_of_clusters = n_distinct(Cluster_ID))
+
+National_Calc.2
+
+# Cycle 3
+National_C.3 <- National_Base |> 
+  filter(Muestreado3 == 1) |> 
+  select(Cluster_ID)
+
+National_C.3
+
+National_Calc.3 <- National_C.3 |> 
+  left_join(merged |> filter(Cycle == 3) |> select(Cycle, Cluster_ID),
+            by = "Cluster_ID") |> 
+  ungroup() |> 
+  summarise(Cycle = as.character(3),
+            number_of_clusters = n_distinct(Cluster_ID))
+
+National_Calc.3
+
+# STEP 2: Calculate species abundances per cycle ----
+# Cycle 1
+National_C.1 <- National_Base |> 
+  filter(Muestreado1 == 1) |> 
+  select(Cluster_ID)
+
+National_Spec.1 <- National_C.1 |> 
+  left_join(merged |> filter(Cycle == 1) |> select(Cycle, Cluster_ID, NombreCientifico_APG),
+            by = "Cluster_ID") |>
+  select(Cycle, NombreCientifico_APG) |> 
+  group_by(Cycle, NombreCientifico_APG) |> 
+  summarise(species_abundances = n())
+
+National_Spec.1
+
+# Cycle 2
+National_C.2 <- National_Base |> 
+  filter(Muestreado2 == 1) |> 
+  select(Cluster_ID)
+
+National_Spec.2 <- National_C.2 |> 
+  left_join(merged |> filter(Cycle == 2) |> select(Cycle, Cluster_ID, NombreCientifico_APG),
+            by = "Cluster_ID") |>
+  select(Cycle, NombreCientifico_APG) |> 
+  group_by(Cycle, NombreCientifico_APG) |> 
+  summarise(species_abundances = n())
+
+National_Spec.2
+
+# Cycle 3
+National_C.3 <- National_Base |> 
+  filter(Muestreado3 == 1) |> 
+  select(Cluster_ID)
+
+National_Spec.3 <- National_C.3 |> 
+  left_join(merged |> filter(Cycle == 3) |> select(Cycle, Cluster_ID, NombreCientifico_APG),
+            by = "Cluster_ID") |>
+  select(Cycle, NombreCientifico_APG) |> 
+  group_by(Cycle, NombreCientifico_APG) |> 
+  summarise(species_abundances = n())
+
+National_Spec.3
+
+# Step 3: Combine Clusternumbers + Species Abundances ----
+# Cylce 1
+National_CS.1 <- National_Spec.1 |> 
+  left_join(National_Calc.1,
+            by = "Cycle") |> 
+  relocate(Cycle, number_of_clusters)
+
+# Cycle 2
+National_CS.2 <- National_Spec.2 |> 
+  left_join(National_Calc.2,
+            by = "Cycle") |> 
+  relocate(Cycle, number_of_clusters)
+
+# Cycle 3
+National_CS.3 <- National_Spec.3 |> 
+  left_join(National_Calc.3,
+            by = "Cycle") |> 
+  relocate(Cycle, number_of_clusters)
+
+# STEP 4: rbind(1,2,3) ----
+National_CS <- rbind(National_CS.1, National_CS.2, National_CS.3) |> 
+  filter(!is.na(NombreCientifico_APG))
+
+# STEP 5: pivot wider ----
+# pivot
+National_wide <- National_CS |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = species_abundances)
+
+
+# exchange all NAs with 0 for calculation
+National_wide <- National_wide |> 
+  replace(is.na(National_wide), 0)
+
+National_wide
+
+# STEP 6: Rarefaction ----
+### IMPORTANT: run this code only with species as cols and samples as rows!!!
+m.rar.time <- National_wide[, -c(1:2)]
+
+# preparation step: change integer values to numeric 
+m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
+
+
+# rarefaction
+a <- min(National_wide$number_of_clusters) # -> 55 days
+m3_rarified <- m.rar.time 
+for (k in 1:ncol(m.rar.time)) {
+  for (i in 1:nrow(m.rar.time)) {
+    m3_rarified[i, k] <- m.rar.time[i, k] * (a / National_wide$number_of_clusters[i])
+  }
+}
+
+# rounding of values
+m3_rarified_rd <- trunc(m3_rarified)
+commas <- m3_rarified - m3_rarified_rd
+
+upround <- rowSums(commas)
+
+rank <- as.data.frame(t(apply(-commas, 1, order)))
+
+for (k in 1:nrow(m.rar.time)){
+  for (i in 1:round(upround[k])) {if(round(upround[k])>0){
+    m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
+  }}
+
+finish <- trunc(m3_rarified)
+
+# return to original dataformat
+National_Rare <- cbind(National_wide[1:2], finish)
+National_Rare
+
+
+# pivot to long data format
+National_Rare_long <- National_Rare %>% 
+  pivot_longer(
+    cols = -c(1:2), # Excludes the first two columns
+    names_to = "species_names",
+    values_to = "values"
+  )
+
+# calculate number of species
+National_Rare_long |> 
+  filter(values != 0) |> 
+  group_by(Cycle) |> 
+  summarise(n = n())
+
+# STEP 8: Cute Barplot ----
+# plot
+National_Rare_long |> 
+  filter(values != 0) |> 
+  group_by(Cycle) |> 
+  summarise(n = n()) |> 
+  ggplot(aes(x = Cycle, y = n)) +
+  geom_bar(stat = "identity")
+
+# STEP 9: Comparison with untouched data and selected conglomerates based ----
+# on availability in all datasets + plot availability 
+
+# untouched
+merged |> 
+  ungroup() |> 
+  select(Cycle, NombreCientifico_APG) |> 
+  group_by(Cycle) |> 
+  summarise(species = n_distinct(NombreCientifico_APG))
+
+#filtered -> calculation in National section
+National |> 
+  ggplot(aes(x = Cycle, y = n)) +
+  geom_bar(stat = "identity")
+
+##################################     END      ##################################################################
 end.time <- Sys.time()
 time.taken4 <- end.time - start.time
 
@@ -1324,7 +1526,7 @@ Cycle12 <- rbind(Cycle1, Cycle2)
 
 #### STEP 3: write .csv for python ----
 
-write.csv(Cycle12, "iMAD_Data_12.csv")
+# write.csv(Cycle12, "iMAD_Data_12.csv")
 ########### CUT -------------------------------------------------------------------------------------------------
 
 ################## 2) Comparison of Cycle 2 and 3 - FILTER: Only Clusters that are available for 2 and 3 --------------------------------------------
@@ -1373,8 +1575,7 @@ Cycle23 <- rbind(Cycle2, Cycle3)
 
 #### STEP 3: write .csv for python ----
 
- write.csv(Cycle23, "iMAD_Data_23.csv")
-
+# write.csv(Cycle23, "iMAD_Data_23.csv")
 ########### CUT -------------------------------------------------------------------------------------------------
 
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: Only Clusters that are available for 1 and 3 --------------------------------------------
@@ -1423,8 +1624,7 @@ Cycle13 <- rbind(Cycle1, Cycle3)
 
 #### STEP 3: write .csv for python ----
 
- write.csv(Cycle13, "iMAD_Data_13.csv")
-
+# write.csv(Cycle13, "iMAD_Data_13.csv")
 ##################################     END      ##################################################################
 
 
@@ -1436,35 +1636,6 @@ time.taken2
 time.taken3
 time.taken4
 time.taken5
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1577,66 +1748,20 @@ iMAD_results_12 |>
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-5, 5))
 
-#### STEP 4: chi-squared ----
+#### STEP 4: Chi-squared classification - only run from start! -----
 summary(iMAD_results_12$chi_squared)
 
-iMAD_results_12 |> 
-  ggplot(aes(x=chi_squared)) +
-  geom_density() +
-  coord_cartesian(xlim = c(0, 1e+8))
-
-iMAD_results_12 |> 
-  ggplot(aes(x=chi_squared)) +
-  geom_boxplot() +
-  coord_cartesian(xlim = c(0, 1e+5))
-
-iMAD_results_12 |> 
-  filter(chi_squared > quantile(iMAD_results_12$chi_squared, 0.95, df = 8))
-
-iMAD_results_12 |> 
-  filter(chi_squared <= quantile(iMAD_results_12$chi_squared, 0.05, df = 8))
-
-summary(iMAD_results_23$chi_squared)
-
-iMAD_results_23 |> 
-  ggplot(aes(x=chi_squared)) +
-  geom_density() +
-  coord_cartesian(xlim = c(0, 1e+06))
-
-iMAD_results_23 |> 
-  ggplot(aes(x=chi_squared)) +
-  geom_boxplot() +
-  coord_cartesian(xlim = c(0, 1e+6))
-
-iMAD_results_23 |> 
-  filter(chi_squared > quantile(iMAD_results_23$chi_squared, 0.95, df = 8))
-
-iMAD_results_23 |> 
-  filter(chi_squared <= quantile(iMAD_results_23$chi_squared, 0.05, df = 8))
+iMAD_results_12 <- iMAD_results_12 |> 
+  mutate(chi_squared = case_when(chi_squared <= quantile(chi_squared, 0.10, df=8) ~ 0,
+                                 chi_squared > quantile(chi_squared, 0.99, df=8) ~ 3,
+                                 chi_squared <= quantile(chi_squared, 0.99, df=8) & chi_squared > quantile(chi_squared, 0.95, df=8) ~ 2,
+                                 chi_squared <= quantile(chi_squared, 0.95, df=8) & chi_squared > quantile(chi_squared, 0.90, df=8) ~ 1,
+                                 T ~ chi_squared))
 
 
-summary(iMAD_results_13$chi_squared)
 
-iMAD_results_13 |> 
-  ggplot(aes(x=chi_squared)) +
-  geom_density() +
-  coord_cartesian(xlim = c(0, 1e+15))
-
-iMAD_results_13 |> 
-  ggplot(aes(x=chi_squared)) +
-  geom_boxplot() +
-  coord_cartesian(xlim = c(0, 1e+14))
-
-iMAD_results_13 |> 
-  filter(chi_squared > quantile(iMAD_results_13$chi_squared, 0.95, df = 8))
-
-iMAD_results_13 |> 
-  filter(chi_squared <= quantile(iMAD_results_13$chi_squared, 0.05, df = 8))
-
-quantile(iMAD_results_13$chi_squared, 0.15, df = 8)
-
-#### STEP 4: Geospatial Prep ----
-# writeVector(vect(iMAD_results_12_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12_Constant.shp")
+#### STEP 5: Geospatial Prep ----
+# writeVector(vect(iMAD_results_12, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12.shp")
 
 ########### CUT -------------------------------------------------------------------------------
   
@@ -1739,12 +1864,21 @@ iMAD_results_23_Constant |>
   coord_cartesian(xlim = c(-5, 5))
 
 
+#### STEP 4: Chi-squared classification - only run from start! -----
+summary(iMAD_results_23$chi_squared)
+
+iMAD_results_23 <- iMAD_results_23 |> 
+  mutate(chi_squared = case_when(chi_squared <= quantile(chi_squared, 0.10, df=8) ~ 0,
+                                 chi_squared > quantile(chi_squared, 0.99, df=8) ~ 3,
+                                 chi_squared <= quantile(chi_squared, 0.99, df=8) & chi_squared > quantile(chi_squared, 0.95, df=8) ~ 2,
+                                 chi_squared <= quantile(chi_squared, 0.95, df=8) & chi_squared > quantile(chi_squared, 0.90, df=8) ~ 1,
+                                 T ~ chi_squared))
+
 #### STEP 4: Geospatial Prep ----
 
-# writeVector(vect(iMAD_results_23_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23_Constant.shp")
+# writeVector(vect(iMAD_results_23, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23.shp")
 
 ########### CUT -------------------------------------------------------------------------------------------------
-
 
 ################## 3) Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
 #### STEP 1: Load data ----
@@ -1845,9 +1979,18 @@ iMAD_results_13_Constant |>
   geom_histogram(binwidth = 0.1, fill = "#619CFF") +
   coord_cartesian(xlim = c(-20, 20))
 
+#### STEP 4: Chi-squared classification - only run from start! -----
+summary(iMAD_results_13$chi_squared)
+
+iMAD_results_13 <- iMAD_results_13 |> 
+  mutate(chi_squared = case_when(chi_squared <= quantile(chi_squared, 0.10, df=8) ~ 0,
+                                 chi_squared > quantile(chi_squared, 0.99, df=8) ~ 3,
+                                 chi_squared <= quantile(chi_squared, 0.99, df=8) & chi_squared > quantile(chi_squared, 0.95, df=8) ~ 2,
+                                 chi_squared <= quantile(chi_squared, 0.95, df=8) & chi_squared > quantile(chi_squared, 0.90, df=8) ~ 1,
+                                 T ~ chi_squared))
 #### STEP 4: Geospatial Prep ----
 
-# writeVector(vect(iMAD_results_13_Constant, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13_Constant.shp")
+# writeVector(vect(iMAD_results_13, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13.shp")
 
 ########### CUT -------------------------------------------------------------------------------------------------
 
@@ -1882,6 +2025,8 @@ iMAD_results_Constant |>
 
 ##################################     END      ##################################################################
 
+
+
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
@@ -1896,89 +2041,64 @@ time.taken
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 ################### PAPER/BA PLOTS (DATA: FullStack_V4 & FullStack_V4_Zeros) -------------------------------------------------------------
 #### 1) Violinplots --------------------------------------------
 ### 1.1) Species Richness Changes ----
-# FullStack_V4 & FullStack_V4_Zeros (both 0s for Species Counts)
-FullStack_V4 %>% 
+
+# Based on Fullstack_V1 with differing sample sizes for each comparison
+FullStack_V1 %>% 
   select(SC12, SC23, SC13) |> 
   pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "Species_Richness") |> 
   mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
   ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
-  geom_violin()
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
+  geom_violin(scale = "area", adjust = 1) +
+  scale_fill_manual(values=c(SC12="#cabad0", SC23="#ae96b5", SC13="#7c4e87")) +
+  theme_bw() +
+  theme(
+    panel.background = element_blank(), # Remove panel background
+    panel.grid.major = element_line("gray80"), # Keep major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    legend.position = "none", # Remove legend # Add axes lines
+  ) +
+  scale_y_continuous(breaks = seq(-40, 40, by = 10)) + 
+  ylab("Species Richness Change") +
+  xlab("") 
 
-# each with individual clusters  
-FullStack_V4_Zeros |> 
-  select(SC12, SC23, SC13) |> 
-  pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "Species_Richness") |> 
-  mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
-  ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
-  geom_violin()
-
-# comparable clusters
-FullStack_V4_Zeros |> 
-  filter(Muestreado1 ==  1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(SC12, SC23, SC13) |> 
-  pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "Species_Richness") |> 
-  mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
-  ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
-  geom_violin()
+#cabad0
+#ae96b5
+#7c4e87
 
 
-### 1.2) Biomass ----
 
-# currently empty
 
 ### 1.3) iMAD ----
-## iMAD_results_Constant ----
+## iMAD_results_Constant_Zeros 
 # STEP 1: Data Preparation 
-iMAD_results_Constant <- rbind(iMAD_results_12_Constant, iMAD_results_13_Constant, iMAD_results_23_Constant) |> 
-  mutate(Comparison = factor(Comparison, levels = c("Cycle12", "Cycle23", "Cycle13")))
-# STEP 2: Plotting
-## Column 7
-# Original
-iMAD_results_Constant |> 
-  ggplot(aes(x = Comparison, y = Col_7, fill = Comparison)) +
-  geom_violin()
-# zoomed
-iMAD_results_Constant |> 
-  ggplot(aes(x = Comparison, y = Col_7, fill = Comparison)) +
-  geom_violin() +
-  coord_cartesian(ylim = c(-25, 25))
-
-## Column 8
-# Original
-iMAD_results_Constant |> 
-  ggplot(aes(x = Comparison, y = Col_8, fill = Comparison)) +
-  geom_violin()
-# Zoomed
-iMAD_results_Constant |> 
-  ggplot(aes(x = Comparison, y = Col_8, fill = Comparison)) +
-  geom_violin() +
-  coord_cartesian(ylim = c(-25, 25))
-
-
-## iMAD_results_Constant_Zeros ----
-# STEP 1: Data Preparation 
-iMAD_results_Constant_Zeros <- rbind(iMAD_results_12_Constant_Zeros, iMAD_results_13_Constant_Zeros, iMAD_results_23_Constant_Zeros) |> 
+iMAD_results<- rbind(iMAD_results_12, iMAD_results_13, iMAD_results_23) |> 
   mutate(Comparison = factor(Comparison, levels = c("Cycle12", "Cycle23", "Cycle13")))
 # STEP 2: Plotting 
 ## Column 1
-iMAD_results_Constant_Zeros |> 
+iMAD_results |> 
   ggplot(aes(x = Comparison, y = Col_1, fill = Comparison)) +
-  geom_violin() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
+  geom_violin(scale = "area", adjust = 1) +
+  scale_fill_manual(values=c(Cycle12="#cabad0", Cycle23="#ae96b5", Cycle13="#7c4e87")) +
+  theme_bw() +
+  theme(
+    panel.background = element_blank(), # Remove panel background
+    panel.grid.major = element_line("gray80"), # Keep major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    legend.position = "none", # Remove legend # Add axes lines
+  ) +
+  scale_y_continuous(breaks = seq(-40, 40, by = 10)) + 
+  ylab("MAD-Component 1") +
+  xlab("") +
   coord_cartesian(ylim = c(-25, 25))
+
+
+
+## rest of the columns ----
 ## Column 2
 iMAD_results_Constant_Zeros |> 
   ggplot(aes(x = Comparison, y = Col_2, fill = Comparison)) +
@@ -2006,202 +2126,78 @@ iMAD_results_Constant_Zeros |>
   coord_cartesian(ylim = c(-25, 25))
 
 ## Column 7
-# Original
 iMAD_results_Constant_Zeros |> 
   ggplot(aes(x = Comparison, y = Col_7, fill = Comparison)) +
   geom_violin()
-# zoomed
-iMAD_results_Constant_Zeros |> 
-  ggplot(aes(x = Comparison, y = Col_7, fill = Comparison)) +
-  geom_violin() +
-  coord_cartesian(ylim = c(-25, 25))
 
 ## Column 8
-# Original
-iMAD_results_Constant_Zeros |> 
+iMAD_results |> 
   ggplot(aes(x = Comparison, y = Col_8, fill = Comparison)) +
   geom_violin()
-# Zoomed
-iMAD_results_Constant_Zeros |> 
-  ggplot(aes(x = Comparison, y = Col_8, fill = Comparison)) +
-  geom_violin() +
-  coord_cartesian(ylim = c(-25, 25))
 
-summary(iMAD_results_Constant_Zeros |> filter(Comparison == "Cycle13") |>  select(Col_8))
-summary(iMAD_results_Constant |> filter(Comparison == "Cycle13") |> select(Col_8))
-
-## 1.4) Total Entries ----
-# FullStack_V4 & FullStack_V4 (both 0s for Total Tree Entries)
-FullStack_V4 %>% 
-  select(TE12, TE23, TE13) |> 
-  pivot_longer(c(TE12, TE23, TE13), names_to = "Comparison", values_to = "EntryChange") |> 
-  mutate(Comparison = factor(Comparison, levels = c("TE12", "TE23", "TE13"))) |> 
-  ggplot( aes(x= Comparison, y= EntryChange, fill=Comparison)) +
-  geom_violin()
-
-## 1.5) AvgDBH ----
-# FullStack_V4
-FullStack_V4 %>% 
-  select(DBH12, DBH23, DBH13) |> 
-  pivot_longer(c(DBH12, DBH23, DBH13), names_to = "Comparison", values_to = "DBH_Change") |> 
-  mutate(Comparison = factor(Comparison, levels = c("DBH12", "DBH23", "DBH13"))) |> 
-  ggplot( aes(x= Comparison, y= DBH_Change, fill=Comparison)) +
-  geom_violin()
-
-# FullStack_V4_Zeros
-FullStack_V4_Zeros %>% 
-  select(DBH12, DBH23, DBH13) |> 
-  pivot_longer(c(DBH12, DBH23, DBH13), names_to = "Comparison", values_to = "DBH_Change") |> 
-  mutate(Comparison = factor(Comparison, levels = c("DBH12", "DBH23", "DBH13"))) |> 
-  ggplot( aes(x= Comparison, y= DBH_Change, fill=Comparison)) +
-  geom_violin()
 
 #### 2) Scatterplots -------------------------------------------
-## 1.1) Species Richness ----
-# FullStack_V4 & FullStack_V4_Zeros (both 0s for Species Counts)
+#### 2.1) Species Richness ----
+# Based on Fullstack_V1 with differing sample sizes for each comparison
 # Cycle 1 - 2:
-# with their individual cluster counts
-FullStack_V4 |> 
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Plot_S1 == 4 & Plot_S2 == 4) |> 
   ggplot(aes(x = SC1, y = SC2)) +
   geom_point(position = "jitter") +
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
-  geom_abline(color = "red") 
+  geom_abline(color = "red") +
+  xlab("Cycle 1") + ylab("Cycle 2") +
+  theme_light()
 
-# with their comparable counts
-FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
-  ggplot(aes(x = SC1, y = SC2)) +
-  geom_point(position = "jitter") +
-  coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
-  geom_abline(color = "red")
+# ggsave(here("Plots", "Thesis Plots", "C12_Scatterplot.svg"), width = 6, height = 6)
 
 # Cycle 2 - 3:
-FullStack_V4 |> 
+FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1 & Plot_S2 == 4 & Plot_S3 == 4) |> 
   ggplot(aes(x = SC2, y = SC3)) +
   geom_point(position = "jitter") +
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
-  geom_abline(color = "red") 
+  geom_abline(color = "red") +
+  xlab("Cycle 2") + ylab("Cycle 3") +
+  theme_light()
 
-# with their comparable counts
-FullStack_V4 |> 
-  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
-  ggplot(aes(x = SC2, y = SC3)) +
-  geom_point(position = "jitter") +
-  coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
-  geom_abline(color = "red")
+# ggsave(here("Plots", "Thesis Plots", "C23_Scatterplot.svg"), width = 6, height = 6)
 
 # Cycle 1 - 3:
-FullStack_V4 |> 
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1 & Plot_S1 == 4 & Plot_S3 == 4) |> 
   ggplot(aes(x = SC1, y = SC3)) +
   geom_point(position = "jitter") +
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
-  geom_abline(color = "red") 
+  geom_abline(color = "red") +
+  xlab("Cycle 1") + ylab("Cycle 3") +
+  theme_light()
 
-# with their comparable counts
-FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
-  ggplot(aes(x = SC1, y = SC3)) +
-  geom_point(position = "jitter") +
-  coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
-  geom_abline(color = "red")
+# ggsave(here("Plots", "Thesis Plots", "C13_Scatterplot.svg"), width = 6, height = 6)
   
 
-## 1.2) Biomass ----
-## 1.3) iMAD ----
-
-
-
-## 1.4) Total Entries ----
-# FullStack_V4 & FullStack_V4 (both 0s for Total Tree Entries)
-# Cycle 1 - 2:
-FullStack_V4 |> 
-  ggplot(aes(x = TE2, y = TE1)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
-
-# Cycle 2 - 3:
-FullStack_V4 |> 
-  ggplot(aes(x = TE3, y = TE2)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
-
-# Cycle 1 - 3:
-FullStack_V4 |> 
-  ggplot(aes(x = TE3, y = TE1)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
-
-
-## 1.5) AvgDBH ----
-# FullStack_V4 
-# Cycle 1 - 2:
-FullStack_V4 |> 
-  ggplot(aes(x = DBH2, y = DBH1)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
-
-# Cycle 2 - 3:
-FullStack_V4 |> 
-  ggplot(aes(x = DBH3, y = DBH2)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
-
-# Cycle 1 - 3:
-FullStack_V4 |> 
-  ggplot(aes(x = DBH3, y = DBH1)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
-
-
-
-# FullStack_V4_Zeros
-# Cycle 1 - 2:
-FullStack_V4_Zeros |> 
-  ggplot(aes(x = DBH2, y = DBH1)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
-
-# Cycle 2 - 3:
-FullStack_V4_Zeros |> 
-  ggplot(aes(x = DBH3, y = DBH2)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
-
-# Cycle 1 - 3:
-FullStack_V4_Zeros |> 
-  ggplot(aes(x = DBH3, y = DBH1)) +
-  geom_point() +
-  geom_abline(color = "red") +
-  geom_smooth(method = lm)
 
 #### 3) Ridges ------------------------------------------------- 
 ## 1.1) Species Richness Distribution ----
 # SC1
 # Ecoregion 1
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON1_C3)) |> 
-  ggplot(aes(y = DESECON1_C3, x = SC1, fill = DESECON1_C3)) +
+FullStack_V1 |> 
+  filter(!is.na(DESECON1)) |> 
+  ggplot(aes(y = DESECON1, x = SC1, fill = DESECON1)) +
   geom_density_ridges(show.legend = F)
 
+
 # Comparison with constantly available plots
-FullStack_V5_Zeros |>
+FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(!is.na(DESECON1_C3)) |> 
-  ggplot(aes(y = DESECON1_C3, x = SC1, fill = DESECON1_C3)) +
+  filter(!is.na(DESECON1)) |> 
+  ggplot(aes(y = DESECON1, x = SC1, fill = DESECON1)) +
   geom_density_ridges(show.legend = F)
 
 # Ecoregion 2
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON2_C3)) |> 
-  ggplot(aes(y = DESECON2_C3, x = SC1, fill = DESECON2_C3)) +
+FullStack_V1 |> 
+  filter(!is.na(DESECON2)) |> 
+  ggplot(aes(y = DESECON2, x = SC1, fill = DESECON2)) +
   geom_density_ridges(show.legend = F)
 
 # Comparison with constantly available plots
