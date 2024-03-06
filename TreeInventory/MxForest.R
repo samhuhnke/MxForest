@@ -1405,6 +1405,7 @@ m.rar.time <- National_wide[, -c(1:2)]
 # preparation step: change integer values to numeric 
 m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
 
+National_wide
 
 # rarefaction
 a <- min(National_wide$number_of_clusters) # -> 55 days
@@ -1474,9 +1475,29 @@ National |>
   geom_bar(stat = "identity")
 
 ##################################     END      ##################################################################
-end.time <- Sys.time()
-time.taken4 <- end.time - start.time
 
+##################  HOW DID SUBPLOT SAMPLES CHANGE FOR A GIVEN CONGLOMERATE MAP ##################
+# STEP 1: Identifying changed plots ----
+Subplot_changes <- Base |> 
+  select(Cluster_ID, X, Y, Plot_S1, Plot_S2, Plot_S3) |> 
+  mutate(Plot_S12 = Plot_S2 - Plot_S1,
+         Plot_23 = Plot_S3 - Plot_S2,
+         Plot_13 = Plot_S3 - Plot_S1)
+
+# Step 2: geospatial prep ----
+# writeVector(vect(Subplot_changes, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Subplot_changes.shp")
+
+##################################     END      ##################################################################
+
+
+end.time <- Sys.time()
+time.taken5 <- end.time - start.time
+
+time.taken1
+time.taken2
+time.taken3
+time.taken4
+time.taken5
 
 
 ##################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
@@ -1628,22 +1649,13 @@ Cycle13 <- rbind(Cycle1, Cycle3)
 ##################################     END      ##################################################################
 
 
-end.time <- Sys.time()
-time.taken5 <- end.time - start.time
-
-time.taken1
-time.taken2
-time.taken3
-time.taken4
-time.taken5
-
 
 
 
 
 
 ##################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
-################## 1) PLOT FILTER -------------------------------------------
+################## 1) Cycle 1-2 -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_12 <- Raw.04 <- fread(here("data", "iMAD", "[1] iMAD Results", "iMAD_results_12.csv"))
 #### STEP 2: Rename Columns + Attach Comparison column ----
@@ -1668,11 +1680,6 @@ iMAD_results_12 |>
   geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-20, 20))
 
-
-sd(iMAD_results_12$Col_)
-
-iMAD_results_12 |> 
-  filter(iMAD_results_12$Col_2 > 2*sd(iMAD_results_12$Col_2))
 
 ## Column 2
 # Zoomed
@@ -1724,35 +1731,11 @@ iMAD_results_12 |>
   coord_cartesian(xlim = c(-10, 10))
 
 
-## COL 7 + 8 ----
-## Column 7
-# Original
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-5, 5))
-
-## Column 8
-# Original
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") 
-
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-5, 5))
-
 #### STEP 4: Chi-squared classification - only run from start! -----
 summary(iMAD_results_12$chi_squared)
 
 iMAD_results_12 <- iMAD_results_12 |> 
-  mutate(chi_squared = case_when(chi_squared <= quantile(chi_squared, 0.10, df=8) ~ 0,
+  mutate(chi_squared = case_when(chi_squared <= quantile(chi_squared, 0.90, df=8) ~ 0,
                                  chi_squared > quantile(chi_squared, 0.99, df=8) ~ 3,
                                  chi_squared <= quantile(chi_squared, 0.99, df=8) & chi_squared > quantile(chi_squared, 0.95, df=8) ~ 2,
                                  chi_squared <= quantile(chi_squared, 0.95, df=8) & chi_squared > quantile(chi_squared, 0.90, df=8) ~ 1,
@@ -1760,7 +1743,18 @@ iMAD_results_12 <- iMAD_results_12 |>
 
 
 
-#### STEP 5: Geospatial Prep ----
+#### STEP 5: Direction of change ----
+iMAD_results_12 <- iMAD_results_12 |> 
+  mutate(direction_of_change = case_when(chi_squared == 0 ~ 0,
+                                         chi_squared == 3 & Col_1 > 0 ~ 3,
+                                         chi_squared == 3 & Col_1 < 0 ~ -3,
+                                         chi_squared == 2 & Col_1 > 0 ~ 2,
+                                         chi_squared == 2 & Col_1 < 0 ~ -2,
+                                         chi_squared == 1 & Col_1 > 0 ~ 1,
+                                         chi_squared == 1 & Col_1 < 0 ~ -1))
+
+
+#### STEP 6: Geospatial Prep ----
 # writeVector(vect(iMAD_results_12, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_12.shp")
 
 ########### CUT -------------------------------------------------------------------------------
@@ -1900,98 +1894,86 @@ iMAD_results_13 <- iMAD_results_13 |>
 ## COL 1 - 8 ----
 ## Column 1
 # Zoomed
-iMAD_results_13 |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_1)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-10, 10))
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-20, 20))
+
 
 ## Column 2
 # Zoomed
-iMAD_results_13_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_2)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 3
 # Zoomed
-iMAD_results_13_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_3)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 4
 # Zoomed
-iMAD_results_13_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_4)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 5
 # Zoomed
-iMAD_results_13_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_5)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 6
 # Zoomed
-iMAD_results_13_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_6)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 7
 # Zoomed
-iMAD_results_13_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
 ## Column 8
 # Zoomed
-iMAD_results_13_Constant |> 
+iMAD_results_12 |> 
   ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
   coord_cartesian(xlim = c(-10, 10))
 
-
-## COL 7 + 8 ----
-## Column 7
-# Original
-iMAD_results_13_Constant |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF")
-# Zoomed
-iMAD_results_13_Constant |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-5, 5))
-
-## Column 8
-# Original
-iMAD_results_13_Constant |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") 
-
-# Zoomed
-iMAD_results_13_Constant |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#619CFF") +
-  coord_cartesian(xlim = c(-20, 20))
 
 #### STEP 4: Chi-squared classification - only run from start! -----
 summary(iMAD_results_13$chi_squared)
 
 iMAD_results_13 <- iMAD_results_13 |> 
-  mutate(chi_squared = case_when(chi_squared <= quantile(chi_squared, 0.10, df=8) ~ 0,
+  mutate(chi_squared = case_when(chi_squared <= quantile(chi_squared, 0.90, df=8) ~ 0,
                                  chi_squared > quantile(chi_squared, 0.99, df=8) ~ 3,
                                  chi_squared <= quantile(chi_squared, 0.99, df=8) & chi_squared > quantile(chi_squared, 0.95, df=8) ~ 2,
                                  chi_squared <= quantile(chi_squared, 0.95, df=8) & chi_squared > quantile(chi_squared, 0.90, df=8) ~ 1,
                                  T ~ chi_squared))
-#### STEP 4: Geospatial Prep ----
 
+
+
+#### STEP 5: Direction of change ----
+iMAD_results_13 <- iMAD_results_13 |> 
+  mutate(direction_of_change = case_when(chi_squared == 0 ~ 0,
+                                         chi_squared == 3 & Col_1 > 0 ~ 3,
+                                         chi_squared == 3 & Col_1 < 0 ~ -3,
+                                         chi_squared == 2 & Col_1 > 0 ~ 2,
+                                         chi_squared == 2 & Col_1 < 0 ~ -2,
+                                         chi_squared == 1 & Col_1 > 0 ~ 1,
+                                         chi_squared == 1 & Col_1 < 0 ~ -1))
+
+#### STEP 6: Geospatial Prep ----
 # writeVector(vect(iMAD_results_13, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13.shp")
-
 ########### CUT -------------------------------------------------------------------------------------------------
 
 
@@ -2023,14 +2005,190 @@ iMAD_results_Constant |>
   geom_violin() +
   coord_cartesian(ylim = c(-25, 25))
 
-##################################     END      ##################################################################
-
-
+########### CUT -------------------------------------------------------------------------------------------------
 
 end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
+time.taken6 <- end.time - start.time
 
+time.taken6
+
+#################   DONT RUN - TAKES AGES ########################################################################
+#################   RAREFACTION OF SPECIESRICHNESS DATA for 3 subplot per conglomerate
+# STEP 1: calculate number of subplots for each conglomerate for each cycle ----
+# cycle 1
+Plots_1 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Muestreado1, Plot_S1) |> 
+  mutate(Cycle = 1,
+         number_of_plots = case_when(Plot_S1 == 0 ~ 0,
+                                     Plot_S1 == 1 ~ 1,
+                                     Plot_S1 == 2 ~ 2,
+                                     Plot_S1 == 3 ~ 3,
+                                     Plot_S1 == 4 ~ 4,
+                                     T ~ Plot_S1))
+
+# cycle 2
+Plots_2 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Muestreado2, Plot_S2) |> 
+  mutate(Cycle = 2,
+         number_of_plots = case_when(Plot_S2 == 0 ~ 0,
+                                     Plot_S2 == 1 ~ 1,
+                                     Plot_S2 == 2 ~ 2,
+                                     Plot_S2 == 3 ~ 3,
+                                     Plot_S2 == 4 ~ 4,
+                                     T ~ Plot_S2))
+
+# cycle 3
+Plots_3 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Muestreado3, Plot_S3) |> 
+  mutate(Cycle = 3,
+         number_of_plots = case_when(Plot_S3 == 0 ~ 0,
+                                     Plot_S3 == 1 ~ 1,
+                                     Plot_S3 == 2 ~ 2,
+                                     Plot_S3 == 3 ~ 3,
+                                     Plot_S3 == 4 ~ 4,
+                                     T ~ Plot_S3))
+
+Plots_3 |> 
+  filter(number_of_plots == 4) |> 
+  count()
+
+# STEP 2: Filter out everything that doesn't matter ----
+# cycle 1
+Plots_1 <- Plots_1 |> 
+  filter(Muestreado1 == 1) |> 
+  filter(number_of_plots >= 3) |> 
+  select(Cluster_ID, Cycle, number_of_plots)
+
+Plots_1 |> count()
+
+# cycle 2
+Plots_2 <- Plots_2 |> 
+  filter(Muestreado2 == 1) |> 
+  filter(number_of_plots >= 3) |> 
+  select(Cluster_ID, Cycle, number_of_plots)
+
+Plots_2 |> count()
+
+# cycle 3
+Plots_3 <- Plots_3 |> 
+  filter(Muestreado3 == 1) |> 
+  filter(number_of_plots >= 3) |> 
+  select(Cluster_ID, Cycle, number_of_plots)
+
+Plots_3 |> count()
+
+# STEP 3: create long data with rbind() ----
+Plots_123 <- rbind(Plots_1, Plots_2, Plots_3)
+
+Plots_123 |> 
+  filter(is.na(number_of_plots))
+
+# STEP 4: Re-introduce individual entries ----
+Plots_abundances <- Plots_123 |> 
+  #some plots are empty -> left join creates NAs for Nombrecientifico
+  left_join(C_SpecAbun |> select(Cluster_ID, Cycle, NombreCientifico_APG, abundance),
+            by = c("Cycle", "Cluster_ID")) |> 
+  relocate(Cluster_ID, Cycle, number_of_plots) |> 
+  #exchanging false NAs in NombreCientifico for "empty" and add abundance == 0
+  #keeps empty conglomerates for later change calculation
+  mutate(NombreCientifico_APG = case_when(is.na(NombreCientifico_APG) & is.na(abundance) ~ "empty",
+                                          T ~ NombreCientifico_APG),
+         NombreCientifico_APG = case_when(is.na(NombreCientifico_APG) ~ "NA",
+                                          T ~ NombreCientifico_APG),
+         abundance = case_when(is.na(abundance) ~ 0,
+                               T ~ abundance))
+
+
+# STEP 5: pivot wider ----
+# pivot
+Plots_wide <- Plots_abundances |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+Plots_wide
+
+# exchange all NAs with 0 for calculation
+Plots_wide <- Plots_wide|> 
+  replace(is.na(Plots_wide), 0)
+
+Plots_wide
+
+# STEP 6: dissect into single cycles again ----
+Plots_wide_1 <- Plots_wide |> 
+  filter(Cycle == 1)
+
+Plots_wide_3 <- Plots_wide |> 
+  filter(Cycle == 3)
+
+# STEP 7: Rarefaction ----
+### IMPORTANT: run this code only with species as cols and samples as rows!!!
+m.rar.time <- Plots_wide_3[, -c(1:3)]
+
+# preparation step: change integer values to numeric 
+m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
+
+# time measurement
+start.time <- Sys.time()
+
+# rarefaction
+a <- min(Plots_wide_3$number_of_plots) # -> 3 subplots
+m3_rarified <- m.rar.time 
+for (k in 1:ncol(m.rar.time)) {
+  for (i in 1:nrow(m.rar.time)) {
+    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Plots_wide_3$number_of_plots[i])
+  }
+}
+
+# time measurement
+end.time <- Sys.time()
+time.taken6 <- end.time - start.time
+time.taken6
+
+View(m3_rarified_rd)
+View(m.rar.time)
+View(Plots_wide |> 
+       filter(number_of_plots == 3))
+
+
+
+# rounding of values
+m3_rarified_rd <- trunc(m3_rarified)
+commas <- m3_rarified - m3_rarified_rd
+
+upround <- rowSums(commas)
+
+rank <- as.data.frame(t(apply(-commas, 1, order)))
+
+for (k in 1:nrow(m.rar.time)){
+  for (i in 1:round(upround[k])) {if(round(upround[k])>0){
+    m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
+  }}
+
+finish <- trunc(m3_rarified)
+
+# return to original dataformat
+Plots_Rare <- cbind(Plots_wide[1:3], finish)
+Plots_Rare
+
+
+# pivot to long data format
+Plots_Rare_long <- Plots_Rare %>% 
+  pivot_longer(
+    cols = -c(1:2), # Excludes the first two columns
+    names_to = "species_names",
+    values_to = "values"
+  )
+
+# calculate number of species
+Plots_Rare_long |> 
+  group_by(Cycle, Cluster_ID) |> 
+  summarise(n = n())
+
+
+
+##################################     END      ##################################################################
 
 
 
@@ -2197,16 +2355,16 @@ FullStack_V1 |>
 # Ecoregion 2
 FullStack_V1 |> 
   filter(!is.na(DESECON2)) |> 
-  ggplot(aes(y = DESECON2, x = SC1, fill = DESECON2)) +
-  geom_density_ridges(show.legend = F)
+  ggplot(aes(y = DESECON2, x = SC12, fill = DESECON2)) +
+  geom_density_ridges(show.legend = F) 
+
 
 # Comparison with constantly available plots
-FullStack_V5_Zeros |>
+FullStack_V1 |>
   filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(!is.na(DESECON2_C3)) |> 
-  ggplot(aes(y = DESECON2_C3, x = SC1, fill = DESECON2_C3)) +
+  filter(!is.na(DESECON2)) |> 
+  ggplot(aes(y = DESECON2, x = SC12, fill = DESECON2)) +
   geom_density_ridges(show.legend = F)
-
 
 # SC2
 # Ecoregion 1
