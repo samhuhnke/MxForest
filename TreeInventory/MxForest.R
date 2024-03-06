@@ -1,6 +1,6 @@
 
 ### MxForestInventory Data Wrangling Code --------------------------------------
-### LAST UPDATED: 03/03/2024 (US)
+### LAST UPDATED: 06/03/2024 (US)
 
 start.time <- Sys.time()
 
@@ -1003,7 +1003,8 @@ joined_data <- st_join(coordinates_df, shapefile)
 
 ## STEP 6: drop everything apart from cluster_ID and DESECON  + return to regular df ----
 Ecoregions <- st_set_geometry(joined_data |> 
-                                select(Cluster_ID, DESECON1, DESECON2, DESECON3, DESECON4), NULL)
+                                select(Cluster_ID, DESECON1, DESECON2, DESECON3, DESECON4), NULL) |> 
+  mutate(DESECON2 = str_replace(DESECON2, "Gofo", "Golfo"))
 ##################################     END      ##################################################################
 #
 ##############  BASE FOR ALL CACLULATIONS      #################################################
@@ -1165,19 +1166,84 @@ time.taken3 <- end.time - start.time
 
 
 
+
 ##############  ECOREGIONS BASED CALCULATION         ###############################################
 ## STEP 1: add ecoregions to rest of data based on cluster_ID ----
 Eco_Calc <- merged |> 
   select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
   left_join(Ecoregions, by = "Cluster_ID")
 
+## STEP 2: Calculate Plots per cluster ----
+Plots_1 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Plot_S1) |> 
+  mutate(Cycle = 1,
+         number_of_plots = case_when(Plot_S1 == 0 ~ 0,
+                                     Plot_S1 == 1 ~ 1,
+                                     Plot_S1 == 2 ~ 2,
+                                     Plot_S1 == 3 ~ 3,
+                                     Plot_S1 == 4 ~ 4,
+                                     T ~ Plot_S1)) |> 
+  select(-c("Plot_S1"))
+
+
+# cycle 2
+Plots_2 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Plot_S2) |> 
+  mutate(Cycle = 2,
+         number_of_plots = case_when(Plot_S2 == 0 ~ 0,
+                                     Plot_S2 == 1 ~ 1,
+                                     Plot_S2 == 2 ~ 2,
+                                     Plot_S2 == 3 ~ 3,
+                                     Plot_S2 == 4 ~ 4,
+                                     T ~ Plot_S2)) |> 
+  select(-c("Plot_S2"))
+
+# cycle 3
+Plots_3 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Plot_S3) |> 
+  mutate(Cycle = 3,
+         number_of_plots = case_when(Plot_S3 == 0 ~ 0,
+                                     Plot_S3 == 1 ~ 1,
+                                     Plot_S3 == 2 ~ 2,
+                                     Plot_S3 == 3 ~ 3,
+                                     Plot_S3 == 4 ~ 4,
+                                     T ~ Plot_S3)) |> 
+  select(-c("Plot_S3"))
+
+# create long data format
+Plots_123 <- rbind(Plots_1, Plots_2, Plots_3)
+Plots_123
+
+## STEP 3: Calculate area per cluster ----
+Plots_123 <- Plots_123 |> 
+  mutate(plot_area = number_of_plots * 400,
+         Cycle = as.character(Cycle))
+
+Eco_Calc <- Eco_Calc |> 
+  left_join(Plots_123,
+            by = c("Cycle", "Cluster_ID"))
+
+Eco_Calc
+
 ## STEP 2: Calculate number of clusters per ecoregion ----
 Eco_Cluster <- Eco_Calc |> 
-  select(Cluster_ID, Cycle, DESECON2) |> 
+  select(Cluster_ID, Cycle, DESECON2, plot_area) |> 
   group_by(Cycle, DESECON2) |> 
   distinct() |> 
   group_by(Cycle, DESECON2) |> 
-  summarise(number_of_clusters = n())
+  summarise(number_of_clusters = n(),
+            area = sum(plot_area))
+
+Eco_Calc |> 
+  filter(Cycle == "1",
+         DESECON2 == "Cuerpos de agua") |> 
+  group_by(Cluster_ID) |> 
+  count()
+
+Eco_Cluster
 
 ## STEP 3: Caculate species abundances per ecoregion ----
 Eco_Species <- Eco_Calc |> 
@@ -1185,10 +1251,13 @@ Eco_Species <- Eco_Calc |>
   group_by(Cycle, DESECON2, NombreCientifico_APG) |> 
   summarise(species_abundance = n())
 
+Eco_Species
+
 ## STEP 4: Pivot Eco_Species from long to wide -----
 # pivot
 Eco_Species_wide <- Eco_Species |> 
   pivot_wider(names_from = NombreCientifico_APG, values_from = species_abundance)
+
 
 # change NA in DESECON to character "NA"
 Eco_Species_wide <- Eco_Species_wide |> 
@@ -1206,9 +1275,6 @@ Eco_wide <- Eco_Cluster |>
   left_join(Eco_Species_wide,
             by = c("Cycle", "DESECON2")) 
 
-Eco_wide
-
-
 
 ## STEP 6: Ready for rarefaction ----
 Test <- Eco_wide |> 
@@ -1218,18 +1284,18 @@ Test
 
 ## STEP 7: Rarefaction ----
 ### IMPORTANT: run this code only with species as cols and samples as rows!!!
-m.rar.time <- Test[, -c(1:3)]
+m.rar.time <- Test[, -c(1:4)]
 
 # preparation step: change integer values to numeric 
 m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
 
 
 # rarefaction
-a <- min(Test$number_of_clusters) # -> 55 days
+a <- min(Test$area) # -> 55 days
 m3_rarified <- m.rar.time 
 for (k in 1:ncol(m.rar.time)) {
   for (i in 1:nrow(m.rar.time)) {
-    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Test$number_of_clusters[i])
+    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Test$area[i])
   }
 }
 
@@ -1249,23 +1315,40 @@ for (k in 1:nrow(m.rar.time)){
 finish <- trunc(m3_rarified)
 
 # return to original dataformat
-Rarefied_Test1 <- cbind(Test[1:2], finish)
-Rarefied_Test1
+Rarefied_Test <- cbind(Test[1:4], finish)
+Rarefied_Test
+Test
 
 # pivot to long data format
-Rarefied_Test1_long <- Rarefied_Test1 %>% 
+Rarefied_Test_long <- Rarefied_Test %>% 
   pivot_longer(
-    cols = -c(1:2), # Excludes the first two columns
+    cols = -c(1:4), # Excludes the first two columns from pivoting - otherwise they'll end up in species names
     names_to = "species_names",
     values_to = "values"
   )
 
+Rarefied_Test_long
+
 # calculate number of species
-Rarefied_Test1_long |> 
+Rarefied_Test_long |> 
   filter(values != 0) |> 
   group_by(Cycle, DESECON2) |> 
   summarise(n = n())
 
+# STEP 8: cute barplot ----
+Rarefied_Test_long |> 
+  filter(values != 0) |> 
+  group_by(Cycle) |> 
+  summarise(n = n()) |> 
+  ggplot(aes(x = Cycle, y = n)) +
+  geom_col() +
+  geom_text(aes(label = n), vjust = 1.5, colour = "white") +
+  theme_minimal() +
+  labs(title = Rarefied_Test_long$DESECON2) +
+  annotate("text", x=3, y=1500, label= expression("Area: 1 670 800" ~ m^2))
+
+Rarefied_Test_long |> 
+  distinct(area)
 
 
 ##################################     END      ##################################################################
@@ -1499,6 +1582,11 @@ time.taken3
 time.taken4
 time.taken5
 
+FullStack_V1 |> 
+  filter(Muestreado3 == 1) |> 
+  group_by(DESECON2) |> 
+  count() |> 
+  print(n= 30)
 
 ##################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
 ################## 1) Cycle 1-2 -------------------------------------------
@@ -2026,6 +2114,7 @@ Plots_1 <- Base |>
                                      Plot_S1 == 3 ~ 3,
                                      Plot_S1 == 4 ~ 4,
                                      T ~ Plot_S1))
+
 
 # cycle 2
 Plots_2 <- Base |> 
