@@ -1005,8 +1005,11 @@ joined_data <- st_join(coordinates_df, shapefile)
 
 ## STEP 6: drop everything apart from cluster_ID and DESECON  + return to regular df ----
 Ecoregions <- st_set_geometry(joined_data |> 
-                                select(Cluster_ID, DESECON1, DESECON2, DESECON3, DESECON4), NULL) |> 
+                                select(Cluster_ID, DESECON1, DESECON2, CVEECON2), NULL) |> 
   mutate(DESECON2 = str_replace(DESECON2, "Gofo", "Golfo"))
+
+joined_data |> 
+  select(CVEECON2)
 ##################################     END      ##################################################################
 #
 ##############  BASE FOR ALL CACLULATIONS      #################################################
@@ -1170,12 +1173,12 @@ time.taken3 <- end.time - start.time
 
 
 ##############  ECOREGIONS BASED CALCULATION         ###############################################
-## STEP 1: add ecoregions to rest of data based on cluster_ID ----
+# STEP 1: add ecoregions to rest of data based on cluster_ID ----
 Eco_Calc <- merged |> 
   select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
   left_join(Ecoregions, by = "Cluster_ID")
 
-## STEP 2: Calculate Plots per cluster ----
+# STEP 2: Calculate Plots per cluster ----
 Plots_1 <- Base |> 
   ungroup() |> 
   select(Cluster_ID, Plot_S1) |> 
@@ -1219,7 +1222,7 @@ Plots_3 <- Base |>
 Plots_123 <- rbind(Plots_1, Plots_2, Plots_3)
 Plots_123
 
-## STEP 3: Calculate area per cluster ----
+# STEP 3: Calculate area per cluster ----
 Plots_123 <- Plots_123 |> 
   mutate(plot_area = number_of_plots * 400,
          Cycle = as.character(Cycle))
@@ -1230,7 +1233,7 @@ Eco_Calc <- Eco_Calc |>
 
 Eco_Calc
 
-## STEP 2: Calculate number of clusters per ecoregion ----
+# STEP 2: Calculate number of clusters per ecoregion ----
 Eco_Cluster <- Eco_Calc |> 
   select(Cluster_ID, Cycle, DESECON2, number_of_plots, plot_area) |> 
   group_by(Cycle, DESECON2) |> 
@@ -1248,7 +1251,7 @@ Eco_Calc |>
 
 Eco_Cluster
 
-## STEP 3: Caculate species abundances per ecoregion ----
+# STEP 3: Caculate species abundances per ecoregion ----
 Eco_Species <- Eco_Calc |> 
   select(NombreCientifico_APG, Cycle, DESECON2) |> 
   group_by(Cycle, DESECON2, NombreCientifico_APG) |> 
@@ -1256,7 +1259,7 @@ Eco_Species <- Eco_Calc |>
 
 Eco_Species
 
-## STEP 4: Pivot Eco_Species from long to wide -----
+# STEP 4: Pivot Eco_Species from long to wide -----
 # pivot
 Eco_Species_wide <- Eco_Species |> 
   pivot_wider(names_from = NombreCientifico_APG, values_from = species_abundance)
@@ -1273,19 +1276,19 @@ Eco_Species_wide <- Eco_Species_wide |>
 
 
 
-## STEP 5: Combine Eco_Species and Eco_Cluster ----
+# STEP 5: Combine Eco_Species and Eco_Cluster ----
 Eco_wide <- Eco_Cluster |> 
   left_join(Eco_Species_wide,
             by = c("Cycle", "DESECON2")) 
 
 
-## STEP 6: Ready for rarefaction ----
+# STEP 6: Ready for rarefaction ----
 Test <- Eco_wide |> 
   filter(DESECON2 == "Sierra Madre del Sur")
 Test
 
 
-## STEP 7: Rarefaction ----
+# STEP 7: Rarefaction ----
 ### IMPORTANT: run this code only with species as cols and samples as rows!!!
 m.rar.time <- Test[, -c(1:4)]
 
@@ -1571,6 +1574,29 @@ Subplot_changes <- Base |>
 # writeVector(vect(Subplot_changes, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Subplot_changes.shp")
 
 ##################################     END      ##################################################################
+
+##################  SPECIES RICHNESS CHANGES MAPS ##################
+# STEP 1: Identifying changes per PSU based on available PSUs per cycle and comparison ----
+SpeciesRichness <- FullStack_V1 |> 
+  mutate(SC1 = case_when(Muestreado1 != 1 | Plot_S1 != 4 ~ NA,
+                         T ~ SC1),
+         SC2 = case_when(Muestreado2 != 1 | Plot_S2 != 4 ~ NA,
+                         T ~ SC2),
+         SC3 = case_when(Muestreado3 != 1 | Plot_S3 != 4 ~ NA,
+                         T ~ SC3)) |> 
+  mutate(SC12 = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
+                          T ~ SC12),
+         SC23 = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ SC23),
+         SC13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ SC13)) |> 
+  select(X, Y, SC1, SC2, SC3, SC12, SC23, SC13, DESECON2)
+
+# Step 2: geospatial prep ----
+# writeVector(vect(SpeciesRichness, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "SpeciesRichness.shp")
+
+##################################     END      ##################################################################
+
 
 
 end.time <- Sys.time()
@@ -2064,7 +2090,7 @@ iMAD_results_13 <- iMAD_results_13 |>
                                          chi_squared == 1 & Col_1 < 0 ~ -1))
 
 #### STEP 6: Geospatial Prep ----
-# writeVector(vect(iMAD_results_13, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13.shp")
+ writeVector(vect(iMAD_results_13, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13.shp")
 ########### CUT -------------------------------------------------------------------------------------------------
 
 
@@ -2323,6 +2349,7 @@ FullStack_V1 %>%
 
 
 
+
 #eeeeee
 
 
@@ -2454,135 +2481,51 @@ FullStack_V1 |>
 
 #### 3) Ridges ------------------------------------------------- 
 ## 1.1) Species Richness Distribution ----
-# SC1
-# Ecoregion 1
-FullStack_V1 |> 
+
+FullStack_V1 %>% 
   mutate(SC1 = case_when(Muestreado1 != 1 | Plot_S1 != 4 ~ NA,
                          T ~ SC1),
          SC2 = case_when(Muestreado2 != 1 | Plot_S2 != 4 ~ NA,
                          T ~ SC2),
          SC3 = case_when(Muestreado3 != 1 | Plot_S3 != 4 ~ NA,
-                         T ~ SC3)) |>
-  filter(!is.na(DESECON1)) |> 
-  ggplot(aes(y = DESECON1, x = SC1, fill = DESECON1)) +
-  geom_density_ridges(show.legend = F)
+                         T ~ SC3)) |> 
+  select(DESECON2, SC1, SC2, SC3) |> 
+  pivot_longer(c(SC1, SC2, SC3), names_to = "Cycle", values_to = "Species_Richness") |> 
+  mutate(Comparison = factor(Cycle, levels = c("SC1", "SC2", "SC3"))) |> 
+  filter(!is.na(DESECON2) & DESECON2 != "Cuerpos de agua") |> 
+  ggplot(aes(y = DESECON2, x = Species_Richness, fill = DESECON2)) +
+  geom_density_ridges(show.legend = F, scale = 1) +
+  facet_grid(~Cycle) +
+  theme_minimal() +
+  ylab("Ecoregions") +
+  xlab("Species richness per PSU (# of individuals)") +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
 
 
-# Ecoregion 2
-FullStack_V1 |> 
-  mutate(SC1 = case_when(Muestreado1 != 1 | Plot_S1 != 4 ~ NA,
-                         T ~ SC1),
-         SC2 = case_when(Muestreado2 != 1 | Plot_S2 != 4 ~ NA,
-                         T ~ SC2),
-         SC3 = case_when(Muestreado3 != 1 | Plot_S3 != 4 ~ NA,
-                         T ~ SC3)) |>
-  filter(!is.na(DESECON2)) |> 
-  filter(DESECON2 != "Cuerpos de agua") |> 
-  ggplot(aes(y = DESECON2, x = SC12, fill = DESECON2)) +
-  geom_density_ridges(show.legend = F) 
 
+## 1.1.1) Species Richness Change ----
 
-# Comparison with constantly available plots
-FullStack_V1 |>
+FullStack_V1 %>% 
   mutate(SC12 = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
                           T ~ SC12),
          SC23 = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
                           T ~ SC23),
          SC13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
-                          T ~ SC13)) |>
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Plot_S1 == 4 & Plot_S2 == 4) |> 
-  filter(!is.na(DESECON2)) |> 
-  ggplot(aes(y = DESECON2, x = SC12, fill = DESECON2)) +
-  geom_density_ridges(show.legend = F)
-
-# SC2
-# Ecoregion 1
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON1_C3)) |>
-  ggplot(aes(y = DESECON1_C3, x = SC2, fill = DESECON1_C3)) +
-  geom_density_ridges(show.legend = F)
-
-# Comparison with constantly available plots
-FullStack_V5_Zeros |>
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(!is.na(DESECON1_C3)) |> 
-  ggplot(aes(y = DESECON1_C3, x = SC2, fill = DESECON1_C3)) +
-  geom_density_ridges(show.legend = F)
-
-# Ecoregion 2
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON2_C3)) |>
-  ggplot(aes(y = DESECON2_C3, x = SC2, fill = DESECON2_C3)) +
-  geom_density_ridges(show.legend = F)
-
-# SC3
-#Ecoregion 1
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON1_C3)) |>
-  ggplot(aes(y = DESECON1_C3, x = SC3, fill = DESECON1_C3)) +
-  geom_density_ridges(show.legend = F)
-
-# Comparison with constantly available plots
-FullStack_V5_Zeros |>
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |>
-  filter(!is.na(DESECON1_C3)) |> 
-  ggplot(aes(y = DESECON1_C3, x = SC3, fill = DESECON1_C3)) +
-  geom_density_ridges(show.legend = F)
-
-#Ecoregion 2
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON2_C3)) |>
-  ggplot(aes(y = DESECON2_C3, x = SC3, fill = DESECON2_C3)) +
-  geom_density_ridges(show.legend = F)
-
-## 1.1.1) Species Richness Change ----
-
-# SC12
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON1_C3)) |> 
-  ggplot(aes(y = DESECON1_C3, x = SC12, fill = DESECON1_C3)) +
-  geom_density_ridges(show.legend = F)
-
-
-# SC23
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON1_C3)) |>
-  ggplot(aes(y = DESECON1_C3, x = SC23, fill = DESECON1_C3)) +
-  geom_density_ridges(show.legend = F)
-
-# SC13
-FullStack_V5_Zeros |> 
-  filter(!is.na(DESECON1_C3)) |>
-  ggplot(aes(y = DESECON1_C3, x = SC13, fill = DESECON1_C3)) +
-  geom_density_ridges(show.legend = F)
-
-
-
-## 1.2) Biomass ----
-
-# on it
-
-## 1.3) iMAD ----
-
-# does this even work?
-
-## 1.4) Total Entries ----
-# FullStack_V4 & FullStack_V4 (both 0s for Total Tree Entries)
-FullStack_V4 %>% 
-  select(TE12, TE23, TE13) |> 
-  pivot_longer(c(TE12, TE23, TE13), names_to = "Comparison", values_to = "SpecChange") |> 
-  mutate(Comparison = factor(Comparison, levels = c("TE12", "TE23", "TE13"))) |> 
-  ggplot( aes(x= Comparison, y= SpecChange, fill=Comparison)) +
-  geom_violin() +
-  geom_ridges
-
-## 3.1) Species Richness ----
-FullStack_V4 %>% 
-  select(SC12, SC23, SC13) |> 
-  pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "SpecChange") |> 
+                          T ~ SC13)) |> 
+  select(DESECON2, SC12, SC23, SC13) |> 
+  pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "Species_Richness_Change") |> 
   mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
-  ggplot( aes(x= Comparison, y= SpecChange, fill=Comparison)) +
-  geom_violin()
+  filter(!is.na(DESECON2) & DESECON2 != "Cuerpos de agua") |> 
+  ggplot(aes(y = DESECON2, x = Species_Richness_Change, fill = DESECON2)) +
+  geom_density_ridges(show.legend = F, scale = 2) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  facet_grid(~Comparison) +
+  theme_minimal() +
+  ylab("Ecoregions") +
+  xlab("Species richness change per PSU (# of individuals)") +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
 
 
 ##################################     END      ##################################################################
