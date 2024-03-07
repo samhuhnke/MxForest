@@ -5,7 +5,7 @@
 start.time <- Sys.time()
 
 ####################          MAIN CODE             ##########################################################################
-#################### 0) LOAD NECESSARY PACKAGES ----------------------------------------------------------
+#################### 0) LOAD NECESSARY PACKAGES and PREPARATIONS ----------------------------------------------------------
 
 library(data.table) #fread()
 library(readxl)     #read_xlsx()
@@ -15,7 +15,10 @@ library(ggridges)   #geom_density_ridges()
 library(terra)      #geo_spatial coordinates
 library(vegan)      #for shannon-index and pielou-eveness
 library(svglite)    #to save figures as .svg
-
+library(extrafont)  #to change fonts in my figures
+windowsFonts(TNR = windowsFont("Times New Roman")) #to enable times new roman as a font
+windowsFonts(ARL = windowsFont("Arial"))
+fonts()
 #################### 1) LOAD RAW DATA ------------------------------------------------------------
 
 ## 2004 - 2007 -> changing "NULL" character values to NA
@@ -472,7 +475,6 @@ merged <- rbind(M.04, M.09, M.14) |>
   mutate(Plot_ID = paste(Cycle, Conglomerado, Sitio, Anio, sep = "_")) |> 
   mutate(Cluster_ID = Conglomerado) |> 
   select(Cluster_ID, Plot_ID, Cycle, Sitio, Anio, everything(), -c(Conglomerado))
-View(merged)
 
 
 #################### 4) EDA PREPARATION ------------------------------------------------------------------
@@ -1230,11 +1232,12 @@ Eco_Calc
 
 ## STEP 2: Calculate number of clusters per ecoregion ----
 Eco_Cluster <- Eco_Calc |> 
-  select(Cluster_ID, Cycle, DESECON2, plot_area) |> 
+  select(Cluster_ID, Cycle, DESECON2, number_of_plots, plot_area) |> 
   group_by(Cycle, DESECON2) |> 
   distinct() |> 
   group_by(Cycle, DESECON2) |> 
   summarise(number_of_clusters = n(),
+            total_plots = sum(number_of_plots),
             area = sum(plot_area))
 
 Eco_Calc |> 
@@ -1346,9 +1349,6 @@ Rarefied_Test_long |>
   theme_minimal() +
   labs(title = Rarefied_Test_long$DESECON2) +
   annotate("text", x=3, y=1500, label= expression("Area: 1 670 800" ~ m^2))
-
-Rarefied_Test_long |> 
-  distinct(area)
 
 
 ##################################     END      ##################################################################
@@ -1574,19 +1574,14 @@ Subplot_changes <- Base |>
 
 
 end.time <- Sys.time()
-time.taken5 <- end.time - start.time
+time.taken4 <- end.time - start.time
 
 time.taken1
 time.taken2
 time.taken3
 time.taken4
-time.taken5
 
-FullStack_V1 |> 
-  filter(Muestreado3 == 1) |> 
-  group_by(DESECON2) |> 
-  count() |> 
-  print(n= 30)
+
 
 ##################          IR-MAD CHANGE DETECTION PREPARATION            ----------------------------------
 ################## 1) Cycle 1-2 -------------------------------------------
@@ -1955,8 +1950,16 @@ iMAD_results_23 <- iMAD_results_23 |>
                                  chi_squared <= quantile(chi_squared, 0.99, df=8) & chi_squared > quantile(chi_squared, 0.95, df=8) ~ 2,
                                  chi_squared <= quantile(chi_squared, 0.95, df=8) & chi_squared > quantile(chi_squared, 0.90, df=8) ~ 1,
                                  T ~ chi_squared))
-
-#### STEP 4: Geospatial Prep ----
+#### STEP 5: Direction of change ----
+iMAD_results_23 <- iMAD_results_23 |> 
+  mutate(direction_of_change = case_when(chi_squared == 0 ~ 0,
+                                         chi_squared == 3 & Col_1 > 0 ~ 3,
+                                         chi_squared == 3 & Col_1 < 0 ~ -3,
+                                         chi_squared == 2 & Col_1 > 0 ~ 2,
+                                         chi_squared == 2 & Col_1 < 0 ~ -2,
+                                         chi_squared == 1 & Col_1 > 0 ~ 1,
+                                         chi_squared == 1 & Col_1 < 0 ~ -1))
+#### STEP 6: Geospatial Prep ----
 
 # writeVector(vect(iMAD_results_23, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_23.shp")
 
@@ -2067,7 +2070,7 @@ iMAD_results_13 <- iMAD_results_13 |>
 
 ################## 4) CrOSS COMPARISON - FILTER: CONSTANT CLUSTERS -------------------------------------------
 ## STEP 1: Data Preparation ----
-iMAD_results_Constant <- rbind(iMAD_results_12_Constant, iMAD_results_13_Constant, iMAD_results_23_Constant) |> 
+iMAD_results <- rbind(iMAD_results_12, iMAD_results_13, iMAD_results_23) |> 
   mutate(Comparison = factor(Comparison, levels = c("Cycle12", "Cycle23", "Cycle13")))
 #### Violin Plot ----
 ## STEP 2: Plotting ----
@@ -2292,15 +2295,21 @@ Plots_Rare_long |>
 #### 1) Violinplots --------------------------------------------
 ### 1.1) Species Richness Changes ----
 
-# Based on Fullstack_V1 with differing sample sizes for each comparison
+# Based on Fullstack_V1 with comparison sample size
 FullStack_V1 %>% 
+  mutate(SC12 = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
+                          T ~ SC12),
+         SC23 = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ SC23),
+         SC13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ SC13)) |> 
   select(SC12, SC23, SC13) |> 
   pivot_longer(c(SC12, SC23, SC13), names_to = "Comparison", values_to = "Species_Richness") |> 
   mutate(Comparison = factor(Comparison, levels = c("SC12", "SC23", "SC13"))) |> 
   ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
-  geom_violin(scale = "area", adjust = 1) +
-  scale_fill_manual(values=c(SC12="#cabad0", SC23="#ae96b5", SC13="#7c4e87")) +
+  geom_violin(scale = "area", adjust = 1, width = 1) +
+  scale_fill_manual(values=c(SC12="#eeeeee", SC23="#aaaaaa", SC13="#666666")) +
   theme_bw() +
   theme(
     panel.background = element_blank(), # Remove panel background
@@ -2308,15 +2317,13 @@ FullStack_V1 %>%
     panel.grid.minor = element_blank(), # Remove minor grid lines
     legend.position = "none", # Remove legend # Add axes lines
   ) +
-  scale_y_continuous(breaks = seq(-40, 40, by = 10)) + 
-  ylab("Species Richness Change") +
-  xlab("") 
-
-#cabad0
-#ae96b5
-#7c4e87
+  scale_y_continuous(breaks = seq(-40, 40, by = 5)) + 
+  ylab("Species richness change (# of individuals)") +
+  xlab("Comparison") 
 
 
+
+#eeeeee
 
 
 ### 1.3) iMAD ----
@@ -2346,11 +2353,23 @@ iMAD_results |>
 
 
 ## rest of the columns ----
-## Column 2
-iMAD_results_Constant_Zeros |> 
-  ggplot(aes(x = Comparison, y = Col_2, fill = Comparison)) +
-  geom_violin() +
-  coord_cartesian(ylim = c(-25, 25))
+## Column 1
+iMAD_results |> 
+  mutate(Comparison = factor(Comparison, levels = c("Cycle12", "Cycle23", "Cycle13"))) |> 
+  ggplot(aes(x = Comparison, y = Col_1, fill = Comparison)) +
+  geom_violin(scale = "area", adjust = 1) +
+  coord_cartesian(ylim = c(-25, 25)) +
+  scale_fill_manual(values=c(Cycle12="#eeeeee", Cycle23="#aaaaaa", Cycle13="#666666")) +
+  theme_bw() +
+  theme(
+    panel.background = element_blank(), # Remove panel background
+    panel.grid.major = element_line("gray80"), # Keep major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    legend.position = "none", # Remove legend # Add axes lines
+  )
+
+
+
 ## Column 3
 iMAD_results_Constant_Zeros |> 
   ggplot(aes(x = Comparison, y = Col_3, fill = Comparison)) +
@@ -2390,11 +2409,14 @@ iMAD_results |>
 FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1 & Plot_S1 == 4 & Plot_S2 == 4) |> 
   ggplot(aes(x = SC1, y = SC2)) +
-  geom_point(position = "jitter") +
+  geom_point(position = "jitter", color = "black") +
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
   geom_abline(color = "red") +
-  xlab("Cycle 1") + ylab("Cycle 2") +
-  theme_light()
+  xlab("Species Richness (Cycle 1)") + ylab("Species Richness (Cycle 2)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=10, y=60, label = "n = 17 239", size = 4, hjust = 0.5, vjust = 0.5)
 
 # ggsave(here("Plots", "Thesis Plots", "C12_Scatterplot.svg"), width = 6, height = 6)
 
@@ -2402,11 +2424,14 @@ FullStack_V1 |>
 FullStack_V1 |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1 & Plot_S2 == 4 & Plot_S3 == 4) |> 
   ggplot(aes(x = SC2, y = SC3)) +
-  geom_point(position = "jitter") +
+  geom_point(position = "jitter", color = "black") +
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
   geom_abline(color = "red") +
-  xlab("Cycle 2") + ylab("Cycle 3") +
-  theme_light()
+  xlab("Species Richness (Cycle 2)") + ylab("Species Richness (Cycle 3)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=10, y=60, label = "n = 9 400", size = 4, hjust = 0.5, vjust = 0.5)
 
 # ggsave(here("Plots", "Thesis Plots", "C23_Scatterplot.svg"), width = 6, height = 6)
 
@@ -2414,14 +2439,17 @@ FullStack_V1 |>
 FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado3 == 1 & Plot_S1 == 4 & Plot_S3 == 4) |> 
   ggplot(aes(x = SC1, y = SC3)) +
-  geom_point(position = "jitter") +
+  geom_point(position = "jitter", color = "black") +
   coord_cartesian(xlim = c(0, 60), ylim = c(0,60)) +
   geom_abline(color = "red") +
-  xlab("Cycle 1") + ylab("Cycle 3") +
-  theme_light()
+  xlab("Species Richness (Cycle 1)") + ylab("Species Richness (Cycle 3)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=10, y=60, label = "n = 8 532", size = 4, hjust = 0.5, vjust = 0.5)
 
 # ggsave(here("Plots", "Thesis Plots", "C13_Scatterplot.svg"), width = 6, height = 6)
-  
+
 
 
 #### 3) Ridges ------------------------------------------------- 
@@ -2429,28 +2457,40 @@ FullStack_V1 |>
 # SC1
 # Ecoregion 1
 FullStack_V1 |> 
+  mutate(SC1 = case_when(Muestreado1 != 1 | Plot_S1 != 4 ~ NA,
+                         T ~ SC1),
+         SC2 = case_when(Muestreado2 != 1 | Plot_S2 != 4 ~ NA,
+                         T ~ SC2),
+         SC3 = case_when(Muestreado3 != 1 | Plot_S3 != 4 ~ NA,
+                         T ~ SC3)) |>
   filter(!is.na(DESECON1)) |> 
   ggplot(aes(y = DESECON1, x = SC1, fill = DESECON1)) +
   geom_density_ridges(show.legend = F)
 
-
-# Comparison with constantly available plots
-FullStack_V1 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(!is.na(DESECON1)) |> 
-  ggplot(aes(y = DESECON1, x = SC1, fill = DESECON1)) +
-  geom_density_ridges(show.legend = F)
 
 # Ecoregion 2
 FullStack_V1 |> 
+  mutate(SC1 = case_when(Muestreado1 != 1 | Plot_S1 != 4 ~ NA,
+                         T ~ SC1),
+         SC2 = case_when(Muestreado2 != 1 | Plot_S2 != 4 ~ NA,
+                         T ~ SC2),
+         SC3 = case_when(Muestreado3 != 1 | Plot_S3 != 4 ~ NA,
+                         T ~ SC3)) |>
   filter(!is.na(DESECON2)) |> 
+  filter(DESECON2 != "Cuerpos de agua") |> 
   ggplot(aes(y = DESECON2, x = SC12, fill = DESECON2)) +
   geom_density_ridges(show.legend = F) 
 
 
 # Comparison with constantly available plots
 FullStack_V1 |>
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  mutate(SC12 = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
+                          T ~ SC12),
+         SC23 = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ SC23),
+         SC13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ SC13)) |>
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Plot_S1 == 4 & Plot_S2 == 4) |> 
   filter(!is.na(DESECON2)) |> 
   ggplot(aes(y = DESECON2, x = SC12, fill = DESECON2)) +
   geom_density_ridges(show.legend = F)
