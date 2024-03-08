@@ -659,7 +659,6 @@ Comp_C_Diagnostics_V3 <- Comp_C_Diagnostics_V2 %>%
          Cycles = (cycles_four_plots + cycles_three_plots + cycles_two_plots + cycles_one_plots))
 
 
-###### 5.4) ESTADO + TIPO VEGETACION FILTER -----------------------------------------------------
 ###### 5.3) TREE PLOT COUNT MEANS AND MEDIANS BY CLUSTERS ----------------------
 ## calculate means and medians for each cluster based of total plot entries 
 PTC_C <- SpecRich |> 
@@ -710,6 +709,7 @@ ClusterBase <- rbind(Sec.04 |>
   distinct() |> 
   mutate(Cluster_ID = Conglomerado) |> 
   select(Cluster_ID)
+
 
 # STEP 2: JOIN CLUSTER_ID + X & Y FROM EACH Cycle
 #Cycle 1
@@ -806,7 +806,6 @@ PreBase2 <- PreBase |>
   # changing Muestreado1 values to make them easily computable and compatible with Muestreado2 and Muestreado 3
   mutate(Muestreado1 = case_when(Muestreado1 == "Si" ~ 1,
                                  Muestreado1 == "No" ~ 0)) 
-
 
 
 ################### 3) CLUSTER AND PLOT STATUS -----------------------------------------------------------
@@ -919,6 +918,7 @@ National_1 <- National_Base |>
             by = "Cluster_ID")
 
 
+
 N1 <- National_1 |> 
   ungroup() |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
@@ -1008,8 +1008,7 @@ Ecoregions <- st_set_geometry(joined_data |>
                                 select(Cluster_ID, DESECON1, DESECON2, CVEECON2), NULL) |> 
   mutate(DESECON2 = str_replace(DESECON2, "Gofo", "Golfo"))
 
-joined_data |> 
-  select(CVEECON2)
+Ecoregions
 ##################################     END      ##################################################################
 #
 ##############  BASE FOR ALL CACLULATIONS      #################################################
@@ -1129,6 +1128,10 @@ FullStack_V1 <- Base |>
   ) |> 
   ungroup()
 
+
+FullStack_V1 |> 
+  c123_filter() |> 
+  count()
  
 ################### 2) UNIVARIATE CHANGE CALCULATIONS -----------------------------------
 FullStack_V1 <- FullStack_V1 |> 
@@ -1138,31 +1141,16 @@ FullStack_V1 <- FullStack_V1 |>
          TE13 = TE3 - TE1,
          SC12 = SC2 - SC1,
          SC23 = SC3 - SC2,
-         SC13 = SC3 - SC1)
+         SC13 = SC3 - SC1) |> 
+  # aclculate univariate changes in species richness as percentage compared to previous cycle
+  mutate(SC12P = case_when(SC1 != 0 ~ (SC12/SC1)*100,
+                           SC1 == 0 ~ NA),
+         SC23P = case_when(SC2 != 0 ~ (SC23/SC2)*100,
+                           SC2 == 0 ~ NA),
+         SC13P = case_when(SC1 != 0 ~ (SC13/SC1)*100,
+                           SC1 == 0 ~ NA))
 
 
-################### 5) GEOSPATIAL PREPARATION -----------------------------------
-
-  #writeVector(vect(Sec.04, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Clusters04.shp")
-  #writeVector(vect(Sec.09, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Clusters09.shp")
-  #writeVector(vect(Sec.14, geom = c("X_C3", "Y_C3"), crs = "+proj=longlat +datum=WGS84"), "Clusters14.shp")
-
-  #writeVector(vect(FullStack_V3, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "WhatClustersChanged_v2.shp")
-
-  #writeVector(vect(FullStack_V4 |> filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1), geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "WhatClustersChanged_v2.shp")
-
-
-#DATA: FUllStack_V4 - for cluster based change in tree counts ----
-  #writeVector(vect(FullStack_V4, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4.shp")
-
-#DATA: FullStack_V4 - FILTER: only constantly sampled clusters (n = 9 795) ----
-  #writeVector(vect(FullStack_V4 |> filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1), geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4_F1.shp")
-
-#DATA: FullStack_V4_Zeros ----
-#  writeVector(vect(FullStack_V4_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V4_Zeros.shp")
-
-#DATA: FullStack_V5_Zeros ----
- # writeVector(vect(FullStack_V5_Zeros, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "FullStack_V5_Zeros.shp")
 
 ##################################     END      ##################################################################
 
@@ -1178,6 +1166,7 @@ Eco_Calc <- merged |>
   select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
   left_join(Ecoregions, by = "Cluster_ID")
 
+
 # STEP 2: Calculate Plots per cluster ----
 Plots_1 <- Base |> 
   ungroup() |> 
@@ -1190,7 +1179,6 @@ Plots_1 <- Base |>
                                      Plot_S1 == 4 ~ 4,
                                      T ~ Plot_S1)) |> 
   select(-c("Plot_S1"))
-
 
 # cycle 2
 Plots_2 <- Base |> 
@@ -1279,82 +1267,219 @@ Eco_Species_wide <- Eco_Species_wide |>
 # STEP 5: Combine Eco_Species and Eco_Cluster ----
 Eco_wide <- Eco_Cluster |> 
   left_join(Eco_Species_wide,
-            by = c("Cycle", "DESECON2")) 
+            by = c("Cycle", "DESECON2")) |> 
+  filter(!is.na(DESECON2))
 
 
-# STEP 6: Ready for rarefaction ----
-Test <- Eco_wide |> 
-  filter(DESECON2 == "Sierra Madre del Sur")
-Test
-
-
-# STEP 7: Rarefaction ----
-### IMPORTANT: run this code only with species as cols and samples as rows!!!
-m.rar.time <- Test[, -c(1:4)]
-
-# preparation step: change integer values to numeric 
-m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
-
-
-# rarefaction
-a <- min(Test$area) # -> 55 days
-m3_rarified <- m.rar.time 
-for (k in 1:ncol(m.rar.time)) {
-  for (i in 1:nrow(m.rar.time)) {
-    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Test$area[i])
+# STEP 6: Rarefaction Loop Area ---------------
+rarefy_ecoregions <- function(data) {
+  # Extract unique DESECON2 values
+  unique_ecoregions <- unique(data$DESECON2)
+  
+  # Initialize an empty list to store results
+  results_list <- list()
+  
+  # Loop over each ecoregion
+  for (ecoregion in unique_ecoregions) {
+    # Filter data for the current ecoregion
+    Temp <- data |> 
+      filter(DESECON2 == ecoregion)
+    
+    # Rarefaction code adapted from your steps 7 and onward
+    m.rar.time <- Temp[, -c(1:5)]
+    m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
+    a <- min(Temp$area)
+    m3_rarified <- m.rar.time 
+    for (k in 1:ncol(m.rar.time)) {
+      for (i in 1:nrow(m.rar.time)) {
+        m3_rarified[i, k] <- m.rar.time[i, k] * (a / Temp$area[i])
+      }
+    }
+    
+    # rounding of values
+    m3_rarified_rd <- trunc(m3_rarified)
+    commas <- m3_rarified - m3_rarified_rd
+    
+    upround <- rowSums(commas)
+    
+    rank <- as.data.frame(t(apply(-commas, 1, order)))
+    
+    for (k in 1:nrow(m.rar.time)){
+      for (i in 1:round(upround[k])) {if(round(upround[k])>0){
+        m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
+      }}
+    
+    finish <- trunc(m3_rarified)
+    # Assume 'finish' contains the final data after rarefaction
+    
+    # Return to original data format (with your specified columns)
+    Eco_Temp <- cbind(Temp[1:5], finish)
+    
+    # Pivot to long format and summarize
+    Eco_Temp_Final <- Eco_Temp %>% 
+      pivot_longer(cols = -c(1:5), names_to = "species_names", values_to = "values") %>%
+      filter(values != 0) %>% 
+      group_by(Cycle, DESECON2) %>% 
+      summarise(number_of_species = n()) %>% 
+      left_join(Eco_Temp |> select(Cycle, DESECON2, number_of_clusters, total_plots, area), by = c("Cycle", "DESECON2"))
+    
+    # Store the result for this ecoregion
+    results_list[[ecoregion]] <- Eco_Temp_Final
   }
+  
+  # Combine all ecoregion results into one dataframe
+  final_result <- bind_rows(results_list)
+  
+  return(final_result)
 }
 
-# rounding of values
-m3_rarified_rd <- trunc(m3_rarified)
-commas <- m3_rarified - m3_rarified_rd
+# Apply the function to your dataset
+final_ecoregion_data <- rarefy_ecoregions(Eco_wide)
+print(final_ecoregion_data, n = 70)
 
-upround <- rowSums(commas)
+View(final_ecoregion_data |> 
+       select(Cycle, DESECON2, total_plots, area, number_of_species))
 
-rank <- as.data.frame(t(apply(-commas, 1, order)))
+#write.csv(final_ecoregion_data, file = "Rarefied_Ecoregions.csv")
 
-for (k in 1:nrow(m.rar.time)){
-  for (i in 1:round(upround[k])) {if(round(upround[k])>0){
-    m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
-  }}
+# STEP 9: cute barplot ----
+prepared <- final_ecoregion_data %>%
+  filter(DESECON2 == "Sistema Neovolcanico Transversal")
 
-finish <- trunc(m3_rarified)
-
-# return to original dataformat
-Rarefied_Test <- cbind(Test[1:4], finish)
-Rarefied_Test
-Test
-
-# pivot to long data format
-Rarefied_Test_long <- Rarefied_Test %>% 
-  pivot_longer(
-    cols = -c(1:4), # Excludes the first two columns from pivoting - otherwise they'll end up in species names
-    names_to = "species_names",
-    values_to = "values"
-  )
-
-Rarefied_Test_long
-
-# calculate number of species
-Rarefied_Test_long |> 
-  filter(values != 0) |> 
-  group_by(Cycle, DESECON2) |> 
-  summarise(n = n())
-
-# STEP 8: cute barplot ----
-Rarefied_Test_long |> 
-  filter(values != 0) |> 
-  group_by(Cycle) |> 
-  summarise(n = n()) |> 
-  ggplot(aes(x = Cycle, y = n)) +
+# with SSU text
+prepared |> 
+  ggplot(aes(x = Cycle, y = number_of_species)) +
   geom_col() +
-  geom_text(aes(label = n), vjust = 1.5, colour = "white") +
+  geom_text(aes(label = number_of_species), vjust = 1.5, colour = "white") +
   theme_minimal() +
-  labs(title = Rarefied_Test_long$DESECON2) +
-  annotate("text", x=3, y=1500, label= expression("Area: 1 670 800" ~ m^2))
+  labs(title = prepared$DESECON2) +
+  ylab("# of species") +
+  annotate("text", x=Inf, y=Inf, label= sprintf("SSUs: %s ", format(min(prepared$total_plots), big.mark = " ", scientific = FALSE)),
+           hjust = 1.25, vjust = 1)
 
 
+
+# with area text
+prepared |> 
+  ggplot(aes(x = Cycle, y = number_of_species)) +
+  geom_col() +
+  geom_text(aes(label = number_of_species), vjust = 1.5, colour = "white") +
+  theme_minimal() +
+  labs(title = prepared$DESECON2) +
+  ylab("# of species") +
+  annotate("text", x=Inf, y=Inf, label= sprintf("Area: %s ", format(min(prepared$area), big.mark = " ", scientific = FALSE)),
+           hjust = 1.25, vjust = 1.5) +
+  annotate("text", x=Inf, y=Inf, label= "m^2", parse = T, hjust = 1, vjust = 1)
+
+# STEP 10: comparison with shared PSUs ----
+# create individual calculations
+# cycle 1
+Test1 <- Base |> left_join(Eco_Calc |>
+                    select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
+                    filter(Cycle == 1),
+                  by = "Cluster_ID") |> 
+  c123_filter() |> 
+  mutate(Cycle = case_when(is.na(Cycle) ~ "1",
+                           T ~ Cycle)) |> 
+  ungroup()
+
+
+Test1 |> c123_filter() |> select(Cluster_ID, DESECON2) |> distinct() |>  group_by(DESECON2) |>  count()
+
+Test1 |> c123_filter() |> group_by(DESECON2) |> 
+  summarise(Cycle = mean(as.numeric(Cycle)),
+            number_of_cluster = n_distinct(Cluster_ID),
+            number_of_species = n_distinct(NombreCientifico_APG))
+
+# cycle 2
+Test2 <- Base |> left_join(Eco_Calc |>
+                             select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
+                             filter(Cycle == 2),
+                           by = "Cluster_ID") |> 
+  c123_filter() |> 
+  mutate(Cycle = case_when(is.na(Cycle) ~ "2",
+                           T ~ Cycle)) |> 
+  ungroup()
+
+Test2 |> c123_filter() |> select(Cluster_ID, DESECON2) |> distinct() |>  group_by(DESECON2) |>  count()
+
+Test2 |> c123_filter() |> group_by(DESECON2) |> 
+  summarise(Cycle = mean(as.numeric(Cycle)),
+            number_of_cluster = n_distinct(Cluster_ID),
+            number_of_species = n_distinct(NombreCientifico_APG))
+
+
+# cycle 3
+Test3 <- Base |> left_join(Eco_Calc |>
+                             select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
+                             filter(Cycle == 3),
+                           by = "Cluster_ID") |> 
+  c123_filter() |> 
+  mutate(Cycle = case_when(is.na(Cycle) ~ "3",
+                           T ~ Cycle)) |> 
+  ungroup()
+
+Test3 |> 
+  select(Cluster_ID) |> 
+    distinct() |> 
+    count()
+
+Test3 |> c123_filter() |> group_by(DESECON2) |> 
+  summarise(Cycle = mean(as.numeric(Cycle)),
+            number_of_cluster = n_distinct(Cluster_ID),
+            number_of_species = n_distinct(NombreCientifico_APG))
+
+# combine
+Test <- rbind(Test1 |> c123_filter() |> group_by(DESECON2) |> 
+                summarise(Cycle = mean(as.numeric(Cycle)),
+                          number_of_cluster = n_distinct(Cluster_ID),
+                          number_of_species = n_distinct(NombreCientifico_APG)),
+              Test2 |> c123_filter() |> group_by(DESECON2) |> 
+                summarise(Cycle = mean(as.numeric(Cycle)),
+                          number_of_cluster = n_distinct(Cluster_ID),
+                          number_of_species = n_distinct(NombreCientifico_APG)),
+              Test3 |> c123_filter() |> group_by(DESECON2) |> 
+                summarise(Cycle = mean(as.numeric(Cycle)),
+                          number_of_cluster = n_distinct(Cluster_ID),
+                          number_of_species = n_distinct(NombreCientifico_APG))) |> 
+  arrange(DESECON2)
+
+# results (+/- 1 for )
+Test |> 
+  print(n = 100)
+
+# STEP 11: cute barplot v2 ----
+prepared <- Test %>%
+  mutate(total_plots = number_of_cluster*4) |> 
+  filter(DESECON2 == "Sistema Neovolcanico Transversal")
+
+
+# with SSU text
+prepared |> 
+  ggplot(aes(x = Cycle, y = number_of_species)) +
+  geom_col() +
+  geom_text(aes(label = number_of_species), vjust = 1.5, colour = "white") +
+  theme_minimal() +
+  labs(title = prepared$DESECON2) +
+  ylab("# of species") +
+  annotate("text", x=Inf, y=Inf, label= sprintf("SSUs: %s ", format(min(prepared$total_plots), big.mark = " ", scientific = FALSE)),
+           hjust = 1.25, vjust = 1)
+
+# empty plot for empty ecoregions
+ggplot() +
+  geom_blank() +
+  theme_minimal() +
+  scale_x_continuous(breaks=c(1, 2, 3), limits=c(0.55, 3.45)) +
+  scale_y_continuous(limits=c(0, 1)) +
+  labs(title = "Planicie costera de Texas-Louisiana") +
+  ylab("# of species") +
+  xlab("Cycle") +
+  annotate("text", x=Inf, y=Inf, label= "SSUs:0 ",
+           hjust = 1.25, vjust = 1)
+
+  
 ##################################     END      ##################################################################
+
 
 ##############  NATIONAL BASED CALCULATION         ###############################################
 # STEP 1: calculate number of clusters per cycle ----
@@ -1590,7 +1715,13 @@ SpeciesRichness <- FullStack_V1 |>
                           T ~ SC23),
          SC13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
                           T ~ SC13)) |> 
-  select(X, Y, SC1, SC2, SC3, SC12, SC23, SC13, DESECON2)
+  mutate(SC12P = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
+                          T ~ SC12P),
+         SC23P = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ SC23P),
+         SC13P = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ SC13P)) |> 
+  select(X, Y, SC1, SC2, SC3, SC12, SC23, SC13, SC12P, SC23P, SC13P, DESECON2)
 
 # Step 2: geospatial prep ----
 # writeVector(vect(SpeciesRichness, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "SpeciesRichness.shp")
@@ -1764,7 +1895,7 @@ Cycle13 <- rbind(Cycle1, Cycle3)
 
 
 ##################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
-################## 1) Cycle 1-2 -------------------------------------------
+################## 1) Comparison 1-2 -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_12 <- Raw.04 <- fread(here("data", "iMAD", "[1] iMAD Results", "iMAD_results_12.csv"))
 #### STEP 2: Rename Columns + Attach Comparison column ----
@@ -1779,66 +1910,6 @@ iMAD_results_12 <- iMAD_results_12 |>
          Col_8 = AvgCrownArea) |> 
   mutate(Comparison = as.factor("Cycle12")) |> 
   relocate(Comparison)
-
-#### STEP 3: Plotting ----
-## COL 1 - 8 ----
-## Column 1
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_1)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-20, 20))
-
-
-## Column 2
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_2)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 3
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_3)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 4
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_4)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 5
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_5)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 6
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_6)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 7
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 8
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
 
 #### STEP 4: Chi-squared classification - only run from start! -----
 summary(iMAD_results_12$chi_squared)
@@ -1868,7 +1939,7 @@ iMAD_results_12 <- iMAD_results_12 |>
 
 ########### CUT -------------------------------------------------------------------------------
   
-################## 2) Comparison of Cycle 2 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
+################## 2) Comparison 2-3 -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_23 <- Raw.04 <- fread(here("data", "iMAD", "[1] iMAD Results", "iMAD_results_23.csv"))
 #### STEP 2: Rename Columns + Attach Comparison column ----
@@ -1883,89 +1954,6 @@ iMAD_results_23 <- iMAD_results_23 |>
          Col_8 = AvgCrownArea) |> 
   mutate(Comparison = as.factor("Cycle23")) |> 
   relocate(Comparison)
-
-#### STEP 3: Plotting ----
-## COL 1 - 8 ----
-## Column 1
-# Zoomed
-iMAD_results_23 |> 
-  ggplot(aes(x=Col_1)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 2
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_2)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 3
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_3)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 4
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_4)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 5
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_5)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 6
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_6)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 7
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 8
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## COL 7 + 8 ----
-## Column 7
-# Original
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38")
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-5, 5)) 
-
-## Column 8
-# Original
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") 
-
-# Zoomed
-iMAD_results_23_Constant |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#00BA38") +
-  coord_cartesian(xlim = c(-5, 5))
-
 
 #### STEP 4: Chi-squared classification - only run from start! -----
 summary(iMAD_results_23$chi_squared)
@@ -1991,7 +1979,7 @@ iMAD_results_23 <- iMAD_results_23 |>
 
 ########### CUT -------------------------------------------------------------------------------------------------
 
-################## 3) Comparison of Cycle 1 and 3 - FILTER: CONSTANT CLUSTERS -------------------------------------------
+################## 3) Comparison 1-3 -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_13 <- Raw.04 <- fread(here("data", "iMAD", "[1] iMAD Results", "iMAD_results_13.csv"))
 #### STEP 2: Rename Columns + Attach Comparison column ----
@@ -2007,67 +1995,7 @@ iMAD_results_13 <- iMAD_results_13 |>
   mutate(Comparison = as.factor("Cycle13")) |> 
   relocate(Comparison)
 
-#### STEP 3: Plotting ----
-## COL 1 - 8 ----
-## Column 1
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_1)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-20, 20))
-
-
-## Column 2
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_2)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 3
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_3)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 4
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_4)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 5
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_5)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 6
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_6)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 7
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_7)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-## Column 8
-# Zoomed
-iMAD_results_12 |> 
-  ggplot(aes(x=Col_8)) +
-  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
-  coord_cartesian(xlim = c(-10, 10))
-
-
-#### STEP 4: Chi-squared classification - only run from start! -----
+#### STEP 3: Chi-squared classification - only run from start! -----
 summary(iMAD_results_13$chi_squared)
 
 iMAD_results_13 <- iMAD_results_13 |> 
@@ -2079,7 +2007,7 @@ iMAD_results_13 <- iMAD_results_13 |>
 
 
 
-#### STEP 5: Direction of change ----
+#### STEP 4: Direction of change ----
 iMAD_results_13 <- iMAD_results_13 |> 
   mutate(direction_of_change = case_when(chi_squared == 0 ~ 0,
                                          chi_squared == 3 & Col_1 > 0 ~ 3,
@@ -2089,228 +2017,20 @@ iMAD_results_13 <- iMAD_results_13 |>
                                          chi_squared == 1 & Col_1 > 0 ~ 1,
                                          chi_squared == 1 & Col_1 < 0 ~ -1))
 
-#### STEP 6: Geospatial Prep ----
- writeVector(vect(iMAD_results_13, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13.shp")
+#### STEP 5: Geospatial Prep ----
+# writeVector(vect(iMAD_results_13, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "iMAD_results_13.shp")
 ########### CUT -------------------------------------------------------------------------------------------------
-
 
 ################## 4) CrOSS COMPARISON - FILTER: CONSTANT CLUSTERS -------------------------------------------
 ## STEP 1: Data Preparation ----
 iMAD_results <- rbind(iMAD_results_12, iMAD_results_13, iMAD_results_23) |> 
   mutate(Comparison = factor(Comparison, levels = c("Cycle12", "Cycle23", "Cycle13")))
-#### Violin Plot ----
-## STEP 2: Plotting ----
-## Column 7
-# Original
-iMAD_results_Constant |> 
-  ggplot(aes(x = Comparison, y = Col_7, fill = Comparison)) +
-  geom_violin()
-# zoomed
-iMAD_results_Constant |> 
-  ggplot(aes(x = Comparison, y = Col_7, fill = Comparison)) +
-  geom_violin() +
-  coord_cartesian(ylim = c(-25, 25))
-
-## Column 8
-# Original
-iMAD_results_Constant |> 
-  ggplot(aes(x = Comparison, y = Col_8, fill = Comparison)) +
-  geom_violin()
-# Zoomed
-iMAD_results_Constant |> 
-  ggplot(aes(x = Comparison, y = Col_8, fill = Comparison)) +
-  geom_violin() +
-  coord_cartesian(ylim = c(-25, 25))
-
 ########### CUT -------------------------------------------------------------------------------------------------
 
 end.time <- Sys.time()
 time.taken6 <- end.time - start.time
 
 time.taken6
-
-#################   DONT RUN - TAKES AGES ########################################################################
-#################   RAREFACTION OF SPECIESRICHNESS DATA for 3 subplot per conglomerate
-# STEP 1: calculate number of subplots for each conglomerate for each cycle ----
-# cycle 1
-Plots_1 <- Base |> 
-  ungroup() |> 
-  select(Cluster_ID, Muestreado1, Plot_S1) |> 
-  mutate(Cycle = 1,
-         number_of_plots = case_when(Plot_S1 == 0 ~ 0,
-                                     Plot_S1 == 1 ~ 1,
-                                     Plot_S1 == 2 ~ 2,
-                                     Plot_S1 == 3 ~ 3,
-                                     Plot_S1 == 4 ~ 4,
-                                     T ~ Plot_S1))
-
-
-# cycle 2
-Plots_2 <- Base |> 
-  ungroup() |> 
-  select(Cluster_ID, Muestreado2, Plot_S2) |> 
-  mutate(Cycle = 2,
-         number_of_plots = case_when(Plot_S2 == 0 ~ 0,
-                                     Plot_S2 == 1 ~ 1,
-                                     Plot_S2 == 2 ~ 2,
-                                     Plot_S2 == 3 ~ 3,
-                                     Plot_S2 == 4 ~ 4,
-                                     T ~ Plot_S2))
-
-# cycle 3
-Plots_3 <- Base |> 
-  ungroup() |> 
-  select(Cluster_ID, Muestreado3, Plot_S3) |> 
-  mutate(Cycle = 3,
-         number_of_plots = case_when(Plot_S3 == 0 ~ 0,
-                                     Plot_S3 == 1 ~ 1,
-                                     Plot_S3 == 2 ~ 2,
-                                     Plot_S3 == 3 ~ 3,
-                                     Plot_S3 == 4 ~ 4,
-                                     T ~ Plot_S3))
-
-Plots_3 |> 
-  filter(number_of_plots == 4) |> 
-  count()
-
-# STEP 2: Filter out everything that doesn't matter ----
-# cycle 1
-Plots_1 <- Plots_1 |> 
-  filter(Muestreado1 == 1) |> 
-  filter(number_of_plots >= 3) |> 
-  select(Cluster_ID, Cycle, number_of_plots)
-
-Plots_1 |> count()
-
-# cycle 2
-Plots_2 <- Plots_2 |> 
-  filter(Muestreado2 == 1) |> 
-  filter(number_of_plots >= 3) |> 
-  select(Cluster_ID, Cycle, number_of_plots)
-
-Plots_2 |> count()
-
-# cycle 3
-Plots_3 <- Plots_3 |> 
-  filter(Muestreado3 == 1) |> 
-  filter(number_of_plots >= 3) |> 
-  select(Cluster_ID, Cycle, number_of_plots)
-
-Plots_3 |> count()
-
-# STEP 3: create long data with rbind() ----
-Plots_123 <- rbind(Plots_1, Plots_2, Plots_3)
-
-Plots_123 |> 
-  filter(is.na(number_of_plots))
-
-# STEP 4: Re-introduce individual entries ----
-Plots_abundances <- Plots_123 |> 
-  #some plots are empty -> left join creates NAs for Nombrecientifico
-  left_join(C_SpecAbun |> select(Cluster_ID, Cycle, NombreCientifico_APG, abundance),
-            by = c("Cycle", "Cluster_ID")) |> 
-  relocate(Cluster_ID, Cycle, number_of_plots) |> 
-  #exchanging false NAs in NombreCientifico for "empty" and add abundance == 0
-  #keeps empty conglomerates for later change calculation
-  mutate(NombreCientifico_APG = case_when(is.na(NombreCientifico_APG) & is.na(abundance) ~ "empty",
-                                          T ~ NombreCientifico_APG),
-         NombreCientifico_APG = case_when(is.na(NombreCientifico_APG) ~ "NA",
-                                          T ~ NombreCientifico_APG),
-         abundance = case_when(is.na(abundance) ~ 0,
-                               T ~ abundance))
-
-
-# STEP 5: pivot wider ----
-# pivot
-Plots_wide <- Plots_abundances |> 
-  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
-
-Plots_wide
-
-# exchange all NAs with 0 for calculation
-Plots_wide <- Plots_wide|> 
-  replace(is.na(Plots_wide), 0)
-
-Plots_wide
-
-# STEP 6: dissect into single cycles again ----
-Plots_wide_1 <- Plots_wide |> 
-  filter(Cycle == 1)
-
-Plots_wide_3 <- Plots_wide |> 
-  filter(Cycle == 3)
-
-# STEP 7: Rarefaction ----
-### IMPORTANT: run this code only with species as cols and samples as rows!!!
-m.rar.time <- Plots_wide_3[, -c(1:3)]
-
-# preparation step: change integer values to numeric 
-m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
-
-# time measurement
-start.time <- Sys.time()
-
-# rarefaction
-a <- min(Plots_wide_3$number_of_plots) # -> 3 subplots
-m3_rarified <- m.rar.time 
-for (k in 1:ncol(m.rar.time)) {
-  for (i in 1:nrow(m.rar.time)) {
-    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Plots_wide_3$number_of_plots[i])
-  }
-}
-
-# time measurement
-end.time <- Sys.time()
-time.taken6 <- end.time - start.time
-time.taken6
-
-View(m3_rarified_rd)
-View(m.rar.time)
-View(Plots_wide |> 
-       filter(number_of_plots == 3))
-
-
-
-# rounding of values
-m3_rarified_rd <- trunc(m3_rarified)
-commas <- m3_rarified - m3_rarified_rd
-
-upround <- rowSums(commas)
-
-rank <- as.data.frame(t(apply(-commas, 1, order)))
-
-for (k in 1:nrow(m.rar.time)){
-  for (i in 1:round(upround[k])) {if(round(upround[k])>0){
-    m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
-  }}
-
-finish <- trunc(m3_rarified)
-
-# return to original dataformat
-Plots_Rare <- cbind(Plots_wide[1:3], finish)
-Plots_Rare
-
-
-# pivot to long data format
-Plots_Rare_long <- Plots_Rare %>% 
-  pivot_longer(
-    cols = -c(1:2), # Excludes the first two columns
-    names_to = "species_names",
-    values_to = "values"
-  )
-
-# calculate number of species
-Plots_Rare_long |> 
-  group_by(Cycle, Cluster_ID) |> 
-  summarise(n = n())
-
-
-
-##################################     END      ##################################################################
-
-
-
-
 
 
 
@@ -2526,6 +2246,189 @@ FullStack_V1 %>%
   xlab("Species richness change per PSU (# of individuals)") +
   theme(axis.title.x = element_text(family = "ARL", size = 11),
         axis.title.y = element_text(family = "ARL", size = 11))
+
+
+#### 4) iMAD: mad component plots ----
+# Comparison 1-2 ----
+## COL 1 - 8
+## Column 1
+# Zoomed
+iMAD_results_12 |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-20, 20))
+
+
+## Column 2
+# Zoomed
+iMAD_results_12 |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_12 |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_12 |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_12 |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_12 |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_12 |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_12 |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+
+
+# Comparison 2-3 ----
+# COL 1 - 8 
+# Column 1
+# Zoomed
+iMAD_results_23 |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-20, 20))
+
+
+## Column 2
+# Zoomed
+iMAD_results_23 |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_23 |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_23 |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_23 |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_23 |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_23 |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_23 |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+
+
+# Comparison 1-3 ----
+# COL 1 - 8 
+# Column 1
+# Zoomed
+iMAD_results_13 |> 
+  ggplot(aes(x=Col_1)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-20, 20))
+
+
+## Column 2
+# Zoomed
+iMAD_results_13 |> 
+  ggplot(aes(x=Col_2)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 3
+# Zoomed
+iMAD_results_13 |> 
+  ggplot(aes(x=Col_3)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 4
+# Zoomed
+iMAD_results_13 |> 
+  ggplot(aes(x=Col_4)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 5
+# Zoomed
+iMAD_results_13 |> 
+  ggplot(aes(x=Col_5)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 6
+# Zoomed
+iMAD_results_13 |> 
+  ggplot(aes(x=Col_6)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 7
+# Zoomed
+iMAD_results_13 |> 
+  ggplot(aes(x=Col_7)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
+
+## Column 8
+# Zoomed
+iMAD_results_13 |> 
+  ggplot(aes(x=Col_8)) +
+  geom_histogram(binwidth = 0.1, fill = "#F8766D") +
+  coord_cartesian(xlim = c(-10, 10))
 
 
 ##################################     END      ##################################################################
@@ -2793,6 +2696,184 @@ TE_ds |>
 
 
 
+#################   DONT RUN - TAKES AGES ########################################################################
+#################   RAREFACTION OF SPECIESRICHNESS DATA for 3 subplot per conglomerate
+# STEP 1: calculate number of subplots for each conglomerate for each cycle ----
+# cycle 1
+Plots_1 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Muestreado1, Plot_S1) |> 
+  mutate(Cycle = 1,
+         number_of_plots = case_when(Plot_S1 == 0 ~ 0,
+                                     Plot_S1 == 1 ~ 1,
+                                     Plot_S1 == 2 ~ 2,
+                                     Plot_S1 == 3 ~ 3,
+                                     Plot_S1 == 4 ~ 4,
+                                     T ~ Plot_S1))
+
+
+# cycle 2
+Plots_2 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Muestreado2, Plot_S2) |> 
+  mutate(Cycle = 2,
+         number_of_plots = case_when(Plot_S2 == 0 ~ 0,
+                                     Plot_S2 == 1 ~ 1,
+                                     Plot_S2 == 2 ~ 2,
+                                     Plot_S2 == 3 ~ 3,
+                                     Plot_S2 == 4 ~ 4,
+                                     T ~ Plot_S2))
+
+# cycle 3
+Plots_3 <- Base |> 
+  ungroup() |> 
+  select(Cluster_ID, Muestreado3, Plot_S3) |> 
+  mutate(Cycle = 3,
+         number_of_plots = case_when(Plot_S3 == 0 ~ 0,
+                                     Plot_S3 == 1 ~ 1,
+                                     Plot_S3 == 2 ~ 2,
+                                     Plot_S3 == 3 ~ 3,
+                                     Plot_S3 == 4 ~ 4,
+                                     T ~ Plot_S3))
+
+Plots_3 |> 
+  filter(number_of_plots == 4) |> 
+  count()
+
+# STEP 2: Filter out everything that doesn't matter ----
+# cycle 1
+Plots_1 <- Plots_1 |> 
+  filter(Muestreado1 == 1) |> 
+  filter(number_of_plots >= 3) |> 
+  select(Cluster_ID, Cycle, number_of_plots)
+
+Plots_1 |> count()
+
+# cycle 2
+Plots_2 <- Plots_2 |> 
+  filter(Muestreado2 == 1) |> 
+  filter(number_of_plots >= 3) |> 
+  select(Cluster_ID, Cycle, number_of_plots)
+
+Plots_2 |> count()
+
+# cycle 3
+Plots_3 <- Plots_3 |> 
+  filter(Muestreado3 == 1) |> 
+  filter(number_of_plots >= 3) |> 
+  select(Cluster_ID, Cycle, number_of_plots)
+
+Plots_3 |> count()
+
+# STEP 3: create long data with rbind() ----
+Plots_123 <- rbind(Plots_1, Plots_2, Plots_3)
+
+Plots_123 |> 
+  filter(is.na(number_of_plots))
+
+# STEP 4: Re-introduce individual entries ----
+Plots_abundances <- Plots_123 |> 
+  #some plots are empty -> left join creates NAs for Nombrecientifico
+  left_join(C_SpecAbun |> select(Cluster_ID, Cycle, NombreCientifico_APG, abundance),
+            by = c("Cycle", "Cluster_ID")) |> 
+  relocate(Cluster_ID, Cycle, number_of_plots) |> 
+  #exchanging false NAs in NombreCientifico for "empty" and add abundance == 0
+  #keeps empty conglomerates for later change calculation
+  mutate(NombreCientifico_APG = case_when(is.na(NombreCientifico_APG) & is.na(abundance) ~ "empty",
+                                          T ~ NombreCientifico_APG),
+         NombreCientifico_APG = case_when(is.na(NombreCientifico_APG) ~ "NA",
+                                          T ~ NombreCientifico_APG),
+         abundance = case_when(is.na(abundance) ~ 0,
+                               T ~ abundance))
+
+
+# STEP 5: pivot wider ----
+# pivot
+Plots_wide <- Plots_abundances |> 
+  pivot_wider(names_from = NombreCientifico_APG, values_from = abundance)
+
+Plots_wide
+
+# exchange all NAs with 0 for calculation
+Plots_wide <- Plots_wide|> 
+  replace(is.na(Plots_wide), 0)
+
+Plots_wide
+
+# STEP 6: dissect into single cycles again ----
+Plots_wide_1 <- Plots_wide |> 
+  filter(Cycle == 1)
+
+Plots_wide_3 <- Plots_wide |> 
+  filter(Cycle == 3)
+
+# STEP 7: Rarefaction ----
+### IMPORTANT: run this code only with species as cols and samples as rows!!!
+m.rar.time <- Plots_wide_3[, -c(1:3)]
+
+# preparation step: change integer values to numeric 
+m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
+
+# time measurement
+start.time <- Sys.time()
+
+# rarefaction
+a <- min(Plots_wide_3$number_of_plots) # -> 3 subplots
+m3_rarified <- m.rar.time 
+for (k in 1:ncol(m.rar.time)) {
+  for (i in 1:nrow(m.rar.time)) {
+    m3_rarified[i, k] <- m.rar.time[i, k] * (a / Plots_wide_3$number_of_plots[i])
+  }
+}
+
+# time measurement
+end.time <- Sys.time()
+time.taken6 <- end.time - start.time
+time.taken6
+
+View(m3_rarified_rd)
+View(m.rar.time)
+View(Plots_wide |> 
+       filter(number_of_plots == 3))
+
+
+
+# rounding of values
+m3_rarified_rd <- trunc(m3_rarified)
+commas <- m3_rarified - m3_rarified_rd
+
+upround <- rowSums(commas)
+
+rank <- as.data.frame(t(apply(-commas, 1, order)))
+
+for (k in 1:nrow(m.rar.time)){
+  for (i in 1:round(upround[k])) {if(round(upround[k])>0){
+    m3_rarified[k, rank[k, i]] <- m3_rarified_rd[k, rank[k, i]] + 1}
+  }}
+
+finish <- trunc(m3_rarified)
+
+# return to original dataformat
+Plots_Rare <- cbind(Plots_wide[1:3], finish)
+Plots_Rare
+
+
+# pivot to long data format
+Plots_Rare_long <- Plots_Rare %>% 
+  pivot_longer(
+    cols = -c(1:2), # Excludes the first two columns
+    names_to = "species_names",
+    values_to = "values"
+  )
+
+# calculate number of species
+Plots_Rare_long |> 
+  group_by(Cycle, Cluster_ID) |> 
+  summarise(n = n())
+
+
+
+##################################     END      ##################################################################
 
 
 
