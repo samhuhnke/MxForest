@@ -1152,7 +1152,10 @@ FullStack_V1 <- FullStack_V1 |>
          TE13 = TE3 - TE1,
          SC12 = SC2 - SC1,
          SC23 = SC3 - SC2,
-         SC13 = SC3 - SC1) |> 
+         SC13 = SC3 - SC1,
+         J12 = J2 - J1,
+         J23 = J3 - J2,
+         J13 = J3 - J1) |> 
   # aclculate univariate changes in species richness as percentage compared to previous cycle
   mutate(SC12P = case_when(SC1 != 0 ~ (SC12/SC1)*100,
                            SC1 == 0 ~ NA),
@@ -1163,7 +1166,7 @@ FullStack_V1 <- FullStack_V1 |>
 
 
 
-# STEP 3: numeric distribution of change calculation ----
+# STEP 3: numeric distribution of change calculation - NO NEED TO RUN, JUST ADDITIONAL INFORMATION ----
 FullStack_V1 |> 
   filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
   filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
@@ -1961,23 +1964,9 @@ time.taken2
 time.taken3
 time.taken4
 
-
-
-
-
-
 FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
-  filter(Plot_S1 == 1 & Plot_S2 == 1) |> 
-  count()
-
-FullStack_V1 |> 
-  filter(Muestreado3 == 1 & Muestreado1 == 1) |> 
-  filter(Plot_S3 == 3 & Plot_S1 != 3 |
-           Plot_S3 == 2 & Plot_S1 != 2 |
-           Plot_S3 == 1 & Plot_S1 != 1 |
-           Plot_S3 == 4 & Plot_S1 != 4 |
-           Plot_S3 == 0 & Plot_S1 != 0) |> 
+  filter(Plot_S1 == 4 & Plot_S2 == 4) |> 
   count()
 
 
@@ -1988,137 +1977,72 @@ Eco_Calc <- merged |>
   select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
   left_join(Base |> select(Cluster_ID, DESECON1, DESECON2, CVEECON2), by = "Cluster_ID")
 
-Ecoregions
-Base
-Eco_Calc |> filter(is.na(NombreCientifico_APG)) |> print(n = 700)
-# STEP 2: Calculate Plots per cluster ----
-Plots_1 <- Base |> 
-  ungroup() |> 
-  select(Cluster_ID, Plot_S1) |> 
-  mutate(Cycle = 1,
-         number_of_plots = case_when(Plot_S1 == 0 ~ 0,
-                                     Plot_S1 == 1 ~ 1,
-                                     Plot_S1 == 2 ~ 2,
-                                     Plot_S1 == 3 ~ 3,
-                                     Plot_S1 == 4 ~ 4,
-                                     T ~ Plot_S1)) |> 
-  select(-c("Plot_S1"))
-
-# cycle 2
-Plots_2 <- Base |> 
-  ungroup() |> 
-  select(Cluster_ID, Plot_S2) |> 
-  mutate(Cycle = 2,
-         number_of_plots = case_when(Plot_S2 == 0 ~ 0,
-                                     Plot_S2 == 1 ~ 1,
-                                     Plot_S2 == 2 ~ 2,
-                                     Plot_S2 == 3 ~ 3,
-                                     Plot_S2 == 4 ~ 4,
-                                     T ~ Plot_S2)) |> 
-  select(-c("Plot_S2"))
-
-# cycle 3
-Plots_3 <- Base |> 
-  ungroup() |> 
-  select(Cluster_ID, Plot_S3) |> 
-  mutate(Cycle = 3,
-         number_of_plots = case_when(Plot_S3 == 0 ~ 0,
-                                     Plot_S3 == 1 ~ 1,
-                                     Plot_S3 == 2 ~ 2,
-                                     Plot_S3 == 3 ~ 3,
-                                     Plot_S3 == 4 ~ 4,
-                                     T ~ Plot_S3)) |> 
-  select(-c("Plot_S3"))
-
-# create long data format
-Plots_123 <- rbind(Plots_1, Plots_2, Plots_3) 
-Plots_123
-
-# STEP 3: Calculate area per cluster ----
-Plots_123 <- Plots_123 |> 
-  mutate(plot_area = number_of_plots * 400,
-         Cycle = as.character(Cycle)) 
-
-Eco_Calc <- Eco_Calc |> 
-  left_join(Plots_123,
-            by = c("Cycle", "Cluster_ID")) |> 
-  filter(number_of_plots == 4)        #### this is here to filter for only directly comparable plots - could be removed as it is area based rarefaction anyways but could argue for representativeness
-
-Eco_Calc |> 
-  group_by(Cycle, DESECON2) |> 
-  filter(number_of_plots == 4) |> 
-  summarise(Cycle = mean(as.numeric(Cycle)),
-            number_of_cluster = n_distinct(Cluster_ID),
-            number_of_species = n_distinct(NombreCientifico_APG))
-
-Eco_Calc
-# STEP 4: Calculate number of clusters per ecoregion ----
-# da stimmt was nicht
+# STEP 2: Calculate number of clusters per ecoregion ----
+#Cycle 1
 Cluster1 <- Base |> left_join(Eco_Calc |>
-                             select(Cluster_ID, Cycle, NombreCientifico_APG, number_of_plots) |> 
+                             select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
                              filter(Cycle == 1),
                            by = "Cluster_ID") |> 
-  filter(Muestreado1 == 1 & Plot_S1 == 4) |> 
+  filter(Muestreado1 == 1) |> 
+  filter(Plot_S1 == 4) |>     #changing this should form the basis for rarefaction by different numbers of plots/different area samples -> needs more work afterwards
   mutate(Cycle = case_when(is.na(Cycle) ~ "1",
                            T ~ Cycle)) |> 
   ungroup()
 
+
+# Cycle 2
 Cluster2 <- Base |> left_join(Eco_Calc |>
-                                select(Cluster_ID, Cycle, NombreCientifico_APG, number_of_plots) |> 
+                                select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
                                 filter(Cycle == 2),
                               by = "Cluster_ID") |> 
+  filter(Muestreado2 == 1) |> 
   filter(Plot_S2 == 4) |> 
-  mutate(Cycle = case_when(is.na(Cycle) ~ "1",
+  mutate(Cycle = case_when(is.na(Cycle) ~ "2",
                            T ~ Cycle)) |> 
   ungroup()
 
+# Cycle 3
 Cluster3 <- Base |> left_join(Eco_Calc |>
-                                select(Cluster_ID, Cycle, NombreCientifico_APG, number_of_plots) |> 
+                                select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
                                 filter(Cycle == 3),
                               by = "Cluster_ID") |> 
+  filter(Muestreado3 == 1) |> 
   filter(Plot_S3 == 4) |> 
-  mutate(Cycle = case_when(is.na(Cycle) ~ "1",
+  mutate(Cycle = case_when(is.na(Cycle) ~ "3",
                            T ~ Cycle)) |> 
   ungroup()
 
+#combination (please imagine drake radio freestyle meme)
+Eco_Cluster <- rbind(Cluster1 |> group_by(DESECON2) |> 
+                       summarise(Cycle = mean(as.numeric(Cycle)),
+                                 number_of_cluster = n_distinct(Cluster_ID),
+                                 number_of_species = n_distinct(NombreCientifico_APG)),
+                     Cluster2 |> group_by(DESECON2) |> 
+                       summarise(Cycle = mean(as.numeric(Cycle)),
+                                 number_of_cluster = n_distinct(Cluster_ID),
+                                 number_of_species = n_distinct(NombreCientifico_APG)),
+                     Cluster3 |> group_by(DESECON2) |> 
+                       summarise(Cycle = mean(as.numeric(Cycle)),
+                                 number_of_cluster = n_distinct(Cluster_ID),
+                                 number_of_species = n_distinct(NombreCientifico_APG))) |> 
+  mutate(number_of_plots = number_of_cluster*4,
+         area = number_of_plots*400) |> 
+  relocate(Cycle, DESECON2, number_of_cluster, number_of_plots, area) |> 
+  mutate(Cycle = as.character(Cycle))
 
-
-Cluster1  |> group_by(DESECON2, Cycle) |> 
-  summarise(Cycle = mean(as.numeric(Cycle)),
-            number_of_cluster = n_distinct(Cluster_ID),
-            number_of_species = n_distinct(NombreCientifico_APG)) |> 
+Eco_Cluster |> 
+  arrange(DESECON2, Cycle) |> 
   print(n = 100)
 
 
-# wie es bisher war ---
-Eco_Cluster <- Base |> left_join(Eco_Calc |> 
-  select(Cluster_ID, Cycle, DESECON2, number_of_plots, plot_area) |> 
-  group_by(Cycle, DESECON2) |> 
-  distinct() |> 
-  group_by(Cycle, DESECON2) |> 
-  summarise(number_of_clusters = n_distinct(Cluster_ID),
-            total_plots = sum(number_of_plots),
-            area = sum(plot_area)),
-  by = "Cluster_ID")
-
-Eco_Calc |> 
-  filter(Cycle == "1",
-         DESECON2 == "Cuerpos de agua") |> 
-  group_by(Cluster_ID) |> 
-  count()
-
-Eco_Cluster
-
-Base
-
-# STEP 5: Caculate species abundances per ecoregion ----
+# STEP 3: Caculate species abundances per ecoregion ----
 Eco_Species <- Eco_Calc |> 
   select(NombreCientifico_APG, Cycle, DESECON2) |> 
   group_by(Cycle, DESECON2, NombreCientifico_APG) |> 
   summarise(species_abundance = n())
 
 
-# STEP 6: Pivot Eco_Species from long to wide -----
+# STEP 4: Pivot Eco_Species from long to wide -----
 # pivot
 Eco_Species_wide <- Eco_Species |> 
   pivot_wider(names_from = NombreCientifico_APG, values_from = species_abundance)
@@ -2133,10 +2057,11 @@ Eco_Species_wide <- Eco_Species_wide |>
 Eco_Species_wide <- Eco_Species_wide |> 
   replace(is.na(Eco_Species_wide), 0)
 
+Eco_Species_wide
 
-
-# STEP 7: Combine Eco_Species and Eco_Cluster + rowSums()----
+# STEP 5: Combine Eco_Species and Eco_Cluster + rowSums()----
 Eco_wide <- Eco_Cluster |> 
+  select(-c("number_of_species")) |> 
   left_join(Eco_Species_wide,
             by = c("Cycle", "DESECON2")) |> 
   filter(!is.na(DESECON2))
@@ -2148,11 +2073,12 @@ Eco_wide$number_of_individuals <- rowSums(Eco_wide[, -c(1:5)])
 
 # rearange number_of_individuals
 Eco_wide <- Eco_wide |> 
-  relocate(Cycle, DESECON2, number_of_clusters, total_plots, area, number_of_individuals)
-Eco_wide
+  relocate(Cycle, DESECON2, number_of_cluster, number_of_plots, area, number_of_individuals)
+Eco_wide |> 
+  print(n = 100)
 
 
-# STEP 8: Rarefaction Loop Area ---------------
+# STEP A1: Rarefaction Loop Area ---------------
 rarefy_ecoregions_area <- function(data) {
   # Extract unique DESECON2 values
   unique_ecoregions <- unique(data$DESECON2)
@@ -2202,7 +2128,7 @@ rarefy_ecoregions_area <- function(data) {
       filter(values != 0) %>% 
       group_by(Cycle, DESECON2) %>% 
       summarise(number_of_species = n()) %>% 
-      left_join(Eco_Temp |> select(Cycle, DESECON2, number_of_clusters, total_plots, area), by = c("Cycle", "DESECON2"))
+      left_join(Eco_Temp |> select(Cycle, DESECON2, number_of_cluster, number_of_plots, area), by = c("Cycle", "DESECON2"))
     
     # Store the result for this ecoregion
     results_list[[ecoregion]] <- Eco_Temp_Final
@@ -2220,12 +2146,12 @@ print(final_ecoregion_area, n = 70)
 
 
 View(final_ecoregion_area |> 
-       select(Cycle, DESECON2, total_plots, area, number_of_species))
+       select(Cycle, DESECON2, number_of_cluster, number_of_plots, area, number_of_species))
 
 #write.csv(final_ecoregion_data, file = "Rarefied_Ecoregions_area.csv")
-# STEP 11: cute barplot area ----
+# STEP A2: cute barplot area ----
 prepared <- final_ecoregion_area %>%
-  filter(DESECON2 == "Desiertos Calidos")
+  filter(DESECON2 == "Cuerpos de agua")
 
 # with SSU text
 prepared |> 
@@ -2235,7 +2161,7 @@ prepared |>
   theme_minimal() +
   labs(title = prepared$DESECON2) +
   ylab("# of species") +
-  annotate("text", x=Inf, y=Inf, label= sprintf("SSUs: %s ", format(min(prepared$total_plots), big.mark = " ", scientific = FALSE)),
+  annotate("text", x=Inf, y=Inf, label= sprintf("Plots: %s ", format(min(prepared$number_of_plots), big.mark = " ", scientific = FALSE)),
            hjust = 1.25, vjust = 1)
 
 
@@ -3016,8 +2942,6 @@ time.taken6
 
 
 
-
-
 ################### PAPER/BA PLOTS (DATA: FullStack_V4 & FullStack_V4_Zeros) -------------------------------------------------------------
 #### 1) Violinplots --------------------------------------------
 ### 1.1) Species Richness Changes ----
@@ -3048,13 +2972,65 @@ FullStack_V1 %>%
   ylab("Species richness change (# of individuals)") +
   xlab("Comparison") 
 
+### 1.2) Evenness Changes ----
+
+# Based on Fullstack_V1 with comparison sample size
+FullStack_V1 %>% 
+  mutate(J12 = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
+                          T ~ J12),
+         J23 = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ J23),
+         J13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ J13)) |> 
+  select(J12, J23, J13) |> 
+  pivot_longer(c(J12, J23, J13), names_to = "Comparison", values_to = "Species_Richness") |> 
+  mutate(Comparison = factor(Comparison, levels = c("J12", "J23", "J13"))) |> 
+  ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
+  geom_violin(scale = "area", adjust = 0.1, width = 1) +
+  scale_fill_manual(values=c(J12="#eeeeee", J23="#aaaaaa", J13="#666666")) +
+  theme_bw() +
+  theme(
+    panel.background = element_blank(), # Remove panel background
+    panel.grid.major = element_line("gray80"), # Keep major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    legend.position = "none", # Remove legend # Add axes lines
+  ) +
+  scale_y_continuous(breaks = seq(-1, 1, by = 0.1)) + 
+  ylab("Species richness change (# of individuals)") +
+  xlab("Comparison") 
 
 
+### 1.3) Total Individuals ----
 
-#eeeeee
+# Based on Fullstack_V1 with comparison sample size
+FullStack_V1 %>% 
+  mutate(TE12 = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
+                         T ~ TE12),
+         TE23 = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
+                         T ~ TE23),
+         TE13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
+                         T ~ TE13)) |> 
+  select(TE12, TE23, TE13) |> 
+  pivot_longer(c(TE12, TE23, TE13), names_to = "Comparison", values_to = "Species_Richness") |> 
+  mutate(Comparison = factor(Comparison, levels = c("TE12", "TE23", "TE13"))) |> 
+  ggplot( aes(x= Comparison, y= Species_Richness, fill=Comparison)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
+  geom_violin(scale = "area", adjust = 1, width = 1) +
+  scale_fill_manual(values=c(TE12="#eeeeee", TE23="#aaaaaa", TE13="#666666")) +
+  theme_bw() +
+  theme(
+    panel.background = element_blank(), # Remove panel background
+    panel.grid.major = element_line("gray80"), # Keep major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    legend.position = "none", # Remove legend # Add axes lines
+  ) +
+  scale_y_continuous(breaks = seq(-250, 250, by = 25)) + 
+  coord_cartesian(ylim = c(-250, 250)) +
+  ylab("Species richness change (# of individuals)") +
+  xlab("Comparison") 
 
-
-### 1.3) iMAD ----
+### 1.4) iMAD ----
 ## iMAD_results_Constant_Zeros 
 # STEP 1: Data Preparation 
 iMAD_results<- rbind(iMAD_results_12, iMAD_results_13, iMAD_results_23) |> 
@@ -3131,7 +3107,7 @@ iMAD_results |>
 
 
 #### 2) Scatterplots -------------------------------------------
-#### 2.1) Species Richness ----
+### 2.1) Species Richness ----
 # Based on Fullstack_V1 with differing sample sizes for each comparison
 # Cycle 1 - 2:
 FullStack_V1 |> 
@@ -4344,35 +4320,6 @@ Plots_Rare_long |>
 
 
 ##################################     END      ##################################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
