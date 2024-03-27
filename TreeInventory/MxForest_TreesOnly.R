@@ -475,7 +475,17 @@ M.14 <- Arb.14 |>
 merged <- rbind(M.04, M.09, M.14) |> 
   mutate(Plot_ID = paste(Cycle, Conglomerado, Sitio, Anio, sep = "_")) |> 
   mutate(Cluster_ID = Conglomerado) |> 
-  select(Cluster_ID, Plot_ID, Cycle, Sitio, Anio, everything(), -c(Conglomerado))
+  select(Cluster_ID, Plot_ID, Cycle, Sitio, Anio, everything(), -c(Conglomerado)) |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arbusto" | FormaBiologica == "Arborescente" | is.na(FormaBiologica) | FormaBiologica == "Hierba") 
+
+
+
+# excludation numbers
+merged |> 
+  select(FormaBiologica) |> 
+  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arbusto" | FormaBiologica == "Arborescente" | is.na(FormaBiologica) | FormaBiologica == "Hierba") |> 
+  count()
+
 
 
 #################### 4) EDA PREPARATION ------------------------------------------------------------------
@@ -1352,7 +1362,6 @@ FullStack_V1 |>
 
 ##################################     END      ##################################################################
 
-View(Comp_C_Diagnostics_V5)
 
 ###################  UNIVARIATE ECO-BASED CHANGE CALCULATIONS  ################################################
 # STEP 0: DESECON Filter ----
@@ -1691,7 +1700,7 @@ Eco_Changes |>
 end.time <- Sys.time()
 time.taken3 <- end.time - start.time
 
-View(FullStack_V1)
+
 
 
 
@@ -1953,6 +1962,10 @@ time.taken3
 time.taken4
 
 
+
+
+
+
 FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   filter(Plot_S1 == 1 & Plot_S2 == 1) |> 
@@ -1973,9 +1986,11 @@ FullStack_V1 |>
 # STEP 1: add ecoregions to rest of data based on cluster_ID ----
 Eco_Calc <- merged |> 
   select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
-  left_join(Ecoregions, by = "Cluster_ID")
+  left_join(Base |> select(Cluster_ID, DESECON1, DESECON2, CVEECON2), by = "Cluster_ID")
 
-
+Ecoregions
+Base
+Eco_Calc |> filter(is.na(NombreCientifico_APG)) |> print(n = 700)
 # STEP 2: Calculate Plots per cluster ----
 Plots_1 <- Base |> 
   ungroup() |> 
@@ -2016,29 +2031,75 @@ Plots_3 <- Base |>
   select(-c("Plot_S3"))
 
 # create long data format
-Plots_123 <- rbind(Plots_1, Plots_2, Plots_3)
+Plots_123 <- rbind(Plots_1, Plots_2, Plots_3) 
 Plots_123
 
 # STEP 3: Calculate area per cluster ----
 Plots_123 <- Plots_123 |> 
   mutate(plot_area = number_of_plots * 400,
-         Cycle = as.character(Cycle))
+         Cycle = as.character(Cycle)) 
 
 Eco_Calc <- Eco_Calc |> 
   left_join(Plots_123,
-            by = c("Cycle", "Cluster_ID"))
+            by = c("Cycle", "Cluster_ID")) |> 
+  filter(number_of_plots == 4)        #### this is here to filter for only directly comparable plots - could be removed as it is area based rarefaction anyways but could argue for representativeness
+
+Eco_Calc |> 
+  group_by(Cycle, DESECON2) |> 
+  filter(number_of_plots == 4) |> 
+  summarise(Cycle = mean(as.numeric(Cycle)),
+            number_of_cluster = n_distinct(Cluster_ID),
+            number_of_species = n_distinct(NombreCientifico_APG))
 
 Eco_Calc
-
 # STEP 4: Calculate number of clusters per ecoregion ----
-Eco_Cluster <- Eco_Calc |> 
+# da stimmt was nicht
+Cluster1 <- Base |> left_join(Eco_Calc |>
+                             select(Cluster_ID, Cycle, NombreCientifico_APG, number_of_plots) |> 
+                             filter(Cycle == 1),
+                           by = "Cluster_ID") |> 
+  filter(Muestreado1 == 1 & Plot_S1 == 4) |> 
+  mutate(Cycle = case_when(is.na(Cycle) ~ "1",
+                           T ~ Cycle)) |> 
+  ungroup()
+
+Cluster2 <- Base |> left_join(Eco_Calc |>
+                                select(Cluster_ID, Cycle, NombreCientifico_APG, number_of_plots) |> 
+                                filter(Cycle == 2),
+                              by = "Cluster_ID") |> 
+  filter(Plot_S2 == 4) |> 
+  mutate(Cycle = case_when(is.na(Cycle) ~ "1",
+                           T ~ Cycle)) |> 
+  ungroup()
+
+Cluster3 <- Base |> left_join(Eco_Calc |>
+                                select(Cluster_ID, Cycle, NombreCientifico_APG, number_of_plots) |> 
+                                filter(Cycle == 3),
+                              by = "Cluster_ID") |> 
+  filter(Plot_S3 == 4) |> 
+  mutate(Cycle = case_when(is.na(Cycle) ~ "1",
+                           T ~ Cycle)) |> 
+  ungroup()
+
+
+
+Cluster1  |> group_by(DESECON2, Cycle) |> 
+  summarise(Cycle = mean(as.numeric(Cycle)),
+            number_of_cluster = n_distinct(Cluster_ID),
+            number_of_species = n_distinct(NombreCientifico_APG)) |> 
+  print(n = 100)
+
+
+# wie es bisher war ---
+Eco_Cluster <- Base |> left_join(Eco_Calc |> 
   select(Cluster_ID, Cycle, DESECON2, number_of_plots, plot_area) |> 
   group_by(Cycle, DESECON2) |> 
   distinct() |> 
   group_by(Cycle, DESECON2) |> 
-  summarise(number_of_clusters = n(),
+  summarise(number_of_clusters = n_distinct(Cluster_ID),
             total_plots = sum(number_of_plots),
-            area = sum(plot_area))
+            area = sum(plot_area)),
+  by = "Cluster_ID")
 
 Eco_Calc |> 
   filter(Cycle == "1",
@@ -2047,6 +2108,8 @@ Eco_Calc |>
   count()
 
 Eco_Cluster
+
+Base
 
 # STEP 5: Caculate species abundances per ecoregion ----
 Eco_Species <- Eco_Calc |> 
@@ -2077,6 +2140,8 @@ Eco_wide <- Eco_Cluster |>
   left_join(Eco_Species_wide,
             by = c("Cycle", "DESECON2")) |> 
   filter(!is.na(DESECON2))
+
+Eco_wide
 
 # add number_of_individuals per row
 Eco_wide$number_of_individuals <- rowSums(Eco_wide[, -c(1:5)])
@@ -2160,7 +2225,7 @@ View(final_ecoregion_area |>
 #write.csv(final_ecoregion_data, file = "Rarefied_Ecoregions_area.csv")
 # STEP 11: cute barplot area ----
 prepared <- final_ecoregion_area %>%
-  filter(DESECON2 == "Sistema Neovolcanico Transversal")
+  filter(DESECON2 == "Desiertos Calidos")
 
 # with SSU text
 prepared |> 
@@ -2368,9 +2433,10 @@ prepared |>
 
 # STEP 12: comparison with shared PSUs ----
 # create individual calculations
+
 # cycle 1
 Test1 <- Base |> left_join(Eco_Calc |>
-                             select(Cluster_ID, Cycle, NombreCientifico_APG) |> 
+                             select(Cluster_ID, Cycle, NombreCientifico_APG, number_of_plots) |> 
                              filter(Cycle == 1),
                            by = "Cluster_ID") |> 
   c123_filter() |> 
@@ -2378,15 +2444,33 @@ Test1 <- Base |> left_join(Eco_Calc |>
                            T ~ Cycle)) |> 
   ungroup()
 
-Test1 |> c123_filter() |> select(Cluster_ID, DESECON2) |> distinct() |>  group_by(DESECON2) |>  count()
+Cluster1 <- Base |> left_join(Eco_Calc |>
+                             select(Cluster_ID, Cycle, NombreCientifico_APG, number_of_plots) |> 
+                             filter(Cycle == 1),
+                           by = "Cluster_ID") |> 
+  filter(Muestreado1 == 1 & Plot_S1 == 4) |> 
+  mutate(Cycle = case_when(is.na(Cycle) ~ "1",
+                           T ~ Cycle)) |> 
+  ungroup()
 
-Test1 |> c123_filter() |> group_by(DESECON2) |> 
+Cluster1  |> group_by(DESECON2, Cycle) |> 
   summarise(Cycle = mean(as.numeric(Cycle)),
             number_of_cluster = n_distinct(Cluster_ID),
             number_of_species = n_distinct(NombreCientifico_APG)) |> 
   print(n = 100)
 
+# quality check - number should add up to 8259 clusters (they do)
+Test1 |> select(Cluster_ID, DESECON2) |> distinct() |>  group_by(DESECON2) |>  count()
 
+Test1  |> group_by(DESECON2, Cycle) |> 
+  summarise(Cycle = mean(as.numeric(Cycle)),
+            number_of_cluster = n_distinct(Cluster_ID),
+            number_of_species = n_distinct(NombreCientifico_APG)) |> 
+  print(n = 100)
+
+Test1 |> 
+  filter(is.na(NombreCientifico_APG)) |> 
+  print(n = 700)
 
 # cycle 2
 Test2 <- Base |> left_join(Eco_Calc |>
@@ -2403,7 +2487,8 @@ Test2 |> c123_filter() |> select(Cluster_ID, DESECON2) |> distinct() |>  group_b
 Test2 |> c123_filter() |> group_by(DESECON2) |> 
   summarise(Cycle = mean(as.numeric(Cycle)),
             number_of_cluster = n_distinct(Cluster_ID),
-            number_of_species = n_distinct(NombreCientifico_APG))
+            number_of_species = n_distinct(NombreCientifico_APG)) |> 
+  print(n = 100)
 
 
 # cycle 3
@@ -2424,7 +2509,8 @@ Test3 |>
 Test3 |> c123_filter() |> group_by(DESECON2) |> 
   summarise(Cycle = mean(as.numeric(Cycle)),
             number_of_cluster = n_distinct(Cluster_ID),
-            number_of_species = n_distinct(NombreCientifico_APG))
+            number_of_species = n_distinct(NombreCientifico_APG)) |> 
+  print(n = 100)
 
 # combine
 Test <- rbind(Test1 |> c123_filter() |> group_by(DESECON2) |> 
@@ -2448,7 +2534,7 @@ Test |>
 # STEP 11: cute barplot v2 ----
 prepared <- Test %>%
   mutate(total_plots = number_of_cluster*4) |> 
-  filter(DESECON2 == "Sistema Neovolcanico Transversal")
+  filter(DESECON2 == "Cuerpos de agua")
 
 
 # with SSU text
@@ -2459,7 +2545,7 @@ prepared |>
   theme_minimal() +
   labs(title = prepared$DESECON2) +
   ylab("# of species") +
-  annotate("text", x=Inf, y=Inf, label= sprintf("SSUs: %s ", format(min(prepared$total_plots), big.mark = " ", scientific = FALSE)),
+  annotate("text", x=Inf, y=Inf, label= sprintf("Plots: %s ", format(min(prepared$total_plots), big.mark = " ", scientific = FALSE)),
            hjust = 1.25, vjust = 1)
 
 # empty plot for empty ecoregions
