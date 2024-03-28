@@ -17,6 +17,7 @@ library(vegan)      #for shannon-index and pielou-eveness
 library(svglite)    #to save figures as .svg
 library(extrafont)  #to change fonts in my figures
 library(RColorBrewer) #for colorpalettes
+library(lmodel2)    #model 2 regression (at the end)
 windowsFonts(TNR = windowsFont("Times New Roman")) #to enable times new roman as a font
 windowsFonts(ARL = windowsFont("Arial"))
 fonts()
@@ -1504,20 +1505,70 @@ FullStack_V1_mean_2 <- FullStack_V1_mean |>
 
 
 # STEP 3: numeric distribution of change calculation - IGNORE ----
+# how many sampling sites are there per cycle?
 FullStack_V1 |> 
-  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
-  filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
-  select(SC23) |> 
-  filter(SC23 == 0) |> 
+  filter(Muestreado1 == 1 & Plot_S1 == 4) |> 
   count()
 
+FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Plot_S2 == 4) |> 
+  count()
+
+FullStack_V1 |> 
+  filter(Muestreado3 == 1 & Plot_S3 == 4) |> 
+  count()
+
+# how many sampling sites are there per comparison?
 FullStack_V1 |> 
   filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
   filter(Plot_S1 == 4 & Plot_S2 == 4) |> 
-  select(SC1, SC2) |> 
-  filter(SC1 <= 20 & SC2 <= 20) |> 
   count()
 
+
+FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
+  count()
+
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  count()
+
+# how many samlping sites are void of trees and thus void of species?
+FullStack_V1 |> 
+  filter(Muestreado3 == 1) |> 
+  filter(Plot_S3 == 4) |> 
+  select(SC3) |> 
+  filter(SC3 >= 20) |> 
+  count()
+
+# plot
+FullStack_V1 |> 
+  filter(Muestreado1 == 1) |> 
+  filter(Plot_S1 == 4) |> 
+  ggplot(aes(x=SC1)) +
+  geom_histogram()
+
+
+
+# how many sampling sites exhibit which amount of species richness change?
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(SC13) |> 
+  filter(SC13 <= -10) |> 
+  count()
+
+# how many sampling sites fall inbetween +/- 1 change of species?
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(SC13) |> 
+  filter(SC13 >= -1 & SC13 <= 1) |> 
+  count()
+
+# 
 FullStack_V1 |> 
   filter(Muestreado1 == 1) |> 
   filter(Plot_S1 == 4) |> 
@@ -1540,6 +1591,23 @@ FullStack_V1 |>
   select(DESECON2) |> 
   distinct() |> 
   print(n=100)
+
+FullStack_V1 |> 
+  summarise(Max1 = max(SC1, na.rm = T),
+            Max2 = max(SC2, na.rm = T),
+            Max3 = max(SC3, na.rm = T),
+            Min1 = min(SC1, na.rm = T),
+            Min2 = min(SC2, na.rm = T),
+            Min3 = min(SC3, na.rm = T),
+            mean1 = mean(SC1, na.rm = T),
+            mean2 = mean(SC2, na.rm = T),
+            mean3 = mean(SC3, na.rm = T),
+            median1 = median(SC1, na.rm = T),
+            median2 = median(SC2, na.rm = T),
+            median3 = median(SC3, na.rm = T),
+  ) |> 
+  print(n = 50)
+
 
 FullStack_V1 |> 
   summarise(Max12 = max(SC12, na.rm = T),
@@ -1963,11 +2031,6 @@ time.taken1
 time.taken2
 time.taken3
 time.taken4
-
-FullStack_V1 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
-  filter(Plot_S1 == 4 & Plot_S2 == 4) |> 
-  count()
 
 
 
@@ -2799,7 +2862,7 @@ Cycle13 <- rbind(Cycle1, Cycle3)
 
 
 
-##################          IR-MAD CHANGE DETECTION RESULTS            ----------------------------------
+##################          IR-MAD CHANGE DETECTION RESULTS            ###########################################
 ################## 1) Comparison 1-2 -------------------------------------------
 #### STEP 1: Load data ----
 iMAD_results_12 <- Raw.04 <- fread(here("data", "iMAD", "[1] iMAD Results", "iMAD_results_12.csv"))
@@ -2933,7 +2996,15 @@ iMAD_results_13
 ## STEP 1: Data Preparation ----
 iMAD_results <- rbind(iMAD_results_12, iMAD_results_13, iMAD_results_23) |> 
   mutate(Comparison = factor(Comparison, levels = c("Cycle12", "Cycle23", "Cycle13")))
-########### CUT -------------------------------------------------------------------------------------------------
+########### END #################################################################################################
+
+
+
+
+
+
+
+
 
 end.time <- Sys.time()
 time.taken6 <- end.time - start.time
@@ -3153,9 +3224,101 @@ FullStack_V1 |>
   annotate("text", x=10, y=60, label = "n = 8 532", size = 4, hjust = 0.5, vjust = 0.5)
 
 # ggsave(here("Plots", "Thesis Plots", "C13_Scatterplot.svg"), width = 6, height = 6)
+### 2.2) Evenness ----
+# Based on Fullstack_V1 with differing sample sizes for each comparison
+# Cycle 1 - 2:
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Plot_S1 == 4 & Plot_S2 == 4) |> 
+  ggplot(aes(x = J1, y = J2)) +
+  geom_point(position = "jitter", color = "black") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+  geom_abline(color = "red") +
+  xlab("Evenness (Cycle 1)") + ylab("Evenness (Cycle 2)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=0.1, y=1, label = "n = 17 239", size = 4, hjust = 0.5, vjust = 0.5)
+
+# ggsave(here("Plots", "Thesis Plots", "C12_Scatterplot.svg"), width = 6, height = 6)
+
+# Cycle 2 - 3:
+FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1 & Plot_S2 == 4 & Plot_S3 == 4) |> 
+  ggplot(aes(x = J2, y = J3)) +
+  geom_point(position = "jitter", color = "black") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+  geom_abline(color = "red") +
+  xlab("Evenness (Cycle 2)") + ylab("Evenness (Cycle 3)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=0.1, y=1, label = "n = 9 400", size = 4, hjust = 0.5, vjust = 0.5)
+
+# ggsave(here("Plots", "Thesis Plots", "C23_Scatterplot.svg"), width = 6, height = 6)
+
+# Cycle 1 - 3:
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1 & Plot_S1 == 4 & Plot_S3 == 4) |> 
+  ggplot(aes(x = J1, y = J3)) +
+  geom_point(position = "jitter", color = "black") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+  geom_abline(color = "red") +
+  xlab("Evenness (Cycle 1)") + ylab("Evenness (Cycle 3)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=0.1, y=1, label = "n = 8 532", size = 4, hjust = 0.5, vjust = 0.5)
+
+# ggsave(here("Plots", "Thesis Plots", "C13_Scatterplot.svg"), width = 6, height = 6)
 
 
 
+### 2.2) Tree Abundance ----
+# Based on Fullstack_V1 with differing sample sizes for each comparison
+# Cycle 1 - 2:
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Plot_S1 == 4 & Plot_S2 == 4) |> 
+  ggplot(aes(x = TE1, y = TE2)) +
+  geom_point(position = "jitter", color = "black") +
+  coord_cartesian(xlim = c(0, 400), ylim = c(0, 400)) +
+  geom_abline(color = "red") +
+  xlab("Tree Abundance (Cycle 1)") + ylab("Tree Abundance (Cycle 2)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=20, y=400, label = "n = 17 239", size = 4, hjust = 0.5, vjust = 0.5)
+
+# ggsave(here("Plots", "Thesis Plots", "C12_Scatterplot.svg"), width = 6, height = 6)
+
+# Cycle 2 - 3:
+FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1 & Plot_S2 == 4 & Plot_S3 == 4) |> 
+  ggplot(aes(x = TE2, y = TE3)) +
+  geom_point(position = "jitter", color = "black") +
+  coord_cartesian(xlim = c(0, 400), ylim = c(0, 400)) +
+  geom_abline(color = "red") +
+  xlab("Tree Abundance (Cycle 2)") + ylab("Tree Abundace (Cycle 3)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=20, y=400, label = "n = 9 400", size = 4, hjust = 0.5, vjust = 0.5)
+
+# ggsave(here("Plots", "Thesis Plots", "C23_Scatterplot.svg"), width = 6, height = 6)
+
+# Cycle 1 - 3:
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1 & Plot_S1 == 4 & Plot_S3 == 4) |> 
+  ggplot(aes(x = TE1, y = TE3)) +
+  geom_point(position = "jitter", color = "black") +
+  coord_cartesian(xlim = c(0, 400), ylim = c(0, 400)) +
+  geom_abline(color = "red") +
+  xlab("Tree Abundance (Cycle 1)") + ylab("Tree Abundance (Cycle 3)") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11)) +
+  annotate("text", x=20, y=400, label = "n = 8 532", size = 4, hjust = 0.5, vjust = 0.5)
+
+# ggsave(here("Plots", "Thesis Plots", "C13_Scatterplot.svg"), width = 6, height = 6)
 #### 3) Ridges ------------------------------------------------- 
 ## 1.1) Species Richness Distribution ----
 # STEP 1: assign levels ----
@@ -3225,7 +3388,7 @@ FullStack_V1 %>%
   facet_grid(~Cycle) +
   theme_minimal() +
   ylab("") +
-  xlab("Species richness per PSU (# of individuals)") +
+  xlab("Species Richness per Sampling Site (# of individuals)") +
   theme(axis.title.x = element_text(family = "ARL", size = 11),
         axis.title.y = element_text(family = "ARL", size = 11))
 
@@ -3305,7 +3468,302 @@ FullStack_V1 %>%
   facet_grid(~Comparison) +
   theme_minimal() +
   ylab("") +
-  xlab("Species richness change per PSU (# of individuals)") +
+  xlab("Species Richness Change per Sampling Site (# of individuals)") +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
+
+## 1.2) Evenness Distribution ----
+# STEP 1: assign levels ----
+Lvl1 <- c("California Mediterranea")
+Lvl2 <- c("Desiertos Calidos")
+Lvl3 <- c("Piedemonte de la Sierra Madre Occidental", "Altiplanicie Mexicana")
+Lvl4 <- c("Planicie semiarida de Tamaulipas-Texas", "Planicie costera de Texas-Louisiana")
+Lvl5 <- c("Planicie y Lomerios de la Peninsula de Yucatan", "Planicie Costera y Lomerios Humedos del Golfo de Mexico", 
+          "Planicies y Lomerios del Occidente", "Planicie Costera y Lomerios del Soconusco", "Sierra de Los Tuxtlas")
+Lvl6 <- c("Planicie Costera y Lomerios del Pacifico Sur", "Planicie Costera, Lomerios y Canones del Occidente",
+          "Depresiones Intermontanas", "Planicies Costeras y Lomerios Secos del Golfo de Mexico", "Sierra y Planicies de El Cabo",
+          "Planicie Noroccidental de la  Peninsula de Yucatan")
+Lvl7 <- c("Sierra Madre Centroamericana y Altos de Chiapas", "Sierra Madre Occidental", "Sierra Madre Oriental", 
+          "Sierra Madre del Sur", "Sistema Neovolcanico Transversal")
+Lvl8 <- c("Cuerpos de agua")
+
+all_levels <- c(Lvl1, Lvl2, Lvl3, Lvl4, Lvl5, Lvl6, Lvl7, Lvl8)
+
+FullStack_V1$DESECON2 <- factor(FullStack_V1$DESECON2, levels = all_levels)
+FullStack_V1$DESECON2 <- factor(FullStack_V1$DESECON2, levels = rev(levels(FullStack_V1$DESECON2)))
+
+# STEP 2: assign colors to each level ----
+colors_for_values <- c("California Mediterranea" = "#ff6554", 
+                       "Desiertos Calidos" = "#ffa114", 
+                       "Piedemonte de la Sierra Madre Occidental" = "#fceb02",
+                       "Altiplanicie Mexicana" = "#fef396", 
+                       "Planicie semiarida de Tamaulipas-Texas" = "#89c7d1", 
+                       "Planicie costera de Texas-Louisiana" = "#77b4be",
+                       "Planicie y Lomerios de la Peninsula de Yucatan" = "#ceead5", 
+                       "Planicie Costera y Lomerios Humedos del Golfo de Mexico" = "#bae0c3", 
+                       "Planicies y Lomerios del Occidente" = "#8ecc9e",
+                       "Planicie Costera y Lomerios del Soconusco" = "#79b689", 
+                       "Sierra de Los Tuxtlas" = "#64a175", 
+                       "Planicie Costera y Lomerios del Pacifico Sur" = "#c8e0fa",
+                       "Planicie Costera, Lomerios y Canones del Occidente" = "#b0d1f5", 
+                       "Depresiones Intermontanas" = "#7bb4ed", 
+                       "Planicies Costeras y Lomerios Secos del Golfo de Mexico" = "#649fd7",
+                       "Sierra y Planicies de El Cabo" = "#4d8ac1", 
+                       "Planicie Noroccidental de la  Peninsula de Yucatan" = "#2c6396", 
+                       "Sierra Madre Centroamericana y Altos de Chiapas" = "#e0dbf6",
+                       "Sierra Madre Occidental" = "#d1cbee", 
+                       "Sierra Madre Oriental" = "#b4aade", 
+                       "Sierra Madre del Sur" = "#9c92c5",
+                       "Sistema Neovolcanico Transversal" = "#847bac", 
+                       "Cuerpos de agua" = "#e9ccdb")
+
+
+# STEP 3: plot ----
+FullStack_V1 %>% 
+  mutate(J1 = case_when(Muestreado1 != 1 | Plot_S1 != 4 ~ NA,
+                         T ~ J1),
+         J2 = case_when(Muestreado2 != 1 | Plot_S2 != 4 ~ NA,
+                         T ~ J2),
+         J3 = case_when(Muestreado3 != 1 | Plot_S3 != 4 ~ NA,
+                         T ~ J3)) |> 
+  select(DESECON2, J1, J2, J3) |> 
+  pivot_longer(c(J1, J2, J3), names_to = "Cycle", values_to = "Evenness") |>
+  mutate(Cycle = case_when(Cycle == "J1" ~ "C1",
+                           Cycle == "J2" ~ "C2",
+                           Cycle == "J3" ~ "C3",
+                           T ~ Cycle)) |> 
+  mutate(Comparison = factor(Cycle, levels = c("C1", "C2", "C3"))) |> 
+  filter(!is.na(DESECON2) & DESECON2 != "Cuerpos de agua") |> 
+  ggplot(aes(y = DESECON2, x = Evenness, fill = DESECON2)) +
+  geom_density_ridges(show.legend = F, scale = 2) +
+  scale_fill_manual(values = colors_for_values) +
+  facet_grid(~Cycle) +
+  theme_minimal() +
+  ylab("") +
+  xlab("Evenness per Sampling Site") +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
+
+## 1.2.1) Evenness Change ----
+# STEP 1: assign levels ----
+Lvl1 <- c("California Mediterranea")
+Lvl2 <- c("Desiertos Calidos")
+Lvl3 <- c("Piedemonte de la Sierra Madre Occidental", "Altiplanicie Mexicana")
+Lvl4 <- c("Planicie semiarida de Tamaulipas-Texas", "Planicie costera de Texas-Louisiana")
+Lvl5 <- c("Planicie y Lomerios de la Peninsula de Yucatan", "Planicie Costera y Lomerios Humedos del Golfo de Mexico", 
+          "Planicies y Lomerios del Occidente", "Planicie Costera y Lomerios del Soconusco", "Sierra de Los Tuxtlas")
+Lvl6 <- c("Planicie Costera y Lomerios del Pacifico Sur", "Planicie Costera, Lomerios y Canones del Occidente",
+          "Depresiones Intermontanas", "Planicies Costeras y Lomerios Secos del Golfo de Mexico", "Sierra y Planicies de El Cabo",
+          "Planicie Noroccidental de la  Peninsula de Yucatan")
+Lvl7 <- c("Sierra Madre Centroamericana y Altos de Chiapas", "Sierra Madre Occidental", "Sierra Madre Oriental", 
+          "Sierra Madre del Sur", "Sistema Neovolcanico Transversal")
+Lvl8 <- c("Cuerpos de agua")
+
+all_levels <- c(Lvl1, Lvl2, Lvl3, Lvl4, Lvl5, Lvl6, Lvl7, Lvl8)
+
+FullStack_V1$DESECON2 <- factor(FullStack_V1$DESECON2, levels = all_levels)
+FullStack_V1$DESECON2 <- factor(FullStack_V1$DESECON2, levels = rev(levels(FullStack_V1$DESECON2)))
+
+# STEP 2: assign colors to each level ----
+colors_for_values <- c("California Mediterranea" = "#ff6554", 
+                       "Desiertos Calidos" = "#ffa114", 
+                       "Piedemonte de la Sierra Madre Occidental" = "#fceb02",
+                       "Altiplanicie Mexicana" = "#fef396", 
+                       "Planicie semiarida de Tamaulipas-Texas" = "#89c7d1", 
+                       "Planicie costera de Texas-Louisiana" = "#77b4be",
+                       "Planicie y Lomerios de la Peninsula de Yucatan" = "#ceead5", 
+                       "Planicie Costera y Lomerios Humedos del Golfo de Mexico" = "#bae0c3", 
+                       "Planicies y Lomerios del Occidente" = "#8ecc9e",
+                       "Planicie Costera y Lomerios del Soconusco" = "#79b689", 
+                       "Sierra de Los Tuxtlas" = "#64a175", 
+                       "Planicie Costera y Lomerios del Pacifico Sur" = "#c8e0fa",
+                       "Planicie Costera, Lomerios y Canones del Occidente" = "#b0d1f5", 
+                       "Depresiones Intermontanas" = "#7bb4ed", 
+                       "Planicies Costeras y Lomerios Secos del Golfo de Mexico" = "#649fd7",
+                       "Sierra y Planicies de El Cabo" = "#4d8ac1", 
+                       "Planicie Noroccidental de la  Peninsula de Yucatan" = "#2c6396", 
+                       "Sierra Madre Centroamericana y Altos de Chiapas" = "#e0dbf6",
+                       "Sierra Madre Occidental" = "#d1cbee", 
+                       "Sierra Madre Oriental" = "#b4aade", 
+                       "Sierra Madre del Sur" = "#9c92c5",
+                       "Sistema Neovolcanico Transversal" = "#847bac", 
+                       "Cuerpos de agua" = "#e9ccdb")
+
+# STEP 3: Plot -----
+FullStack_V1 %>% 
+  mutate(J12 = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
+                          T ~ J12),
+         J23 = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ J23),
+         J13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ J13)) |> 
+  select(DESECON2, J12, J23, J13) |> 
+  pivot_longer(c(J12, J23, J13), names_to = "Comparison", values_to = "Evenness_Change") |> 
+  mutate(Comparison = case_when(Comparison == "J12" ~ "C12",
+                                Comparison == "J23" ~ "C23",
+                                Comparison == "J13" ~ "C13",
+                                T ~ Comparison)) |> 
+  mutate(Comparison = factor(Comparison, levels = c("C12", "C23", "C13"))) |> 
+  filter(!is.na(DESECON2) & DESECON2 != "Cuerpos de agua") |> 
+  ggplot(aes(y = DESECON2, x = Evenness_Change, fill = DESECON2)) +
+  geom_density_ridges(show.legend = F, scale = 2) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  scale_fill_manual(values = colors_for_values) +
+  facet_grid(~Comparison) +
+  theme_minimal() +
+  ylab("") +
+  xlab("Evenness Change per Sampling Site") +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
+
+## 1.3) Tree Abundance Distribution ----
+# STEP 1: assign levels ----
+Lvl1 <- c("California Mediterranea")
+Lvl2 <- c("Desiertos Calidos")
+Lvl3 <- c("Piedemonte de la Sierra Madre Occidental", "Altiplanicie Mexicana")
+Lvl4 <- c("Planicie semiarida de Tamaulipas-Texas", "Planicie costera de Texas-Louisiana")
+Lvl5 <- c("Planicie y Lomerios de la Peninsula de Yucatan", "Planicie Costera y Lomerios Humedos del Golfo de Mexico", 
+          "Planicies y Lomerios del Occidente", "Planicie Costera y Lomerios del Soconusco", "Sierra de Los Tuxtlas")
+Lvl6 <- c("Planicie Costera y Lomerios del Pacifico Sur", "Planicie Costera, Lomerios y Canones del Occidente",
+          "Depresiones Intermontanas", "Planicies Costeras y Lomerios Secos del Golfo de Mexico", "Sierra y Planicies de El Cabo",
+          "Planicie Noroccidental de la  Peninsula de Yucatan")
+Lvl7 <- c("Sierra Madre Centroamericana y Altos de Chiapas", "Sierra Madre Occidental", "Sierra Madre Oriental", 
+          "Sierra Madre del Sur", "Sistema Neovolcanico Transversal")
+Lvl8 <- c("Cuerpos de agua")
+
+all_levels <- c(Lvl1, Lvl2, Lvl3, Lvl4, Lvl5, Lvl6, Lvl7, Lvl8)
+
+FullStack_V1$DESECON2 <- factor(FullStack_V1$DESECON2, levels = all_levels)
+FullStack_V1$DESECON2 <- factor(FullStack_V1$DESECON2, levels = rev(levels(FullStack_V1$DESECON2)))
+
+# STEP 2: assign colors to each level ----
+colors_for_values <- c("California Mediterranea" = "#ff6554", 
+                       "Desiertos Calidos" = "#ffa114", 
+                       "Piedemonte de la Sierra Madre Occidental" = "#fceb02",
+                       "Altiplanicie Mexicana" = "#fef396", 
+                       "Planicie semiarida de Tamaulipas-Texas" = "#89c7d1", 
+                       "Planicie costera de Texas-Louisiana" = "#77b4be",
+                       "Planicie y Lomerios de la Peninsula de Yucatan" = "#ceead5", 
+                       "Planicie Costera y Lomerios Humedos del Golfo de Mexico" = "#bae0c3", 
+                       "Planicies y Lomerios del Occidente" = "#8ecc9e",
+                       "Planicie Costera y Lomerios del Soconusco" = "#79b689", 
+                       "Sierra de Los Tuxtlas" = "#64a175", 
+                       "Planicie Costera y Lomerios del Pacifico Sur" = "#c8e0fa",
+                       "Planicie Costera, Lomerios y Canones del Occidente" = "#b0d1f5", 
+                       "Depresiones Intermontanas" = "#7bb4ed", 
+                       "Planicies Costeras y Lomerios Secos del Golfo de Mexico" = "#649fd7",
+                       "Sierra y Planicies de El Cabo" = "#4d8ac1", 
+                       "Planicie Noroccidental de la  Peninsula de Yucatan" = "#2c6396", 
+                       "Sierra Madre Centroamericana y Altos de Chiapas" = "#e0dbf6",
+                       "Sierra Madre Occidental" = "#d1cbee", 
+                       "Sierra Madre Oriental" = "#b4aade", 
+                       "Sierra Madre del Sur" = "#9c92c5",
+                       "Sistema Neovolcanico Transversal" = "#847bac", 
+                       "Cuerpos de agua" = "#e9ccdb")
+
+
+# STEP 3: plot ----
+FullStack_V1 %>% 
+  mutate(TE1 = case_when(Muestreado1 != 1 | Plot_S1 != 4 ~ NA,
+                         T ~ TE1),
+         TE2 = case_when(Muestreado2 != 1 | Plot_S2 != 4 ~ NA,
+                         T ~ TE2),
+         TE3 = case_when(Muestreado3 != 1 | Plot_S3 != 4 ~ NA,
+                         T ~ TE3)) |> 
+  select(DESECON2, TE1, TE2, TE3) |> 
+  pivot_longer(c(TE1, TE2, TE3), names_to = "Cycle", values_to = "Tree_Abundance") |>
+  mutate(Cycle = case_when(Cycle == "TE1" ~ "C1",
+                           Cycle == "TE2" ~ "C2",
+                           Cycle == "TE3" ~ "C3",
+                           T ~ Cycle)) |> 
+  mutate(Comparison = factor(Cycle, levels = c("C1", "C2", "C3"))) |> 
+  filter(!is.na(DESECON2) & DESECON2 != "Cuerpos de agua") |> 
+  ggplot(aes(y = DESECON2, x = Tree_Abundance, fill = DESECON2)) +
+  geom_density_ridges(show.legend = F, scale = 2) +
+  scale_fill_manual(values = colors_for_values) +
+  facet_grid(~Cycle) +
+  theme_minimal() +
+  ylab("") +
+  xlab("Tree Abundance per Sampling Site (# of individuals)") +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
+## 1.3.1) Tree Abundance Change ----
+# STEP 1: assign levels ----
+Lvl1 <- c("California Mediterranea")
+Lvl2 <- c("Desiertos Calidos")
+Lvl3 <- c("Piedemonte de la Sierra Madre Occidental", "Altiplanicie Mexicana")
+Lvl4 <- c("Planicie semiarida de Tamaulipas-Texas", "Planicie costera de Texas-Louisiana")
+Lvl5 <- c("Planicie y Lomerios de la Peninsula de Yucatan", "Planicie Costera y Lomerios Humedos del Golfo de Mexico", 
+          "Planicies y Lomerios del Occidente", "Planicie Costera y Lomerios del Soconusco", "Sierra de Los Tuxtlas")
+Lvl6 <- c("Planicie Costera y Lomerios del Pacifico Sur", "Planicie Costera, Lomerios y Canones del Occidente",
+          "Depresiones Intermontanas", "Planicies Costeras y Lomerios Secos del Golfo de Mexico", "Sierra y Planicies de El Cabo",
+          "Planicie Noroccidental de la  Peninsula de Yucatan")
+Lvl7 <- c("Sierra Madre Centroamericana y Altos de Chiapas", "Sierra Madre Occidental", "Sierra Madre Oriental", 
+          "Sierra Madre del Sur", "Sistema Neovolcanico Transversal")
+Lvl8 <- c("Cuerpos de agua")
+
+all_levels <- c(Lvl1, Lvl2, Lvl3, Lvl4, Lvl5, Lvl6, Lvl7, Lvl8)
+
+FullStack_V1$DESECON2 <- factor(FullStack_V1$DESECON2, levels = all_levels)
+FullStack_V1$DESECON2 <- factor(FullStack_V1$DESECON2, levels = rev(levels(FullStack_V1$DESECON2)))
+
+# STEP 2: assign colors to each level ----
+colors_for_values <- c("California Mediterranea" = "#ff6554", 
+                       "Desiertos Calidos" = "#ffa114", 
+                       "Piedemonte de la Sierra Madre Occidental" = "#fceb02",
+                       "Altiplanicie Mexicana" = "#fef396", 
+                       "Planicie semiarida de Tamaulipas-Texas" = "#89c7d1", 
+                       "Planicie costera de Texas-Louisiana" = "#77b4be",
+                       "Planicie y Lomerios de la Peninsula de Yucatan" = "#ceead5", 
+                       "Planicie Costera y Lomerios Humedos del Golfo de Mexico" = "#bae0c3", 
+                       "Planicies y Lomerios del Occidente" = "#8ecc9e",
+                       "Planicie Costera y Lomerios del Soconusco" = "#79b689", 
+                       "Sierra de Los Tuxtlas" = "#64a175", 
+                       "Planicie Costera y Lomerios del Pacifico Sur" = "#c8e0fa",
+                       "Planicie Costera, Lomerios y Canones del Occidente" = "#b0d1f5", 
+                       "Depresiones Intermontanas" = "#7bb4ed", 
+                       "Planicies Costeras y Lomerios Secos del Golfo de Mexico" = "#649fd7",
+                       "Sierra y Planicies de El Cabo" = "#4d8ac1", 
+                       "Planicie Noroccidental de la  Peninsula de Yucatan" = "#2c6396", 
+                       "Sierra Madre Centroamericana y Altos de Chiapas" = "#e0dbf6",
+                       "Sierra Madre Occidental" = "#d1cbee", 
+                       "Sierra Madre Oriental" = "#b4aade", 
+                       "Sierra Madre del Sur" = "#9c92c5",
+                       "Sistema Neovolcanico Transversal" = "#847bac", 
+                       "Cuerpos de agua" = "#e9ccdb")
+
+# STEP 3: Plot -----
+FullStack_V1 %>% 
+  mutate(TE12 = case_when(Muestreado1 != 1 | Muestreado2 != 1 | Plot_S1 != 4 | Plot_S2 != 4 ~ NA,
+                          T ~ TE12),
+         TE23 = case_when(Muestreado2 != 1 | Muestreado3 != 1 | Plot_S2 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ TE23),
+         TE13 = case_when(Muestreado1 != 1 | Muestreado3 != 1 | Plot_S1 != 4 | Plot_S3 != 4 ~ NA,
+                          T ~ TE13)) |> 
+  select(DESECON2, TE12, TE23, TE13) |> 
+  pivot_longer(c(TE12, TE23, TE13), names_to = "Comparison", values_to = "Tree_Abundance_Change") |> 
+  mutate(Comparison = case_when(Comparison == "TE12" ~ "C12",
+                                Comparison == "TE23" ~ "C23",
+                                Comparison == "TE13" ~ "C13",
+                                T ~ Comparison)) |> 
+  mutate(Comparison = factor(Comparison, levels = c("C12", "C23", "C13"))) |> 
+  filter(!is.na(DESECON2) & DESECON2 != "Cuerpos de agua") |> 
+  ggplot(aes(y = DESECON2, x = Tree_Abundance_Change, fill = DESECON2)) +
+  geom_density_ridges(show.legend = F, scale = 2) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  scale_fill_manual(values = colors_for_values) +
+  facet_grid(~Comparison) +
+  theme_minimal() +
+  ylab("") +
+  xlab("Tree Abundance Change per Sampling Site (# of individuals)") +
   theme(axis.title.x = element_text(family = "ARL", size = 11),
         axis.title.y = element_text(family = "ARL", size = 11))
 
@@ -3873,266 +4331,421 @@ Fullstack_iMAD_12 |>
 
 ##################################     END      ##################################################################
 #
-################### CLUSTER METADATA DATASET PLOTTING           ##################################################
-#### 1) Individual Tree Entries per Cluster (DATA: ALL SAMPLED CLUSTERS) --------------------------------------------------------------
-
+################### COMPLEMENTERY PLOTTING           ##################################################
+########### Total Values ##############################
+#### 1) Species Richness per PSU  --------------------------------------------------------------
 # STEP 1: Cut data into pieces devided by Cycle
-C1 <- FullStack_V4 |> 
+C1 <- FullStack_V1 |> 
   filter(Muestreado1 == 1) |> 
-  select(TE1) |> 
+  filter(Plot_S1 == 4) |> 
+  select(TE1, SC1, J1) |> 
   mutate(Cycle = as.factor(1)) |> 
-  rename(TE = TE1)
-# C23
-Fullstack_iMAD_23 |> 
-  # filter(!is.na(direction_of_change_factor)) |> 
-  #filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
-  group_by(direction_of_change_factor) |> 
-  summarise(PSUs = n()) |> 
-  arrange(desc(direction_of_change_factor))C2 <- FullStack_V4 |> 
+  rename(TE = TE1,
+         SC = SC1,
+         J = J1)
+C2 <- FullStack_V1 |> 
   filter(Muestreado2 == 1) |> 
-  select(TE2) |> 
+  filter(Plot_S2 == 4) |> 
+  select(TE2, SC2, J2) |> 
   mutate(Cycle = as.factor(2)) |> 
-  rename(TE = TE2)
-C3 <- FullStack_V4 |> 
+  rename(TE = TE2,
+         SC = SC2,
+         J = J2)
+C3 <- FullStack_V1 |> 
   filter(Muestreado3 == 1) |> 
-  select(TE3) |> 
+  filter(Plot_S3 == 4) |> 
+  select(TE3, SC3, J3) |> 
   mutate(Cycle = as.factor(3)) |> 
-  rename(TE = TE3)
-
-
+  rename(TE = TE3,
+         SC = SC3,
+         J = J3)
 
 # STEP 2: Create long datatable with rbind()
-TE_ds <- rbind(C1, C2, C3)
-TE_ds
+Total_ds <- rbind(C1, C2, C3)
+Total_ds
 
 # 1a) Density -----
-TE_ds |> 
-  ggplot(aes(x= TE, color = Cycle)) +
-  geom_density()
+Total_ds |> 
+  ggplot(aes(x= SC, color = Cycle)) +
+  geom_density() +
+  xlab("Species Richness") + ylab("Density") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
 # 1b) Histogram ----
-TE_ds |> 
-  ggplot(aes(x= TE, fill = Cycle)) +
-  geom_histogram(position = "identity", alpha = 0.3)
-# 1c) Frequency ----
-TE_ds |> 
-  ggplot(aes(x= TE, color = Cycle)) +
-  geom_freqpoly()
-#### 1.1) Individual Tree Entries per Cluster (DATA: SAMPLED CLUSTERS THROUGH 1-2-3) --------------------------------------------------------------
-# STEP 1: Cut data into pieces devided by Cycle
-C1 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE1, SC1) |> 
-  mutate(Cycle = as.factor(1)) |> 
-  rename(TE = TE1,
-         SC = SC1)
-C2 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE2, SC2) |> 
-  mutate(Cycle = as.factor(2)) |> 
-  rename(TE = TE2,
-         SC = SC2)
-C3 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE3, SC3) |> 
-  mutate(Cycle = as.factor(3)) |> 
-  rename(TE = TE3,
-         SC = SC3)
-
-# STEP 2: Create long datatable with rbind()
-TE_ds <- rbind(C1, C2, C3)
-TE_ds
-
-# 1.1a) Density -----
-TE_ds |> 
-  ggplot(aes(x= TE, color = Cycle)) +
-  geom_density()
-# 1.1b) Histogram ----
-TE_ds |> 
-  ggplot(aes(x= TE, fill = Cycle)) +
-  geom_histogram(position = "identity", alpha = 0.3)
-# 1.1c) Frequency ----
-TE_ds |> 
-  ggplot(aes(x= TE, color = Cycle)) +
-  geom_freqpoly()
-
-#### 2) Species Richness (Spec Count) per Cluster (DATA: ALL SAMPLED CLUSTERS) --------------------------------------------------------------
-# STEP 1: Cut data into pieces devided by Cycle
-C1 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1) |> 
-  select(TE1, SC1) |> 
-  mutate(Cycle = as.factor(1)) |> 
-  rename(TE = TE1,
-         SC = SC1)
-C2 <- FullStack_V4 |> 
-  filter(Muestreado2 == 1) |> 
-  select(TE2, SC2) |> 
-  mutate(Cycle = as.factor(2)) |> 
-  rename(TE = TE2,
-         SC = SC2)
-C3 <- FullStack_V4 |> 
-  filter(Muestreado3 == 1) |> 
-  select(TE3, SC3) |> 
-  mutate(Cycle = as.factor(3)) |> 
-  rename(TE = TE3,
-         SC = SC3)
-
-# STEP 2: Create long datatable with rbind()
-TE_ds <- rbind(C1, C2, C3)
-TE_ds
-
-# 2a) Density -----
-FullStack_V4_Zeros |> 
-  select(SC1, SC2, SC3) |> 
-  pivot_longer(c(SC1, SC2, SC3), names_to = "Comparison", values_to = "Species_Richness") |> 
-  mutate(Comparison = factor(Comparison, levels = c("SC1", "SC2", "SC3"))) |> 
-  ggplot(aes(x= Species_Richness, color=Comparison)) +
-  geom_density()
-# 2b) Histogram ----
-FullStack_V4_Zeros |> 
-  select(SC1, SC2, SC3) |> 
-  pivot_longer(c(SC1, SC2, SC3), names_to = "Comparison", values_to = "Species_Richness") |> 
-  mutate(Comparison = factor(Comparison, levels = c("SC1", "SC2", "SC3"))) |> 
-  ggplot(aes(x= Species_Richness, fill=Comparison)) +
-  geom_histogram(position = "identity", alpha = 0.3)
-# 2c) Frequency ----
-FullStack_V4_Zeros |> 
-  select(SC1, SC2, SC3) |> 
-  pivot_longer(c(SC1, SC2, SC3), names_to = "Comparison", values_to = "Species_Richness") |> 
-  mutate(Comparison = factor(Comparison, levels = c("SC1", "SC2", "SC3"))) |> 
-  ggplot(aes(x= Species_Richness, color=Comparison)) +
-  geom_freqpoly()
-
-
-
-
-
-#### 2.1) Species Richness (Spec Count) per Cluster (DATA: SAMPLED CLUSTERS THROUGH 1-2-3) ----------------
-# STEP 1: Cut data into pieces devided by Cycle
-C1 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE1, SC1) |> 
-  mutate(Cycle = as.factor(1)) |> 
-  rename(TE = TE1,
-         SC = SC1)
-C2 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE2, SC2) |> 
-  mutate(Cycle = as.factor(2)) |> 
-  rename(TE = TE2,
-         SC = SC2)
-C3 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE3, SC3) |> 
-  mutate(Cycle = as.factor(3)) |> 
-  rename(TE = TE3,
-         SC = SC3)
-
-# STEP 2: Create long datatable with rbind()
-TE_ds <- rbind(C1, C2, C3)
-TE_ds
-
-# 2a) Density -----
-TE_ds |> 
-  ggplot(aes(x= SC, color = Cycle)) +
-  geom_density()
-# 2b) Histogram ----
-TE_ds |> 
+Total_ds |> 
   ggplot(aes(x= SC, fill = Cycle)) +
-  geom_histogram(position = "identity", alpha = 0.3, binwidth = 1)
-# 2c) Frequency ----
-TE_ds |> 
-  ggplot(aes(x= SC, color = Cycle)) +
-  geom_freqpoly(binwidth = 1)
+  geom_histogram(position = "identity", alpha = 0.3, binwidth = 1) +
+  xlab("Species Richness") + ylab("Count") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
 
-
-#### 3) Avg DBH per Cluster (DATA: ALL SAMPLED CLUSTERS) --------------------------------------------------------------
+#### 2) Evenness per PSU  --------------------------------------------------------------
 # STEP 1: Cut data into pieces devided by Cycle
-C1 <- FullStack_V4 |> 
+C1 <- FullStack_V1 |> 
   filter(Muestreado1 == 1) |> 
-  select(TE1, SC1, DBH1) |> 
+  filter(Plot_S1 == 4) |> 
+  select(TE1, SC1, J1) |> 
   mutate(Cycle = as.factor(1)) |> 
   rename(TE = TE1,
          SC = SC1,
-         DBH = DBH1)
-C2 <- FullStack_V4 |> 
+         J = J1)
+C2 <- FullStack_V1 |> 
   filter(Muestreado2 == 1) |> 
-  select(TE2, SC2, DBH2) |> 
+  filter(Plot_S2 == 4) |> 
+  select(TE2, SC2, J2) |> 
   mutate(Cycle = as.factor(2)) |> 
   rename(TE = TE2,
          SC = SC2,
-         DBH = DBH2)
-C3 <- FullStack_V4 |> 
+         J = J2)
+C3 <- FullStack_V1 |> 
   filter(Muestreado3 == 1) |> 
-  select(TE3, SC3, DBH3) |> 
+  filter(Plot_S3 == 4) |> 
+  select(TE3, SC3, J3) |> 
   mutate(Cycle = as.factor(3)) |> 
   rename(TE = TE3,
          SC = SC3,
-         DBH = DBH3)
+         J = J3)
 
 # STEP 2: Create long datatable with rbind()
-TE_ds <- rbind(C1, C2, C3)
-TE_ds
+Total_ds <- rbind(C1, C2, C3)
+Total_ds
 
 # 2a) Density -----
-TE_ds |> 
-  ggplot(aes(x= DBH, color = Cycle)) +
-  geom_density()
+Total_ds |> 
+  ggplot(aes(x= J, color = Cycle)) +
+  geom_density() +
+  xlab("Evenness") + ylab("Density") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
 # 2b) Histogram ----
-TE_ds |> 
-  ggplot(aes(x= DBH, fill = Cycle)) +
-  geom_histogram(position = "identity", alpha = 0.3, binwidth = 1)
-# 2c) Frequency ----
-TE_ds |> 
-  ggplot(aes(x= DBH, color = Cycle)) +
-  geom_freqpoly(binwidth = 1)
+Total_ds |> 
+  ggplot(aes(x= J, fill = Cycle)) +
+  geom_histogram(position = "identity", alpha = 0.3, binwidth = 0.01) +
+  xlab("Evenness") + ylab("Count") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
 
-
-
-#### 3.1) Avg DBH per Cluster (DATA: SAMPLED CLUSTERS THROUGH 1-2-3) ----------------
+#### 3) Tree Abundance per PSU --------------------------------------------------------------
 # STEP 1: Cut data into pieces devided by Cycle
-C1 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE1, SC1, DBH1) |> 
+C1 <- FullStack_V1 |> 
+  filter(Muestreado1 == 1) |> 
+  filter(Plot_S1 == 4) |> 
+  select(TE1, SC1, J1) |> 
   mutate(Cycle = as.factor(1)) |> 
   rename(TE = TE1,
          SC = SC1,
-         DBH = DBH1)
-C2 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE2, SC2, DBH2) |> 
+         J = J1)
+C2 <- FullStack_V1 |> 
+  filter(Muestreado2 == 1) |> 
+  filter(Plot_S2 == 4) |> 
+  select(TE2, SC2, J2) |> 
   mutate(Cycle = as.factor(2)) |> 
   rename(TE = TE2,
          SC = SC2,
-         DBH = DBH2)
-C3 <- FullStack_V4 |> 
-  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
-  select(TE3, SC3, DBH3) |> 
+         J = J2)
+C3 <- FullStack_V1 |> 
+  filter(Muestreado3 == 1) |> 
+  filter(Plot_S3 == 4) |> 
+  select(TE3, SC3, J3) |> 
   mutate(Cycle = as.factor(3)) |> 
   rename(TE = TE3,
          SC = SC3,
-         DBH = DBH3)
+         J = J3)
 
 # STEP 2: Create long datatable with rbind()
-TE_ds <- rbind(C1, C2, C3)
-TE_ds
+Total_ds <- rbind(C1, C2, C3)
+Total_ds
+
+# 3a) Density -----
+Total_ds |> 
+  ggplot(aes(x= TE, color = Cycle)) +
+  geom_density() +
+  xlab("Tree Abundance") + ylab("Density") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
+# 3b) Histogram ----
+Total_ds |> 
+  ggplot(aes(x= TE, fill = Cycle)) +
+  geom_histogram(position = "identity", alpha = 0.3, binwidth = 10) +
+  xlab("Tree Abundance") + ylab("Count") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
+
+
+
+
+########### Change Values #############################
+#### 1) Species Richness Changes per PSU  --------------------------------------------------------------
+# STEP 1: Cut data into pieces devided by Cycle
+D1 <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S2 == 4) |> 
+  select(TE12, SC12, J12) |> 
+  mutate(Comparison = as.factor("1-2")) |> 
+  rename(TE = TE12,
+         SC = SC12,
+         J = J12)
+D2 <- FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
+  select(TE23, SC23, J23) |> 
+  mutate(Comparison = as.factor("2-3")) |> 
+  rename(TE = TE23,
+         SC = SC23,
+         J = J23)
+D3 <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(TE13, SC13, J13) |> 
+  mutate(Comparison = as.factor("1-3")) |> 
+  rename(TE = TE13,
+         SC = SC13,
+         J = J13)
+
+# STEP 2: Create long datatable with rbind()
+Change_ds <- rbind(D1, D2, D3)
+Change_ds
+
+# 1a) Density -----
+Change_ds |> 
+  ggplot(aes(x= SC, color = Comparison)) +
+  geom_density() +
+  xlab("Species Richness Change") + ylab("Density") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
+# 1b) Histogram ----
+Change_ds |> 
+  ggplot(aes(x= SC, fill = Comparison)) +
+  geom_histogram(position = "identity", alpha = 0.3, binwidth = 1) +
+  xlab("Species Richness Change") + ylab("Count") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+#### 2) Evenness per PSU  --------------------------------------------------------------
+# STEP 1: Cut data into pieces devided by Cycle
+D1 <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S2 == 4) |> 
+  select(TE12, SC12, J12) |> 
+  mutate(Comparison = as.factor("1-2")) |> 
+  rename(TE = TE12,
+         SC = SC12,
+         J = J12)
+D2 <- FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
+  select(TE23, SC23, J23) |> 
+  mutate(Comparison = as.factor("2-3")) |> 
+  rename(TE = TE23,
+         SC = SC23,
+         J = J23)
+D3 <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(TE13, SC13, J13) |> 
+  mutate(Comparison = as.factor("1-3")) |> 
+  rename(TE = TE13,
+         SC = SC13,
+         J = J13)
+
+# STEP 2: Create long datatable with rbind()
+Change_ds <- rbind(D1, D2, D3)
+Change_ds
 
 # 2a) Density -----
-TE_ds |> 
-  ggplot(aes(x= DBH, color = Cycle)) +
-  geom_density()
+Change_ds |> 
+  ggplot(aes(x= J, color = Comparison)) +
+  geom_density(binwidth = 0.01) +
+  xlab("Evenness Change") + ylab("Density") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
 # 2b) Histogram ----
-TE_ds |> 
-  ggplot(aes(x= DBH, fill = Cycle)) +
-  geom_histogram(position = "identity", alpha = 0.3, binwidth = 1)
-# 2c) Frequency ----
-TE_ds |> 
-  ggplot(aes(x= DBH, color = Cycle)) +
-  geom_freqpoly(binwidth = 1)
+Change_ds |> 
+  ggplot(aes(x= J, fill = Comparison)) +
+  geom_histogram(position = "identity", alpha = 0.3, binwidth = 0.01) +
+  xlab("Evenness Change") + ylab("Count") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+#### 3) Tree Abundance per PSU --------------------------------------------------------------
+# STEP 1: Cut data into pieces devided by Cycle
+D1 <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S2 == 4) |> 
+  select(TE12, SC12, J12) |> 
+  mutate(Comparison = as.factor("1-2")) |> 
+  rename(TE = TE12,
+         SC = SC12,
+         J = J12)
+D2 <- FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S2 == 4 & Plot_S3 == 4) |> 
+  select(TE23, SC23, J23) |> 
+  mutate(Comparison = as.factor("2-3")) |> 
+  rename(TE = TE23,
+         SC = SC23,
+         J = J23)
+D3 <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(TE13, SC13, J13) |> 
+  mutate(Comparison = as.factor("1-3")) |> 
+  rename(TE = TE13,
+         SC = SC13,
+         J = J13)
+
+# STEP 2: Create long datatable with rbind()
+Change_ds <- rbind(D1, D2, D3)
+Change_ds
+
+# 3a) Density -----
+Change_ds |> 
+  ggplot(aes(x= TE, color = Comparison)) +
+  geom_density() +
+  xlab("Tree Abundance Change") + ylab("Density") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
+
+
+# 3b) Histogram ----
+Change_ds |> 
+  ggplot(aes(x= TE, fill = Comparison)) +
+  geom_histogram(position = "identity", alpha = 0.3, binwidth = 5) +
+  xlab("Tree Abundance Change") + ylab("Count") +
+  theme_light() +
+  theme(axis.title.x = element_text(family = "ARL", size = 11),
+        axis.title.y = element_text(family = "ARL", size = 11))
 
 
 
-##################################     END      ##################################################################
 
+
+
+##################################     END      #######################################################
+#
+################### TABLES (CALCULATIONS)    ##################################################
+########### Sample Sizes #############################
+# cycles
+FullStack_V1 |> 
+  filter(Muestreado1 == 1) |> 
+  filter(Plot_S1 == 4) |> 
+  count()
+
+# comparisons
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 ) |> 
+  filter(Plot_S1 == 4 & Plot_S2 != 4 | Plot_S1 == 3 & Plot_S2 != 3 | Plot_S1 == 2 & Plot_S2 != 2 | Plot_S1 == 1 & Plot_S2 != 1 | Plot_S1 == 0 & Plot_S2 != 0) |> 
+  count()
+
+# 123 comparison
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 0 & Plot_S2 == 0 & Plot_S3 == 0) |> 
+  count()
+
+########### Total Values #############################
+#### 1) PSUs by species richness  --------------------------------------------------------------
+FullStack_V1 |> 
+  filter(Muestreado3 == 1) |> 
+  filter(Plot_S3 == 4) |> 
+  select(SC3) |> 
+  filter(SC3 >= 20) |> 
+  count()
+
+
+#### 2) Evenness per PSU  --------------------------------------------------------------
+FullStack_V1 |> 
+  filter(Muestreado3 == 1) |> 
+  filter(Plot_S3 == 4) |> 
+  select(J3) |> 
+  filter(J3 >= 20) |> 
+  count()
+
+#### 3) Tree Abundance per PSU --------------------------------------------------------------
+FullStack_V1 |> 
+  filter(Muestreado3 == 1) |> 
+  filter(Plot_S3 == 4) |> 
+  select(TE3) |> 
+  filter(TE3 >= 20) |> 
+  count()
+
+########### Change Values #############################
+#### 1) Species Richness Changes per PSU  --------------------------------------------------------------
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(SC13) |> 
+  filter(SC13 <= -10) |> 
+  count()
+
+# how many sampling sites fall inbetween +/- 1 change of species?
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(SC13) |> 
+  filter(SC13 >= -1 & SC13 <= 1) |> 
+  count()
+#### 2) Evenness per PSU  --------------------------------------------------------------
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(J13) |> 
+  filter(J13 <= -10) |> 
+  count()
+
+# how many sampling sites fall inbetween +/- 1 change of species?
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(J13) |> 
+  filter(J13 >= -1 & J13 <= 1) |> 
+  count()
+
+#### 3) Tree Abundance per PSU --------------------------------------------------------------
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(TE13) |> 
+  filter(TE13 <= -10) |> 
+  count()
+
+# how many sampling sites fall inbetween +/- 1 change of species?
+FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4) |> 
+  select(TE13) |> 
+  filter(TE13 >= -1 & TE13 <= 1) |> 
+  count()
+
+
+
+
+
+
+##################################     END      #######################################################
 
 
 
@@ -4322,17 +4935,78 @@ Plots_Rare_long |>
 ##################################     END      ##################################################################
 
 
+################  LINEAR MODEL 2 REGRESSION - still pretty much WIP ##############################################
+# Model 2 regression ----
+x <- FullStack_V1 |> filter(Muestreado1 == 1 & Plot_S1 == 4) |> filter(!is.na(J1)) |> select(J1) |> rename(x = J1)
+x
+y <- FullStack_V1 |> filter(Muestreado1 == 1 & Plot_S1 == 4) |> filter(!is.na(J1)) |> select(SC1) |> rename(y = SC1)
+y
+my_data <- FullStack_V1 |> filter(Muestreado1 == 1 & Plot_S1 == 4) |> filter(!is.na(J1)) |> select(SC1, J1) |> rename(y = SC1, x = J1)
+my_data
+lm2 <- lmodel2(y ~ x, data = my_data, "interval", "interval", nperm = 99)
 
 
+predict(lm1, newdata = data.frame(x=c(0)), interval = "confidence")
+x<-0; df<-nrow(my_data)-2
+my_data$prediction<- my_data$x * lm1$coefficients[2] + lm1$coefficients[1] 
+my_data$residuals<- my_data$y - my_data$prediction
+sd.residuals<-sqrt(sum(my_data$residuals^2)/(nrow(my_data)-2))
+other.part<-sqrt((1/nrow(my_data)) + (x - mean(my_data$x))^2 / sum( (my_data$x - mean(my_data$x))^2 ))
+
+sem.x<-(sd.residuals * other.part * qt(.975,df))
+predict(lm1, newdata = data.frame(x=c(0)), interval = "confidence")[2]+sem.x
+# does accord...
 
 
+x<-0; df<-nrow(my_data)-2
+my_data$prediction<- my_data$x * lm2$regression.results[2,3] + lm2$regression.results[2,2]
+my_data$residuals<- my_data$y - my_data$prediction
+sd.residuals<-sqrt(sum(my_data$residuals^2)/(nrow(my_data)-2))
+other.part<-sqrt((1/nrow(my_data)) + (x - mean(my_data$x))^2 / sum( (my_data$x - mean(my_data$x))^2 ))
+
+sem.x<-(sd.residuals * other.part * qt(.975,df))
+predict(lm1, newdata = data.frame(x=c(0)), interval = "confidence")[2]+sem.x
+# does NOT accord...
+9.104299    +   1.008546 == sem.x*2
+
+# bootstrapping approach ######
+range.int<- (lm2$confidence.intervals[2,3]) - (lm2$confidence.intervals [2,2]) 
+range.slope<-  (lm2$confidence.intervals[2,5]) - (lm2$confidence.intervals [2,4])
 
 
+int.sim<-rnorm(1000000,lm2$regression.results[2,2] , 4.13)# you need to adjust this value in order that the two lines below fit
+quantile(int.sim, probs=c(.975)) - quantile(int.sim, probs=c(.025))
+range.int
+
+slope.sim<-rnorm(1000000,lm2$regression.results[2,3] , 0.3)# you need to adjust this value in order that the two lines below fit
+quantile(slope.sim, probs=c(.975)) - quantile(slope.sim, probs=c(.025))
+range.slope
+
+x<-seq(min(my_data$x), max(my_data$x), length = 50)
+pred<-data.frame(t(x)); pred<-pred[-1,]
+for(i in 1:10000){pred[i,] = sample(int.sim,1) + sample(slope.sim,1) *x  }
+
+CI<-as.data.frame(t(apply(pred, 2, function(x){quantile(x, probs=c(.025,.975)) })))
+colnames(CI)<-c("low","up")
+CI$x<-x;  CI$prediction<- CI$x * lm2$regression.results[2,3] + lm2$regression.results[2,2]
 
 
+ggplot(my_data)+ geom_point(aes(x = x, y =y ))+ geom_line(aes(x=x,y=prediction)) + theme_bw() + 
+  geom_ribbon(data=CI, aes(x=x, ymin = low, ymax=up ), alpha = 0.2)
 
 
+hist(slope.sim)
 
+hist(my_data$residuals, breaks = 20)
+plot(my_data$residuals ~ my_data$prediction)
+library(ggplot2)
+ggplot(my_data)+ geom_point(aes(x = x, y =y ))+geom_line(aes(x=x,y=prediction))
+
+win.graph()
+plot(lm2, "MA")
+
+
+#################################    END      ####################################################################
 
 
 
