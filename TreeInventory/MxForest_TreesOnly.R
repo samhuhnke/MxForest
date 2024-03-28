@@ -1906,7 +1906,7 @@ National_wide
 # STEP 6: Rarefaction ----
 ### IMPORTANT: run this code only with species as cols and samples as rows!!!
 m.rar.time <- National_wide[, -c(1:2)]
-
+National_wide
 # preparation step: change integer values to numeric 
 m.rar.time <- as.data.frame(lapply(m.rar.time, as.numeric))
 
@@ -1977,7 +1977,9 @@ merged |>
 #filtered -> calculation in National section
 National |> 
   ggplot(aes(x = Cycle, y = n)) +
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), vjust = 1.5, colour = "white") +
+  theme_minimal()
 
 ##################################     END      ##################################################################
 
@@ -2999,10 +3001,47 @@ iMAD_results <- rbind(iMAD_results_12, iMAD_results_13, iMAD_results_23) |>
 ########### END #################################################################################################
 
 
+##################         Univariate State & Change Maps            ###########################################
+### Cycle 1 ----
+# STEP 1: Selection of variables
+Cycle1.geo <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Plot_S1 == 4)
 
+### Cycle 2 ----
+Cycle2.geo <- FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Plot_S2 == 4)
 
+### Cycle 3 ----
+Cycle3.geo <- FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Plot_S2 == 4)
 
+### Geospatial prep ----
+# writeVector(vect(Cycle1.geo, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Cycle1.shp")
+# writeVector(vect(Cycle2.geo, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Cycle2.shp")
+# writeVector(vect(Cycle3.geo, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Cycle3.shp")
 
+### Comparison 1 ----
+# STEP 1: Selection of variables
+Comparison12.geo <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado2 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S2 == 4)
+
+### Comparison 2 ----
+Comparison23.geo <- FullStack_V1 |> 
+  filter(Muestreado2 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S2 == 4 & Plot_S3 == 4)
+
+### Comparison 3 ----
+Comparison13.geo <- FullStack_V1 |> 
+  filter(Muestreado1 == 1 & Muestreado3 == 1) |> 
+  filter(Plot_S1 == 4 & Plot_S3 == 4)
+
+### Geospatial prep ----
+# writeVector(vect(Comparison12.geo, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Comparison12.shp")
+# writeVector(vect(Comparison23.geo, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Comparison23.shp")
+# writeVector(vect(Comparison13.geo, geom = c("X", "Y"), crs = "+proj=longlat +datum=WGS84"), "Comparison13.shp")
+
+########### END #################################################################################################
 
 
 
@@ -4680,17 +4719,29 @@ FullStack_V1 |>
 FullStack_V1 |> 
   filter(Muestreado3 == 1) |> 
   filter(Plot_S3 == 4) |> 
-  select(J3) |> 
-  filter(J3 >= 20) |> 
+  filter(J3 == 1) |> 
   count()
+# means and medians
+FullStack_V1 |> 
+  filter(Muestreado1 == 1) |> 
+  filter(Plot_S1 == 4) |> 
+  summarise(Jmean = mean(J1, na.rm = T),
+            Jmedian = median(J1, na.rm = T))
 
 #### 3) Tree Abundance per PSU --------------------------------------------------------------
 FullStack_V1 |> 
   filter(Muestreado3 == 1) |> 
   filter(Plot_S3 == 4) |> 
   select(TE3) |> 
-  filter(TE3 >= 20) |> 
+  filter(TE3 > 200) |> 
   count()
+
+# means and medians
+FullStack_V1 |> 
+  filter(Muestreado3 == 1) |> 
+  filter(Plot_S3 == 4) |> 
+  summarise(TEmean = mean(TE3, na.rm = T),
+            TEmedian = median(TE3, na.rm = T))
 
 ########### Change Values #############################
 #### 1) Species Richness Changes per PSU  --------------------------------------------------------------
