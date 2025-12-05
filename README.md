@@ -23,6 +23,8 @@ The exact data sets are ***INCLUDE THE NAMES WHEN DOWNLOADING***
 
 Here each code segment is quickly explained. 
 
+**IMPORTANT:** Note that the dataset ***ArboladoINFYS_Arbolado_2015_2020.xlsx*** was converted into a .csv-file before using the data in R. This was done to speed up the loading process.
+
 
 ### Code_1_Data cleaning
 

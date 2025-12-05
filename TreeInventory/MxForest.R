@@ -17,9 +17,6 @@ library(vegan)      #for shannon-index and pielou-eveness
 library(svglite)    #to save figures as .svg
 library(extrafont)  #to change fonts in my figures
 library(RColorBrewer) #for colorpalettes
-windowsFonts(TNR = windowsFont("Times New Roman")) #to enable times new roman as a font
-windowsFonts(ARL = windowsFont("Arial"))
-fonts()
 #################### 1) LOAD RAW DATA ------------------------------------------------------------
 
 ## 2004 - 2007 -> changing "NULL" character values to NA
@@ -476,6 +473,9 @@ merged <- rbind(M.04, M.09, M.14) |>
   mutate(Plot_ID = paste(Cycle, Conglomerado, Sitio, Anio, sep = "_")) |> 
   mutate(Cluster_ID = Conglomerado) |> 
   select(Cluster_ID, Plot_ID, Cycle, Sitio, Anio, everything(), -c(Conglomerado))
+
+
+
 
 
 #################### 4) EDA PREPARATION ------------------------------------------------------------------
