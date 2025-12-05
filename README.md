@@ -1,6 +1,7 @@
 # MxForest - Spatiotemporal changes in tree biodiversity across Mexico over 15 years
 
 Author: Sam Huhnke 
+
 Contributors: Julian Equihua, Alfred Burian
 
 ## Content
