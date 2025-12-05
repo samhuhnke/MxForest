@@ -6,6 +6,7 @@ start.time <- Sys.time()
 
 ####################          MAIN CODE             ##########################################################################
 #################### 0) LOAD NECESSARY PACKAGES and PREPARATIONS ----------------------------------------------------------
+
 library(data.table) #fread()
 library(readxl)     #read_xlsx()
 library(here)       #here()
@@ -22,36 +23,32 @@ library(writexl)    #to write xlsx files
 windowsFonts(TNR = windowsFont("Times New Roman")) #to enable times new roman as a font
 windowsFonts(ARL = windowsFont("Arial"))
 fonts()
-#################### 1) LOAD RAW DATA ------------------------------------------------------------
 
-# TREE INVENTORY
-## 2004 - 2007 -> changing "NULL" character values to NA
+#################### 1) LOAD RAW DATA ------------------------------------------------------------
+# loading of the untouched data in R. The data is retrievable here: https://snmf.cnf.gob.mx/datos-del-inventario/
+
+
+## 2004 - 2007 -> character string "NULL" changed to NA
 Raw.04 <- fread(here("data", "arbolado", "INFyS_Arbolado_2004_2007.csv"), na.strings = "NULL")
 
-## 2009 - 2014 -> changing "NULL" character values to NA
+## 2009 - 2014 -> character string "NULL" changed to NA
 Raw.09 <- fread(here("data", "arbolado", "INFyS_Arbolado_2009_2014.csv"), na.strings = "NULL")
 
-## 2015 - 2020
+## 2015 - 2020 -> character string "NULL" + "999991" + "999993" changed to NA 
 Raw.14 <- readxl::read_xlsx(here("data", "arbolado", "INFYS_Arbolado_2015_2020.xlsx"), sheet= 1, na = c("NULL", "999991", "999993"))
 
-
-# BIOMASS 
-## 2004 - 2007 -> character string "NULL" changed to NA
-AGB_1 <- fread(here("data", "biomass", "INFyS_C1_VBC.csv"), na.strings = "NULL")
-
-## 2009 - 2014 -> character string "NULL" changed to NA
-AGB_2 <- fread(here("data", "biomass", "INFyS_C2_VBC.csv"), na.strings = "NULL")
-
-## 2015 - 2020 -> character string "NULL" + "999991" + "999993" changed to NA 
-AGB_3 <- fread(here("data", "biomass", "INFyS_C3_VBC.csv"), na.strings = "NULL")
-
+# faster alternativ for 2015 - 2020
+# Prior to using it the dataset has to be converted to a .csv 
+### Raw.14 <- fread(here("data", "arbolado", "INFyS_Arbolado_2015_2020.csv"), na.strings = c("NULL", "999991", "999993"))
 
 
 #################### 2) DATA CLEANING ------------------------------------------------------------
+# cleaning of the data from all inconsistencies within the datasets and between the datasets
+# the cleaned datasets are saved as a three new df (Arb.04, Arb.09, Arb.14) so comparisons with the raw dataset remain possible 
 
 ## Arb.04
 Arb.04 <- Raw.04 |>  
-  # normalizing names
+  # normalizing variable names for all three datasets
   rename(cgl_sit_reg = cgl_sit_arb,
          CveVeg_S5 = Cve_veg_SV,
          TipoVeg_S5 = Tipo_veg_SV,
@@ -69,15 +66,19 @@ Arb.04 <- Raw.04 |>
   ) |> 
   # Correction of categoric and specific entry mistakes
   mutate(
-    # "Estado" Correction - initially 33 -> 32
+    # "Estado" Correction - initially there are 33 different values. two of these values refer to the same place: "Mexico City"
+    # -> changing all of these values to "Mexico City" -> 32 different values
     Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
                        TRUE ~ Estado),
-    # "Registro" Correction - initially all values NA -> pull data from string cgl_sit_reg
+    # "Registro" Correction - initially all values for this variable are NA. However the values are also contained in another string within the data
+    # -> pull data from string cgl_sit_reg so all 3 datasets have the "registro" variable 
     Registro = str_extract(cgl_sit_reg, "(?<=_)[^_]+$") |>
       as.integer(),
-    # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
+    # "CveVeg_S5" Correction - initial value names are changed in the newest dataset and thus outdated within this one. 
+    # -> replacing "VSaa" with "VSa" to fit Arb.14
     CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
-    # "TipoVeg_S5" Correction - changing names based on CveVeg_S5 data to fit Arb.14
+    # "TipoVeg_S5" Correction - initial value names are changed in the newest dataset and thus outdated within this one.
+    # -> changing names based on CveVeg_S5 data to fit Arb.14
     TipoVeg_S5 = case_when(
       str_detect(CveVeg_S5, "VSA") ~ paste("VEGETACION SECUNDARIA ARBOREA DE ", TipoVeg_S5, sep = ""),
       str_detect(CveVeg_S5, "VSa") ~ paste("VEGETACION SECUNDARIA ARBUSTIVA DE ", TipoVeg_S5, sep = ""),
@@ -95,27 +96,30 @@ Arb.04 <- Raw.04 |>
       str_detect(CveVeg_S5, "TS") ~ paste(TipoVeg_S5, " SEMIPERMANENTE", sep = ""),
       str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
       TRUE ~ TipoVeg_S5),
-    # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
+    # "VigorEtapa" Correction - initial value names are changed in the newest dataset and thus outdated within this one (NA + class names) 
+    # -> "no capturado" + new names (in line with Arb.14)
     VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
                            VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
                            VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
                            VigorEtapa == "Arbol viejo o supermaduro" ~ "Árbol viejo o súper-maduro",
                            is.na(VigorEtapa) ~ "No capturado",
                            TRUE ~ VigorEtapa),
-    # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
+    # "Edad" Correction - initial class is "character" -> should be "numeric" as it is a number
+    # -> class "numeric" (+ rounding numbers -> because decimals don't seem sensible for age values
     Edad = ifelse(!is.na(Edad),
                   ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
                          ceiling(as.numeric(Edad)),
                          floor(as.numeric(Edad))),
                   NA),
-    # "Condicion" Correction - values names -> new value names
+    # "Condicion" Correction - initial value names are changed in the newest dataset and thus outdated within this one
+    # -> new value names in line with Arb.14
     Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
                           Condicion == "Vivo" ~ "Arbol vivo",
                           TRUE ~ Condicion),
-    # Added Cycle number 
+    # Added Cycle number for later identification of the values
     Cycle = "1"
   ) |>
-  # setting initial column order +
+  # setting initial column order (no peticular reason other than making it easier to work with the data)
   select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
@@ -123,13 +127,13 @@ Arb.04 <- Raw.04 |>
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything()
   ) |>
-  # sorting for comparison
+  # sorting for comparison (no peticular reason other than making it easier to work with the data)
   arrange(Estado, Conglomerado, Sitio, Registro)
 
 
 ## Arb.09 
 Arb.09 <- Raw.09 |> 
-  # nomralizing names
+  # normalizing variable names for all three datasets
   rename(cgl_sit_reg = cgl_sit_arb,
          CveVeg_S5 = Cve_veg_SV,
          TipoVeg_S5 = Tipo_veg_SV,
@@ -147,7 +151,8 @@ Arb.09 <- Raw.09 |>
   ) |> 
   # Correction of categoric and specific entry mistakes 
   mutate(
-    # "Estado" Correction - initially 38 -> 32 
+    # "Estado" Correction - initially there are 38 different values. This is mainly due to inconsistencies in spelling and "Mexico City" values.
+    # -> corrected spelling mistakes and normalized "Mexico City" -> 32 different values 
     Estado = case_when(Estado == "Distrito Federal" ~ "Ciudad de México",
                        Estado == "Mexico" ~ "México",
                        Estado == "Michoacan de Ocampo" ~ "Michoacán de Ocampo",
@@ -156,13 +161,16 @@ Arb.09 <- Raw.09 |>
                        Estado == "San Luis Potosi" ~ "San Luis Potosí",
                        Estado == "Yucatan" ~ "Yucatán",
                        TRUE ~ Estado),
-    # "Registro" Correction + "cgl_sit_arb" Correction - obviously wrong entries -> replaced with NAs
+    # "Registro" Correction + "cgl_sit_reg" Correction - inconsistencies between "registro" values and the corresponding parts of another string.
+    # -> replaced with NAs
     Registro = case_when(Registro == 316 ~ NA,
                          TRUE ~ Registro),
     Registro = ifelse(cgl_sit_reg == "21314_4_147", NA, Registro),
-    # "CveVeg_S5" Correction - replacing "VSaa" with "VSa" to fit Arb.14
+    # "CveVeg_S5" Correction - initial value names are changed in the newest dataset and thus outdated within this one. 
+    # -> replacing "VSaa" with "VSa" to fit Arb.14
     CveVeg_S5 = str_replace(CveVeg_S5, "VSaa", "VSa"),
-    # "TipoVeg_S5" Correction - changing names based on CveVeg_S5 data to fit Arb.14
+    # "TipoVeg_S5" Correction - initial value names are changed in the newest dataset and thus outdated within this one.
+    # -> changing names based on CveVeg_S5 data to fit Arb.14
     TipoVeg_S5 = case_when(
       str_detect(CveVeg_S5, "VSA") ~ paste("VEGETACION SECUNDARIA ARBOREA DE ", TipoVeg_S5, sep = ""),
       str_detect(CveVeg_S5, "VSa") ~ paste("VEGETACION SECUNDARIA ARBUSTIVA DE ", TipoVeg_S5, sep = ""),
@@ -182,22 +190,26 @@ Arb.09 <- Raw.09 |>
       str_detect(CveVeg_S5, "HAS") ~ paste(TipoVeg_S5, " ANUAL Y SEMIPERMANENTE", sep = ""),
       str_detect(CveVeg_S5, "HA") ~ paste(TipoVeg_S5, " ANUAL", sep = ""),
       TRUE ~ TipoVeg_S5), 
-    # "FormaFuste" Correction - "NA" + class names -> NA + new names (differ from Arb.14)
+    # "FormaFuste" Correction - spelling mistakes and wrong classification of "NA" as character string.
+    # -> NA + corrected value names (differ from Arb.14, as values do not indicate the same meaning)
     FormaFuste = str_replace(FormaFuste, "mas", "más"),
     FormaFuste = case_when(FormaFuste == "Arbol cruvo con dos o más fustes" ~ "Arbol curvo con dos o más fustes",
                            FormaFuste == "NA" ~ NA,
                            TRUE ~ FormaFuste),
-    # "TipoTocon" Correction - class names -> new names (in line with Arb.14)
+    # "TipoTocon" Correction - spelling mistakes that are fixed in the newest dataset. 
+    # -> corrected names (in line with Arb.14)
     TipoTocon = case_when(TipoTocon == "Tocon descompuesto (evidencia de tocon)" ~ "Tocón descompuesto (evidencia de tocón)",
                           TipoTocon == "Tocon madera seca (madera dura sin evidencias de descomposicion)" ~ "Tocón madera seca (madera dura sin evidencias de descomposición)",
                           TipoTocon == "Tocon madera seca (madera en proceso de descomposicion pero aun dificil de desprenderse del suelo)" ~ "Tocón madera seca (madera en proceso de descomposición pero aún difícil de desprenderse del suelo)",
                           TipoTocon == "Tocon madera verde (arbol recien cortado)" ~ "Tocón madera verde (árbol recién cortado)",
                           TipoTocon == "Tocon seco (madera muy descompuesta y de facil extraccion del sustrato)" ~ "Tocón seco (madera muy descompuesta y de fácil extracción del sustrato)",
                           TRUE ~ TipoTocon),
-    # "PosicionCopa" Correction - "no aplica" -> NA
+    # "PosicionCopa" Correction - unique value for NA = "no aplica" 
+    # -> changed it to NA
     PosicionCopa = case_when(PosicionCopa == "No aplica" ~ NA,
                              TRUE ~ PosicionCopa),
-    # "ExposicionCopa" Correction - class names -> new names (in line with Arb.14)
+    # "ExposicionCopa" Correction - spelling mistakes that are fixed in the newest dataset. Unique value for NA = "no aplica"
+    # -> corrected names (in line with Arb.14) + changed "no aplica" to NA
     ExposicionCopa = str_replace(ExposicionCopa, "arbol", "árbol"),
     ExposicionCopa = str_replace(ExposicionCopa, "la luz", "luz"),
     ExposicionCopa = str_replace(ExposicionCopa, " solo en un cuarto", " en un solo cuarto"),
@@ -206,7 +218,8 @@ Arb.09 <- Raw.09 |>
                                  "Árboles que no reciben luz porque están a la sombra de otra vegetación",
                                ExposicionCopa == "No aplica" ~ NA,
                                TRUE ~ ExposicionCopa),
-    # "DensidadCopa" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+    # "DensidadCopa" Correction - 3 different values indicating NAs + exact values that are updated to ranges in the newest dataset.
+    # -> NA + ranges instead of exact values (in line with Arb.14)
     DensidadCopa = case_when(DensidadCopa == "" ~ NA,
                              DensidadCopa == -9999 ~ NA,
                              DensidadCopa == "n/a" ~ NA,
@@ -222,7 +235,8 @@ Arb.09 <- Raw.09 |>
                              DensidadCopa == "85" ~ "81 - 85", DensidadCopa == "90" ~ "86 - 90",
                              DensidadCopa == "95" ~ "91 - 95", DensidadCopa == "100" ~ "96 - 100",
                              TRUE ~ DensidadCopa),
-    # "TransparenciaCopa" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+    # "TransparenciaCopa" Correction - 3 different values indicating NAs + exact values that are updated to ranges in the newest dataset.
+    # -> NA + ranges instead of exact values (in line with Arb.14)
     TransparenciaCopa = case_when(TransparenciaCopa == "" ~ NA,
                                   TransparenciaCopa == -9999 ~ NA,
                                   TransparenciaCopa == "n/a" ~ NA,
@@ -238,7 +252,8 @@ Arb.09 <- Raw.09 |>
                                   TransparenciaCopa == "85" ~ "81 - 85", TransparenciaCopa == "90" ~ "86 - 90",
                                   TransparenciaCopa == "95" ~ "91 - 95", TransparenciaCopa == "100" ~ "96 - 100",
                                   TRUE ~ TransparenciaCopa),
-    # "MuerteRegressiva" Correction - "" + -9999 + "n/a" +  + specific -> NA + ranges instead of exact values (in line with)
+    # "MuerteRegressiva" Correction - 3 different values indicating NAs + exact values that are updated to ranges in the newest dataset.
+    # -> NA + ranges instead of exact values (in line with Arb.14)
     MuerteRegresiva = case_when(MuerteRegresiva == "" ~ NA,
                                 MuerteRegresiva == -9999 ~ NA,
                                 MuerteRegresiva == "n/a" ~ NA,
@@ -254,14 +269,17 @@ Arb.09 <- Raw.09 |>
                                 MuerteRegresiva == "85" ~ "81 - 85", MuerteRegresiva == "90" ~ "86 - 90",
                                 MuerteRegresiva == "95" ~ "91 - 95", MuerteRegresiva == "100" ~ "96 - 100",
                                 TRUE ~ MuerteRegresiva),
-    # "VigorEtapa" Correction - NA + class names -> "no capturado" + new names (in line with Arb.14)
+    # "VigorEtapa" Correction - spelling mistakes that are fixed in the newest dataset.
+    # -> "no capturado" + corrected names (in line with Arb.14)
     VigorEtapa = case_when(VigorEtapa == "Arbol joven" ~ "Árbol joven",
                            VigorEtapa == "Arbol maduro" ~ "Árbol maduro",
                            VigorEtapa == "Arbol muy joven" ~ "Árbol muy joven",
                            VigorEtapa == "Arbol viejo o supermaduro" ~ "Árbol viejo o súper-maduro",
                            is.na(VigorEtapa) ~ "No capturado",
                            TRUE ~ VigorEtapa),
-    # "Edad" Correction - "NULL" + class "character" -> NA + class "numeric" (+ rounding numbers)
+    # "Edad" Correction - initial class is "character" -> should be "numeric" as it is a number + 999 as potential indicator for NAs
+    # -> class "numeric" (+ rounding numbers -> because decimals don't seem sensible for age values
+    # -> changed all 999 values to NA as 1) it appeared unexpectedly often and 2) would be in line with other NA values throughout the dataset (theme of 999...)
     Edad = ifelse(!is.na(Edad),
                   ifelse(as.numeric(Edad) - floor(as.numeric(Edad)) >= 0.5,
                          ceiling(as.numeric(Edad)),
@@ -270,11 +288,13 @@ Arb.09 <- Raw.09 |>
                   NA),
     Edad = case_when(Edad == 999 ~ NA,
                      TRUE ~ Edad),
-    # "Condicion" Correction - values names -> new value names (in line with Arb.14)
+    # "Condicion" Correction - spelling mistakes that are fixed in the newest dataset. 
+    # -> corrected names (in line with Arb.14)
     Condicion = case_when(Condicion == "Muerto en pie" ~ "Arbol muerto en pie",
                           Condicion == "Vivo" ~ "Arbol vivo",
                           TRUE ~ Condicion),
-    # "Danio1" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
+    # "Danio1" Correction - spelling mistakes that are fixed in newest dataset + different values indicating NAs 
+    # -> corrected names (in line with Arb.14) + only one NA values = NA
     Danio1 = str_replace(Danio1, "abioticos", "abióticos"),
     Danio1 = str_replace(Danio1, "raiz/tocon", "raíz/tocón"),
     Danio1 = str_replace(Danio1, "pifitas", "pífitas"), 
@@ -285,13 +305,15 @@ Arb.09 <- Raw.09 |>
                        Danio1 == "No aplica" ~ NA,
                        Danio1 == "No definido" ~ NA,
                        TRUE ~ Danio1),
-    # "Severidad1" Correction - "" + -9999 + "n/a" + "05" + character -> NA + numeric
+    # "Severidad1" Correction - 3 different values indicating NAs + spelling inconsistency + wrong class ("character")
+    # -> only one NA = NA + fixed numbering  + class "numeric"
     Severidad1 = case_when(Severidad1 == "" ~ NA,
                            Severidad1 == -9999 ~ NA,
                            Severidad1 == "n/a" ~ NA,
                            Severidad1 == "05" ~ 5,
                            TRUE ~ as.numeric(Severidad1)),
-    # "Danio2" Correction - "No aplica" + class names -> NA + new names (in line with Arb.14)
+    # "Danio2" Correction - spelling mistakes that are fixed in the newest dataset + "No aplica" instead of NA
+    # -> corrected names (in line with Arb.14) + NA
     Danio2 = str_replace(Danio2, "abioticos", "abióticos"),
     Danio2 = str_replace(Danio2, "raiz/tocon", "raíz/tocón"),
     Danio2 = str_replace(Danio2, "pifitas", "pífitas"), 
@@ -301,29 +323,34 @@ Arb.09 <- Raw.09 |>
                        Danio2 == "Insectos" ~ "Insectos en general",
                        Danio2 == "No aplica" ~ NA,
                        TRUE ~ Danio2),
-    # "Severidad2" Correction - "" + -9999 + "n/a" + "05" + character -> NA + numeric
+    # "Severidad2" Correction - "3 different values indicating NAs + spelling inconsistency + wrong class ("character")
+    # -> only one NA = NA + fixed numbering  + class "numeric"
     Severidad2 = case_when(Severidad2 == "" ~ NA,
                            Severidad2 == -9999 ~ NA,
                            Severidad2 == "n/a" ~ NA,
                            Severidad2 == "05" ~ 5,
                            TRUE ~ as.numeric(Severidad2)),
-    # "NumeroTallos" Correction - 999 & 9999 -> NA
+    # "NumeroTallos" Correction - different values indicating NAs
+    # -> changed to NA
     NumeroTallos = case_when(NumeroTallos == 999 ~ NA,
                              NumeroTallos == 9999 ~ NA,
                              TRUE ~ NumeroTallos),
-    # "LongitudAnillos10" Correction - 999 -> NA
+    # "LongitudAnillos10" Correction - 999 indicating NA 
+    # -> changed to NA
     LongitudAnillos10 = case_when(LongitudAnillos10 == 999 ~ NA,
                                   TRUE ~ LongitudAnillos10),
-    # "NumeroAnillos25" Correction - 
+    # "NumeroAnillos25" Correction - 999 indicating NA
+    # -> changed to NA
     NumeroAnillos25 = case_when(NumeroAnillos25 == 999 ~ NA,
                                 TRUE ~ NumeroAnillos25),
-    # "NombreCientifico_APG" Correction - "ZZ_Desconocido" -> NA
+    # "NombreCientifico_APG" Correction - spelling inconsistency that has changed in the newest dataset
+    # -> changed to be in line with newest dataset
     NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ_Desconocido" ~ "ZZ Desconocido",
                                      TRUE ~ NombreCientifico_APG),
-    # Added Cycle number 
+    # Added Cycle number for later identification of values
     Cycle = "2"
   ) |> 
-  # setting initial column order + attaching everything so far not considered to the end
+  # setting initial column order (no peticular reason other than making it easier to work with the data)
   select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, cgl_sit_reg, CveVeg_S5, TipoVeg_S5, FormaFuste, 
          TipoTocon, Familia_APG, NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal,
          AlturaFusteLimpio, AlturaComercial, DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa,
@@ -331,13 +358,13 @@ Arb.09 <- Raw.09 |>
          Danio1, Severidad1, Danio2, Severidad2, NumeroTallos, LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything() 
   ) |> 
-  # sorting for comparison
+  # sorting for comparison (no peticular reason other than making it easier to work with the data)
   arrange(Estado, Conglomerado, Sitio, Registro) 
 
 
 ## Arb.14 
 Arb.14 <- Raw.14 |> 
-  # nomralizing names
+  # normalizing variable names for all three datasets
   rename(Anio = Anio_C3,
          Estado = Estado_C3,
          Conglomerado = IdConglomerado,
@@ -382,31 +409,38 @@ Arb.14 <- Raw.14 |>
          X = X_C3,
          Y = Y_C3
   ) |> 
-  # mutate() |> ### einfügen von cgl_sit_reg   <----- HIER MUSS NOCH WAS REIN
+  # mutate() |> ###  cgl_sit_reg does not exist within this dataset
   # Correction of categoric and specific entry mistakes 
   mutate(
-    # "FormaBiologica" Correction - "NULL" -> NA 
+    # "FormaBiologica" Correction - unique NA value "Indeterminada"
+    # -> changed to NA 
     FormaBiologica = case_when(FormaBiologica == "Indeterminada" ~ NA,
                                TRUE ~ FormaBiologica),
-    # "PosicionCopa" Correction - "No aplicacion" + "No aplica" + "No capturado" -> NA
+    # "PosicionCopa" Correction - 3 different values indicating NAs
+    # -> changed to NA
     PosicionCopa = case_when(PosicionCopa == "No aplicacion" ~ NA, 
                              PosicionCopa == "No aplica" ~ NA,
                              PosicionCopa == "No capturado" ~ NA,
                              TRUE ~ PosicionCopa),
-    # "ExposicionCopa" Correction - "No capturado" + "No aplica" + class names -> NA + new names
+    # "ExposicionCopa" Correction - spelling mistakes + different values indicating NAs
+    # -> corrected names + changed to NA
     ExposicionCopa = str_replace(ExposicionCopa, "SI", "Sí"),
     ExposicionCopa = case_when(ExposicionCopa == "No capturado" ~ NA,
                                ExposicionCopa == "No aplica" ~ NA,
                                ExposicionCopa == "Árboles que no reciben luz porque se encuentran sombreados por otros árboles" ~ 
                                  "Árboles que no reciben luz porque están a la sombra de otra vegetación",
                                TRUE ~ ExposicionCopa),
-    # "DensidadCopa" Correction - "No capturado" -> NA
+    # "DensidadCopa" Correction - unique NA value "No capturado"
+    # -> changed to NA
     DensidadCopa = case_when(DensidadCopa == "No capturado" ~ NA,
                              TRUE ~ DensidadCopa),
-    # "TransparenciaCopa" Correction - "No capturado" -> NA
+    # "TransparenciaCopa" Correction - unique NA value "No capturado"
+    # -> changed to NA
     TransparenciaCopa = case_when(TransparenciaCopa == "No capturado" ~ NA,
                                   TRUE ~ TransparenciaCopa),
-    # "MuerteRegresiva" Correction - "No capturado" -> NA -> still 3 entry mistakes with 42309, 44682, 44840
+    # "MuerteRegresiva" Correction - unique NA values "No capturado" + condensed value format.
+    # -> changed to NA + slightly changed format (so it is the same for all three datasets and easily readable)
+    # -> ATTENTION: still 3 entry mistakes with 42309, 44682, 44840!
     MuerteRegresiva = case_when(MuerteRegresiva == "No capturado" ~ NA,
                                 MuerteRegresiva == "00" ~ "Sin parámetro",
                                 MuerteRegresiva == "1-5" ~ "1 - 5", MuerteRegresiva == "6-10" ~ "6 - 10",
@@ -420,27 +454,32 @@ Arb.14 <- Raw.14 |>
                                 MuerteRegresiva == "81-85" ~ "81 - 85", MuerteRegresiva == "86-90" ~ "86 - 90",
                                 MuerteRegresiva == "91-95" ~ "91 - 95", MuerteRegresiva == "96-100" ~ "96 - 100",
                                 TRUE ~ MuerteRegresiva),
-    # "Danio1" Correction - "No definido" -> NA
+    # "Danio1" Correction - unique NA value "No definido"
+    # -> changed to NA
     Danio1 = case_when(Danio1 == "No definido" ~ NA,
                        TRUE ~ Danio1),
-    # "Severidad1" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
+    # "Severidad1" Correction - different values indicating NAs + wrong class "character"
+    # -> changed to NA + changed class to "numeric"
     Severidad1 = case_when(Severidad1 == "No capturado" ~ NA,
                            Severidad1 == "No aplica" ~ NA,
                            TRUE ~ as.numeric(Severidad1)),
-    # "Danio2" Correction - "No capturado" -> NA
+    # "Danio2" Correction - unique NA values "No capturado" 
+    # -> changed to NA
     Danio2 = case_when(Danio2 == "No capturado" ~ NA,
                        TRUE ~ Danio2),
-    # "Severidad2" Correction - "No capturado" + "No aplica" + class "character" -> NA + class "numeric"
+    # "Severidad2" Correction - ifferent values indicating NAs + wrong class "character"
+    # -> changed to NA + changed class to "numeric"
     Severidad2 = case_when(Severidad2 == "No capturado" ~ NA,
                            Severidad2 == "No aplica" ~ NA,
                            TRUE ~ as.numeric(Severidad2)),
-    # "NombreCientifico" Correction - "ZZ Genero Desconocido" -> NA
+    # "NombreCientifico" Correction - spelling inconsitency 
+    # -> corrected spelling to be in line with other datasets
     NombreCientifico_APG = case_when(NombreCientifico_APG == "ZZ Genero Desconocido" ~ "ZZ Desconocido",
                                      TRUE ~ NombreCientifico_APG),
-    # Added Cycle number 
+    # Added Cycle number for later identification of values
     Cycle = "3"
   ) |> 
-  # setting initial column order + attaching everything so far not considered to the end
+  # setting initial column order (no peticular reason other than making it easier to work with the data)
   select(Cycle, Anio, Estado, Conglomerado, Sitio, Registro, CveVeg_S7, TipoVeg_S7, FormaFuste, TipoTocon, Familia_APG,
          NombreCientifico_APG, NombreComun, FormaBiologica, Distancia, Azimut, AlturaTotal, AlturaFusteLimpio, AlturaComercial,
          DiametroNormal, DiametroBasal, DiametroCopa, AreaBasal, AreaCopa, PosicionCopa, ExposicionCopa, DensidadCopa,
@@ -448,12 +487,17 @@ Arb.14 <- Raw.14 |>
          LongitudAnillos10, NumeroAnillos25, GrosorCorteza, X, Y,
          everything()
   ) |> 
-  # sorting for comparison
+  # sorting for comparison (no peticular reason other than making it easier to work with the data)
   arrange(Estado, Conglomerado, Sitio, Registro)
 
 
 
 #################### 3) MERGE CycleS FOR OVERLAPPING VARIABLES ------------------------------------------------------
+# merging of all cleaned datasets into a long table format (i.e. three datasets are attached underneath each other) 
+# only for selected variables -> variables were selected based on availability
+# merging happens in three steps: 1) selection of data, 2) merging, 3) filtering of everything that is NOT a tree, i.e. only tree and tree-like entries remain within the dataset
+# ATTENTION: filtering is currently based on the given classification by the data! 
+
 
 #Arb.04
 M.04 <- Arb.04 |>
@@ -493,33 +537,7 @@ merged <- rbind(M.04, M.09, M.14) |>
   select(Cluster_ID, Plot_ID, Cycle, Sitio, Anio, everything(), -c(Conglomerado)) |> 
   filter(FormaBiologica == "Arbol" | FormaBiologica == "Arbusto" | FormaBiologica == "Arborescente" | is.na(FormaBiologica) | FormaBiologica == "Hierba") 
 
-
-
-# exlusion numbers
-merged |> 
-  select(FormaBiologica) |> 
-  filter(FormaBiologica == "Arbol" | FormaBiologica == "Arbusto" | FormaBiologica == "Arborescente" | is.na(FormaBiologica) | FormaBiologica == "Hierba") |> 
-  count()
-
-
-
-merged_2 <- rbind(M.04, M.09, M.14) |> 
-  mutate(Plot_ID = paste(Cycle, Conglomerado, Sitio, Anio, sep = "_")) |> 
-  mutate(Cluster_ID = Conglomerado) |> 
-  select(Cluster_ID, Plot_ID, Cycle, Sitio, Anio, everything(), -c(Conglomerado)) |> 
-  filter(DiametroNormal >= 7.5)
-
-View(AGB_3)
-
-AGB_3 |> 
-  select(IdConglomerado) |> 
-  distinct()
-
-merged |> 
-  select(Cluster_ID, Cycle) |> 
-  filter(Cycle == 3) |> 
-  distinct()
-
+# ATTENTION: missing remove command for M.04, M.09, M.14
 
 #################### 4) EDA PREPARATION ------------------------------------------------------------------
 ###### 4.1) SPECIES RICHNESS + INDIVIDUAL TREE COUNT ---------------------------
