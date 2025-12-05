@@ -2,12 +2,4 @@
 .Rhistory
 .RData
 .Ruserdata
-INFYS_Arbolado_2015_2020.xlsx
-INFyS_Arbolado_2004_2007.csv
-INFyS_Arbolado_2009_2014.csv
-INFYS_Secciones_2004_2007_7VCcv7Y.xlsx
-INFYS_Secciones_2009_2014_w18bSF1.xlsx
-INFYS_Secciones_2015-2020_fRBymGR.xlsx
-INFyS_C1_VBC.csv
-INFyS_C2_VBC.csv
-INFyS_C3_VBC.csv
+data/
