@@ -16,6 +16,7 @@ The data are part of the National Forest and Soil Inventory (INFyS) of Mexico be
 The INFyS follows a stratified sampling approach, resulting in 26,220 mapped plots. Each plot consists of four subplots, which are used as sampling sites. Each plot was visited every 5 years.
 
 The data are publicly accessible under: ***INSERT LINK*** 
+
 The exact data sets are ***INCLUDE THE NAMES WHEN DOWNLOADING***
 
 
@@ -30,15 +31,19 @@ Here each code segment is quickly explained.
 
 Placeholder
 
-### Code_2_Pre processing
+### Code_2_Translation ENG
 
 Placeholder
 
-### Code_3_iMAD
+### Code_3_Pre processing
 
 Placeholder
 
-### Code_4_Analysis and Visualization
+### Code_4_iMAD
+
+Placeholder
+
+### Code_5_Analysis and Visualization
 
 Placeholder
 
